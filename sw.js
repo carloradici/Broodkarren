@@ -1,5 +1,5 @@
-// Broodkarren: werkt ook zonder internet. Verhoog VERSIE bij elke nieuwe versie.
-const VERSIE = 'broodkarren-5.0';
+// Brood Opzet: werkt ook zonder internet. Verhoog VERSIE bij elke nieuwe versie.
+const VERSIE = 'broodopzet-6.0';
 const SUPA_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js';
 const BESTANDEN = ['./', 'index.html', 'manifest.webmanifest', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', SUPA_JS];
 self.addEventListener('install', e => {
