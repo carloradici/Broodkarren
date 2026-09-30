@@ -210,6 +210,14 @@ nav button.op-slot{color:var(--grijs)}
 .uitlegtekst{padding:0 16px 14px;font-size:15px;line-height:1.5;color:var(--tekst)}
 .knop.klein{padding:8px 12px;font-size:14px}
 .knop.rood{color:var(--rood);border-color:var(--rood)}
+
+.bijregel{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:8px 14px 12px 14px;background:var(--oranjeLicht);font-size:14px}
+.bijregel>div{display:flex;align-items:center;gap:8px}
+.bijregel .stepper button{width:36px;height:36px}.bijregel .stepper input{width:46px}
+.bijtot{margin-left:auto;color:var(--oranje)}
+.bijvoet{padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px));border-top:2px solid var(--oranje);background:var(--kaart);font-size:15px}
+.bijitem{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:15px}
+.duim.mini{width:30px;height:30px;margin:0;border-radius:6px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script></head>
 <body><div id="app"><div id="statusplek"></div><div id="opslagmelding">Opslaan mislukt: het geheugen is vol. Verwijder een paar foto's bij Broodsoorten.</div><main id="scherm"></main><nav id="nav"></nav></div>
@@ -348,7 +356,8 @@ function maakLijst(d,m){
 
 /* ================= bijbakken ================= */
 function bijbakLijst(d){return Object.values(S.bijbak[d]||{}).sort((a,b)=>a.t-b.t)}
-function bijbakStuks(d,id){return bijbakLijst(d).filter(x=>x.soort===id).reduce((t,x)=>t+(x.n||0),0)}
+const bijItems=x=>Array.isArray(x.items)?x.items:(x.soort?[{soort:x.soort,n:x.n||0,platen:x.platen||1,perPlaat:Math.round((x.n||0)/(x.platen||1))}]:[]);
+function bijbakStuks(d,id){return bijbakLijst(d).reduce((t,x)=>t+bijItems(x).filter(i=>i.soort===id).reduce((a,i)=>a+(i.n||0),0),0)}
 const opgezetTotaal=(d,s)=>werkDagTotaal(d,s)+bijbakStuks(d,s.id);
 function historieBij(d,id,delta){if(d===iso()||!S.historie[d])return;const g=S.historie[d].gezet=S.historie[d].gezet||{};g[id]=Math.max(0,(g[id]||0)+delta)}
 
@@ -356,7 +365,7 @@ function historieBij(d,id,delta){if(d===iso()||!S.historie[d])return;const g=S.h
 function voorraadNu(id){
   const v=S.voorraad[id];if(!v)return null;let n=v.basis;
   for(const d of Object.keys(S.vinkjes))for(const m of Object.keys(S.vinkjes[d]||{})){const x=S.vinkjes[d][m]?.[id];if(x&&x.t>v.t)n-=x.n||0}
-  for(const d of Object.keys(S.bijbak))for(const x of Object.values(S.bijbak[d]||{}))if(x.soort===id&&x.t>v.t)n-=x.n||0;
+  for(const d of Object.keys(S.bijbak))for(const x of Object.values(S.bijbak[d]||{}))if(x.t>v.t)for(const i of bijItems(x))if(i.soort===id)n-=i.n||0;
   return n;
 }
 function voorraadTekst(s,n){if(n==null)return'niet geteld';n=Math.max(0,n);if(!s.perDoos)return`${n} stuks`;const dz=Math.floor(n/s.perDoos),los=n%s.perDoos;
@@ -631,23 +640,36 @@ function lijstHtml(){
 }
 function bijbakHtml(){
   const l=bijbakLijst(datum);if(!l.length||ovenModus)return'';
-  let h=`<div class="sectie"><div class="karkop"><b>Bijgebakken</b><span>${l.reduce((t,x)=>t+x.n,0)} stuks</span></div>`;
-  for(const x of l){const s=S.soorten.find(y=>y.id===x.soort);if(!s)continue;
-    h+=`<div class="rij"><div class="rijflex"><div class="regel">${S.fotos[s.id]?`<img class="duim klein" src="${S.fotos[s.id]}" alt="">`:''}<div class="groei"><div class="naam">${esc(s.naam)}</div><div class="sub">${x.n} stuks – ${x.platen} ${x.platen===1?'plaat':'platen'}${s.programma?` – prog. ${esc(s.programma)}`:''} · ${tijdTekst(x.t)} ${esc(x.wie)}</div>
+  const totaal=l.reduce((t,x)=>t+bijItems(x).reduce((a,i)=>a+i.n,0),0);
+  let h=`<div class="sectie"><div class="karkop"><b>Bijgebakken</b><span>${totaal} stuks</span></div>`;
+  for(const x of l){const it=bijItems(x),pl=it.reduce((a,i)=>a+i.platen,0),progs=[...new Set(it.map(i=>(S.soorten.find(s=>s.id===i.soort)?.programma||'').trim()).filter(Boolean))];
+    h+=`<div class="rij"><div class="rijflex"><div class="regel"><div class="groei"><div class="naam">Lading ${tijdTekst(x.t)} <span class="sub" style="font-weight:400">${esc(x.wie)} – ${pl} ${pl===1?'plaat':'platen'}${progs.length?` – prog. ${progs.map(esc).join(' / ')}`:''}</span></div>
+      ${it.map(i=>{const s=S.soorten.find(y=>y.id===i.soort);return`<div class="bijitem">${s&&S.fotos[s.id]?`<img class="duim mini" src="${S.fotos[s.id]}" alt="">`:''}<span><b>${i.platen} × ${i.perPlaat}</b> ${esc(s?s.naam:'?')} <span class="sub">(${i.n} stuks)</span></span></div>`}).join('')}
       <div class="statusrij">${x.klaar?`<span class="st gebak">afgebakken ${tijdTekst(x.klaar.t)}</span>`:'<span class="st oven">in de oven</span>'}</div></div>
       ${mag('vinken')?`<button class="knop ${x.klaar?'rand':''} klein" data-a="bijklaar" data-v="${esc(x.id)}">${x.klaar?'Ongedaan':'Afgebakken'}</button>`:''}</div>${mag('vinken')?`<button class="pot" data-a="bijweg" data-v="${esc(x.id)}" aria-label="Verwijderen">${afwStap==='bij:'+x.id?'?':'×'}</button>`:''}</div></div>`}
   return h+'</div>';
 }
+
 function openBijbak(){
-  bewerk={soort:'bijbak',id:null};const lijst=S.soorten.filter(s=>s.type==='afbakken'&&s.naam.trim());
+  bewerk={soort:'bijbak',keuze:{}};
   toonSheet(`<div class="pkop"><button data-a="sluit">Annuleren</button><b>Bijbakken</b><button data-a="bijopslaan" style="font-weight:700">In de oven</button></div>
-   <div class="pinhoud"><p class="hulp">${esc(datumTekst(datum))}. Gaat direct de oven in; vink "Afgebakken" aan als het klaar is.</p>
-   <label>Soort</label><div class="chips" id="bijChips">${lijst.map(s=>`<button class="chip" data-a="bijkies" data-v="${s.id}">${esc(s.naam)}</button>`).join('')}</div>
-   <div class="hulp" id="bijInfo"></div>
-   <label>Aantal stuks</label><div class="grootstep"><button data-a="bijstap" data-v="aanpasIn" data-n="-1">−</button><input id="aanpasIn" inputmode="numeric" maxlength="4" value=""><button data-a="bijstap" data-v="aanpasIn" data-n="1">+</button></div>
-   <label>Aantal platen (max. ${S.ovenMax})</label><div class="grootstep"><button data-a="bijstap" data-v="bijPlaten" data-n="-1">−</button><input id="bijPlaten" inputmode="numeric" maxlength="2" value="1"><button data-a="bijstap" data-v="bijPlaten" data-n="1">+</button></div>
-   <div class="fout" id="fout"></div></div>`);
+   <div class="pinhoud" id="bijInhoud"><p class="hulp">${esc(datumTekst(datum))}. Tik alles aan wat je wilt bijbakken en pas per soort de platen en stuks per plaat aan.</p><div id="bijLijst"></div></div>
+   <div class="bijvoet" id="bijVoet"></div>`);
+  renderBijSheet();
 }
+function renderBijSheet(){
+  const lijst=S.soorten.filter(s=>s.type==='afbakken'&&s.naam.trim()),k=bewerk.keuze;
+  document.getElementById('bijLijst').innerHTML=`<div class="sectie" style="margin:8px 0 0">${lijst.map(s=>{const c=k[s.id];
+    return`<div class="rij"><button class="regel ${c?'gekozen':''}" data-a="bijkies" data-v="${s.id}">${S.fotos[s.id]?`<img class="duim klein" src="${S.fotos[s.id]}" alt="">`:''}<div class="groei"><div class="naam">${esc(s.naam)}</div><div class="sub">${[s.programma?'prog. '+esc(s.programma):'',s.temp?s.temp+'°C':'',s.baktijd?s.baktijd+' min':'',`max. ${s.max} per plaat`].filter(Boolean).join(' · ')}</div></div><div class="kiesvak">${c?'✓':''}</div></button>
+    ${c?`<div class="bijregel"><div><span>Platen</span><div class="stepper"><button data-a="bijstap" data-v="${s.id}" data-f="platen" data-n="-1">−</button><input readonly value="${c.platen}"><button data-a="bijstap" data-v="${s.id}" data-f="platen" data-n="1">+</button></div></div>
+      <div><span>Per plaat</span><div class="stepper"><button data-a="bijstap" data-v="${s.id}" data-f="perPlaat" data-n="-1">−</button><input readonly value="${c.perPlaat}"><button data-a="bijstap" data-v="${s.id}" data-f="perPlaat" data-n="1">+</button></div></div>
+      <b class="bijtot">= ${c.platen*c.perPlaat} stuks</b></div>`:''}</div>`}).join('')}</div>`;
+  const ids=Object.keys(k),pl=ids.reduce((a,id)=>a+k[id].platen,0),gek=ids.map(id=>S.soorten.find(s=>s.id===id)).filter(Boolean);
+  const progs=[...new Set(gek.map(s=>(s.programma||'').trim()).filter(Boolean))],temps=[...new Set(gek.map(s=>s.temp).filter(x=>x>0))],w=[];
+  if(pl>S.ovenMax)w.push(`maximaal ${S.ovenMax} platen`);if(progs.length>1)w.push("verschillende programma's");else if(temps.length>1)w.push('verschillende temperaturen');
+  document.getElementById('bijVoet').innerHTML=ids.length?`<b>${ids.length} ${ids.length===1?'soort':'soorten'}, ${pl} van max. ${S.ovenMax} platen</b>${w.length?`<div class="let">Let op: ${w.join(', ')}!</div>`:''}<div class="fout" id="fout"></div>`:'<span class="sub">Nog niets aangetikt.</span><div class="fout" id="fout"></div>';
+}
+
 function histTabel(hs){const b=hs.some(x=>x.bij);return`<div class="histtab"><table><tr><th>Datum</th><th>Opgezet</th>${b?'<th>Bij</th>':''}<th>Over</th><th>Verkocht</th></tr>${hs.map(x=>`<tr><td>${datumTekst(x.d)}</td><td>${fmt(x.gezet)}</td>${b?`<td>${x.bij?fmt(x.bij):''}</td>`:''}<td>${fmt(x.der)}</td><td>${fmt(x.verkocht)}</td></tr>`).join('')}</table>${b?'<div class="hulp" style="margin:4px 0 0">Opgezet is inclusief bijgebakken. Bijbakken verhoogt het advies niet.</div>':''}</div>`}
 
 function notitiesHtml(d){
@@ -711,7 +733,7 @@ const UITLEG=[
  ['aanpassen','Aantal aanpassen en extra','Met ✎ pas je het aantal van een soort alleen voor die dag aan, bijvoorbeeld 15 kaiser omdat er maar 15 zijn. De lijst toont dan "gepland 16". Zet je het op 0, dan verdwijnt de soort. Met "+ Extra klaarzetten" zet je voor die dag iets bij dat niet gepland stond.'],
  ['werkmodus','Werkmodus','Schermvullend, één plaat tegelijk met grote letters, foto, ovenprogramma en werkinstructie. Tik op "Klaar – volgende" om de plaat af te vinken en door te gaan.'],
  ['oven','Oven','Tik op "Oven vullen", tik de soorten aan die de oven in gaan en kies met − en + hoeveel platen. De app waarschuwt als je boven het maximum komt of programma\'s mengt. Tik op "Afgebakken" als de lading klaar is. Per soort zie je daarna hoeveel platen afgebakken zijn; tik daarop om het te wijzigen of ongedaan te maken.'],
- ['bijbakken','Bijbakken','Is er iets op tijdens de dag? Tik op Klaarzetten op "Bijbakken", kies de soort, het aantal stuks en platen. Het gaat direct de oven in en staat in het blok "Bijgebakken". Tik op "Afgebakken" als het klaar is. Bijbakken telt mee als opgezet en gaat van de voorraad af, maar verhoogt het advies niet. In de historie en het weekrapport zie je hoe vaak er is bijgebakken.'],
+ ['bijbakken','Bijbakken','Is er iets op tijdens de dag? Tik op Klaarzetten op Bijbakken en tik alle soorten aan die je wilt bijbakken. Elke soort staat meteen op 1 plaat met het maximum per plaat; pas met − en + de platen en de stuks per plaat aan (bijv. 12 naar 9). Tik op In de oven: alles komt als één lading in het blok Bijgebakken. Tik op Afgebakken als de lading klaar is. Bijbakken telt mee als opgezet en gaat van de voorraad af, maar verhoogt het advies niet. In de historie en het weekrapport zie je hoe vaak er is bijgebakken.'],
  ['vers','Vers brood','Brood dat vers binnenkomt staat onderaan Klaarzetten, zonder platen. Voorgesneden brood vul je direct. Bij ongesneden brood kies je met − en + hoeveel hele broden je houdt; de rest wordt gehalveerd. Voorbeeld: 7 broden, 4 hele = 4 hele + 6 halve.'],
  ['invullen','Invullen (planning)','Kies bovenaan de dag (maandag t/m zondag). Vul per soort het aantal stuks in. Een leeg vakje bij dinsdag t/m zondag betekent: zelfde als maandag (grijs getal). 0 betekent: niet klaarzetten. Met "Kopieer naar…" zet je een dag in één keer over naar andere dagen.'],
  ['advies','Advies','Als er een paar dagen derving is ingevuld, rekent de app uit hoeveel er gemiddeld verkocht wordt. Ma t/m vr tellen samen; zaterdag en zondag apart. "Advies gebruiken" of "Alles op advies" past de planning aan; je ziet eerst wat er verandert.'],
@@ -1142,18 +1164,18 @@ document.addEventListener('click',async e=>{
   case'uitleg':tab='meer';sub='uitleg';uitlegOpen=v;ovenModus=false;render();setTimeout(()=>document.getElementById('u-'+v)?.scrollIntoView({block:'start'}),30);return;
   case'uitlegopen':uitlegOpen=uitlegOpen===v?null:v;render();return;
   case'bijnieuw':openBijbak();return;
-  case'bijkies':{bewerk.id=v;document.querySelectorAll('#bijChips .chip').forEach(c=>c.classList.toggle('aan',c.dataset.v===v));const s=S.soorten.find(x=>x.id===v),i=document.getElementById('aanpasIn');
-    if(!getal(i.value))i.value=s.max||12;document.getElementById('bijPlaten').value=Math.max(1,Math.ceil((getal(i.value)||1)/(s.max||1)));
-    document.getElementById('bijInfo').textContent=[s.programma?'Programma '+s.programma:'',s.temp?s.temp+'°C':'',s.baktijd?s.baktijd+' min':'',`max. ${s.max} per plaat`].filter(Boolean).join(' · ');return}
-  case'bijstap':{const i=document.getElementById(v);i.value=Math.max(v==='bijPlaten'?1:0,(getal(i.value)||0)+ +b.dataset.n);
-    if(v==='aanpasIn'&&bewerk.id){const s=S.soorten.find(x=>x.id===bewerk.id);document.getElementById('bijPlaten').value=Math.max(1,Math.ceil((getal(i.value)||1)/(s.max||1)))}return}
-  case'bijopslaan':{const f=t=>document.getElementById('fout').textContent=t,n=getal(document.getElementById('aanpasIn').value)||0,p=getal(document.getElementById('bijPlaten').value)||0;
-    if(!bewerk.id)return f('Kies een soort.');if(!n)return f('Vul het aantal stuks in.');if(p<1)return f('Minimaal 1 plaat.');if(p>S.ovenMax)return f(`Maximaal ${S.ovenMax} platen in de oven.`);
-    const s=S.soorten.find(x=>x.id===bewerk.id),id=nieuwId();S.bijbak[datum]=S.bijbak[datum]||{};S.bijbak[datum][id]={id,soort:s.id,n,platen:p,t:Date.now(),wie:ik().naam,klaar:null};
-    historieBij(datum,s.id,n);log(`Bijbakken: ${n}× ${s.naam} (${p} ${p===1?'plaat':'platen'})`);bewaar();sluit();render();return}
-  case'bijklaar':{const x=S.bijbak[datum]?.[v];if(!x)return;x.klaar=x.klaar?null:{wie:ik().naam,t:Date.now()};const s=S.soorten.find(y=>y.id===x.soort);
-    log(`Bijbakken ${s?.naam}: ${x.klaar?'afgebakken':'afgebakken ongedaan'}`);bewaar();render();return}
-  case'bijweg':{if(afwStap!=='bij:'+v){afwStap='bij:'+v;render();return}afwStap=null;const x=S.bijbak[datum]?.[v];if(x){const s=S.soorten.find(y=>y.id===x.soort);historieBij(datum,x.soort,-x.n);log(`Bijbakken ${s?.naam} (${x.n}) verwijderd`);delete S.bijbak[datum][v]}bewaar();render();return}
+  case'bijkies':{const k=bewerk.keuze,sx=S.soorten.find(x=>x.id===v);if(k[v])delete k[v];else k[v]={platen:1,perPlaat:sx?.max||12};renderBijSheet();return}
+  case'bijstap':{const c=bewerk.keuze[v],sx=S.soorten.find(x=>x.id===v);if(!c)return;const f=b.dataset.f;
+    c[f]=f==='platen'?Math.max(1,Math.min(S.ovenMax,c[f]+ +b.dataset.n)):Math.max(1,Math.min(sx?.max||99,c[f]+ +b.dataset.n));renderBijSheet();return}
+  case'bijopslaan':{const k=bewerk.keuze,ids=Object.keys(k),f=t=>{const e=document.getElementById('fout');if(e)e.textContent=t};
+    if(!ids.length)return f('Tik minimaal één soort aan.');const pl=ids.reduce((a,id)=>a+k[id].platen,0);if(pl>S.ovenMax)return f(`Maximaal ${S.ovenMax} platen in de oven.`);
+    const items=ids.map(id=>({soort:id,platen:k[id].platen,perPlaat:k[id].perPlaat,n:k[id].platen*k[id].perPlaat})),id=nieuwId();
+    S.bijbak[datum]=S.bijbak[datum]||{};S.bijbak[datum][id]={id,items,t:Date.now(),wie:ik().naam,klaar:null};for(const i of items)historieBij(datum,i.soort,i.n);
+    log(`Bijbakken (${pl} ${pl===1?'plaat':'platen'}): ${items.map(i=>`${i.platen}×${i.perPlaat} ${S.soorten.find(x=>x.id===i.soort)?.naam}`).join(', ')}`);bewaar();sluit();render();return}
+  case'bijklaar':{const x=S.bijbak[datum]?.[v];if(!x)return;x.klaar=x.klaar?null:{wie:ik().naam,t:Date.now()};
+    log(`Bijbakken lading ${tijdTekst(x.t)}: ${x.klaar?'afgebakken':'afgebakken ongedaan'}`);bewaar();render();return}
+  case'bijweg':{if(afwStap!=='bij:'+v){afwStap='bij:'+v;render();return}afwStap=null;const x=S.bijbak[datum]?.[v];
+    if(x){for(const i of bijItems(x))historieBij(datum,i.soort,-i.n);log(`Bijbakken lading ${tijdTekst(x.t)} verwijderd`);delete S.bijbak[datum][v]}bewaar();render();return}
   case'ovenklaar':{const gek=ovenGekozen(maakLijst(datum,moment));if(!gek.length)return;const tot=gek.reduce((t,g)=>t+g.n,0);if(tot>S.ovenMax)return;
     for(const g of gek){const st=stat(datum,moment,g.gk,true);st.gebakken=(st.gebakken||0)+g.n}
     log(`Afgebakken (${tot} ${tot===1?'plaat':'platen'}): ${gek.map(g=>`${g.n}× ${g.regels.map(r=>r.s.naam).join(' + ')}`).join(', ')}`);ovenModus=false;ovenKeuze={};bewaar();render();return}
