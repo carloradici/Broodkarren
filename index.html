@@ -218,6 +218,7 @@ nav button.op-slot{color:var(--grijs)}
 .bijvoet{padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px));border-top:2px solid var(--oranje);background:var(--kaart);font-size:15px}
 .bijitem{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:15px}
 .duim.mini{width:30px;height:30px;margin:0;border-radius:6px}
+.plaat.stuks{flex-direction:column;line-height:1;font-size:18px}.plaat.stuks small{font-size:11px;font-weight:700;margin-top:2px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script></head>
 <body><div id="app"><div id="statusplek"></div><div id="opslagmelding">Opslaan mislukt: het geheugen is vol. Verwijder een paar foto's bij Broodsoorten.</div><main id="scherm"></main><nav id="nav"></nav></div>
@@ -345,9 +346,9 @@ function maakLijst(d,m){
     const regels=S.soorten.filter(s=>effKar(s)===nr&&s.type!=='vers'&&s.naam.trim()).map(s=>{const gepland=stuksIn(pk,m,s),n=werkelijk(d,m,s);return{s,n,gepland,aangepast:n!==gepland,extra:gepland===0&&n>0}}).filter(r=>r.n>0);
     if(!regels.length)continue;
     const gk=s=>s.groep&&s.groep.trim()?'g:'+s.groep.trim().toUpperCase():'e:'+s.id;
-    const gp={};for(const r of regels){r.v=verdeling(r.n,r.s.max);r.g=gk(r.s);gp[r.g]=Math.max(gp[r.g]||0,r.v.platen)}
+    const gp={};for(const r of regels){if(r.s.type==='ontdooien'){r.v={platen:0,delen:[r.n],rest:r.n};r.g='o:'+r.s.id;r.ontdooi=true;continue}r.v=verdeling(r.n,r.s.max);r.g=gk(r.s);gp[r.g]=Math.max(gp[r.g]||0,r.v.platen)}
     const start={};let volg=1;
-    for(const r of regels){if(start[r.g]===undefined){start[r.g]=volg;volg+=gp[r.g]}
+    for(const r of regels){if(r.ontdooi){r.plaat='';r.aantalPlaten=0;r.teWeinig=false;continue}if(start[r.g]===undefined){start[r.g]=volg;volg+=gp[r.g]}
       const a=start[r.g],b=a+gp[r.g]-1;r.plaat=b>a?`${a}–${b}`:`${a}`;r.aantalPlaten=gp[r.g];r.teWeinig=r.s.min>0&&r.v.rest<r.s.min}
     out.push({nr,naam:karNaam(nr),regels,totaal:regels.reduce((t,r)=>t+r.n,0),platen:volg-1});
   }
@@ -602,7 +603,7 @@ function lijstHtml(){
   if(!n&&!bijbakLijst(datum).length)h+=`<p class="leeg">Voor ${esc(momentNaam(moment).toLowerCase())} op ${esc(datumTekst(datum))} staat niets gepland.</p>`;
   const gezien={};
   for(const s of sec){
-    h+=`<div class="sectie"><div class="karkop"><b>${esc(s.naam)}</b><span>${s.platen} platen, ${s.totaal} stuks</span></div>`;
+    h+=`<div class="sectie"><div class="karkop"><b>${esc(s.naam)}</b><span>${s.platen?`${s.platen} platen, `:''}${s.totaal} stuks</span></div>`;
     for(const r of s.regels){
       const kl=!!v[r.s.id],gk=gKey(s.nr,r),eerste=!gezien[gk];gezien[gk]=true;
       const afb=r.s.type!=='ontdooien',gek=ovenKeuze[gk]!=null,a=advies(r.s,gr),hs=historie(r.s,gr),rest=restPlaten(r,s.nr),ab=afgebakken(gk);
@@ -610,7 +611,7 @@ function lijstHtml(){
       const actie=ovenModus?(afb&&(rest>0||gek)?'ovenkies':''):'vink';
       const label=(r.s.type==='ontdooien'?'<span class="st ontd">ontdooien</span> ':'')+(r.extra?'<span class="st extra">extra</span> ':r.aangepast?`<span class="st aangepast">gepland ${r.gepland}</span> `:'');
       const statusTxt=!ovenModus&&(kl||(afb&&ab))?`<div class="statusrij">${kl?'✓ klaargezet':''}${afb&&ab?`<span class="st gebak">${ab} van ${r.aantalPlaten} afgebakken</span>`:''}</div>`:'';
-      h+=`<div class="rij"><div class="rijflex"><button class="regel ${kl&&!ovenModus?'klaar':''} ${ovenModus&&gek?'gekozen':''} ${ovenModus&&!actie?'uit':''}" ${actie?`data-a="${actie}" data-v="${esc(ovenModus?gk:r.s.id)}"`:''}><div class="plaat">${r.plaat}</div>${S.fotos[r.s.id]?`<img class="duim klein" src="${S.fotos[r.s.id]}" alt="">`:''}<div class="groei"><div class="naam">${esc(r.s.naam)}</div><div class="sub">${label}${r.n} stuks${r.v.platen>1||r.v.delen[0]!==r.n?` (${r.v.delen.join(' + ')})`:''}${extra?` – ${extra}`:''}${r.teWeinig?` <span class="let">– laatste plaat onder min. ${r.s.min}</span>`:''}</div>
+      h+=`<div class="rij"><div class="rijflex"><button class="regel ${kl&&!ovenModus?'klaar':''} ${ovenModus&&gek?'gekozen':''} ${ovenModus&&!actie?'uit':''}" ${actie?`data-a="${actie}" data-v="${esc(ovenModus?gk:r.s.id)}"`:''}>${r.ontdooi?`<div class="plaat stuks">${r.n}<small>st</small></div>`:`<div class="plaat">${r.plaat}</div>`}${S.fotos[r.s.id]?`<img class="duim klein" src="${S.fotos[r.s.id]}" alt="">`:''}<div class="groei"><div class="naam">${esc(r.s.naam)}</div><div class="sub">${label}${r.n} stuks${!r.ontdooi&&(r.v.platen>1||r.v.delen[0]!==r.n)?` (${r.v.delen.join(' + ')})`:''}${extra?` – ${extra}`:''}${r.teWeinig?` <span class="let">– laatste plaat onder min. ${r.s.min}</span>`:''}</div>
         ${ovenModus&&afb?`<div class="sub"><b style="color:${rest?'var(--oranje)':'var(--groen)'}">${rest?`nog ${rest} ${rest===1?'plaat':'platen'} af te bakken`:'alles afgebakken'}</b></div>`:statusTxt}</div>
         ${ovenModus?(afb?`<div class="kiesvak">${gek?'✓':''}</div>`:''):mag('vinken')?`<div class="vinkvak">${kl?'✓':''}</div>`:''}</button>${!ovenModus&&mag('vinken')?`<button class="pot" data-a="aanpas" data-v="${r.s.id}" aria-label="Aantal aanpassen">✎</button>`:''}</div>`;
       if(ovenModus&&gek&&eerste)h+=`<div class="ovenstep"><span>Platen de oven in</span><div class="stepper"><button data-a="ovenaantal" data-v="${esc(gk)}" data-n="-1">−</button><input readonly value="${ovenKeuze[gk]}"><button data-a="ovenaantal" data-v="${esc(gk)}" data-n="1">+</button></div><span class="hulp" style="margin:0">van ${rest}</span></div>`;
@@ -755,7 +756,7 @@ function toast(t){let el=document.getElementById('toast');if(!el){el=document.cr
 function werkPlaten(){
   const uit=[];
   for(const s of maakLijst(datum,moment)){const map=new Map();
-    for(const r of s.regels){if(!map.has(r.plaat)){map.set(r.plaat,{kar:s.naam,plaat:r.plaat,regels:[]});uit.push(map.get(r.plaat))}map.get(r.plaat).regels.push(r)}}
+    for(const r of s.regels){if(r.ontdooi){uit.push({kar:s.naam,plaat:'',ontdooi:true,regels:[r]});continue}if(!map.has(r.plaat)){map.set(r.plaat,{kar:s.naam,plaat:r.plaat,regels:[]});uit.push(map.get(r.plaat))}map.get(r.plaat).regels.push(r)}}
   return uit;
 }
 function renderWerk(){
@@ -763,12 +764,12 @@ function renderWerk(){
   if(!p.length){werk=null;el.classList.remove('open');return}
   werk.i=Math.min(Math.max(0,werk.i),p.length);el.classList.add('open');
   const ka=p.filter(x=>x.regels.every(r=>v[r.s.id])).length;
-  let h=`<div class="wkop"><button data-a="werkdicht">Sluiten</button><span>${ka} / ${p.length} platen klaar</span><span style="width:60px"></span></div><div class="wbalk"><div style="width:${ka/p.length*100}%"></div></div>`;
+  let h=`<div class="wkop"><button data-a="werkdicht">Sluiten</button><span>${ka} / ${p.length} klaar</span><span style="width:60px"></span></div><div class="wbalk"><div style="width:${ka/p.length*100}%"></div></div>`;
   if(werk.i>=p.length){h+=`<div class="klaarscherm"><b>✓</b><div style="font-size:22px;font-weight:800">${ka===p.length?'Alles klaargezet!':'Einde van de lijst'}</div><p style="color:var(--grijs)">${ka<p.length?`Nog ${p.length-ka} niet afgevinkt.`:''}</p></div>
     <div class="wknoppen"><div class="wklein"><button data-a="werknav" data-v="-1">‹ Terug</button><button data-a="werkdicht">Sluiten</button></div></div>`}
   else{const x=p[werk.i],ok=x.regels.every(r=>v[r.s.id]);
-    h+=`<div class="winhoud"><div class="wkar">${esc(x.kar)}</div><div class="wplaat"><small>Plaat</small>${x.plaat}</div>
-      ${x.regels.map(r=>`<div class="witem ${v[r.s.id]?'ok':''}">${S.fotos[r.s.id]?`<img class="wfoto" src="${S.fotos[r.s.id]}" alt="">`:''}<div class="n">${esc(r.s.naam)}</div><div class="a">${r.n} stuks${r.v.platen>1||r.v.delen[0]!==r.n?` (${r.v.delen.join(' + ')})`:''}${r.aangepast?` – ${r.extra?'extra':`gepland ${r.gepland}`}`:''}</div>
+    h+=`<div class="winhoud"><div class="wkar">${esc(x.kar)}</div><div class="wplaat">${x.ontdooi?`<small>Ontdooien</small>${x.regels[0].n} stuks`:`<small>Plaat</small>${x.plaat}`}</div>
+      ${x.regels.map(r=>`<div class="witem ${v[r.s.id]?'ok':''}">${S.fotos[r.s.id]?`<img class="wfoto" src="${S.fotos[r.s.id]}" alt="">`:''}<div class="n">${esc(r.s.naam)}</div><div class="a">${r.n} stuks${!r.ontdooi&&(r.v.platen>1||r.v.delen[0]!==r.n)?` (${r.v.delen.join(' + ')})`:''}${r.aangepast?` – ${r.extra?'extra':`gepland ${r.gepland}`}`:''}</div>
         ${r.s.programma||r.s.temp||r.s.baktijd?`<div class="wprog">${r.s.programma?`Ovenprogramma <b>${esc(r.s.programma)}</b>`:''}${[r.s.temp?r.s.temp+'°C':'',r.s.baktijd?r.s.baktijd+' min':''].filter(Boolean).map(t=>` · ${t}`).join('')}</div>`:''}
         ${r.s.instructie?`<div class="winstr">${esc(r.s.instructie).replace(/\n/g,'<br>')}</div>`:''}</div>`).join('')}</div>
       <div class="wknoppen"><button class="wgroot" data-a="werkklaar">${ok?'Volgende plaat ›':'✓ Klaar – volgende'}</button><div class="wklein"><button data-a="werknav" data-v="-1">‹ Vorige</button><button data-a="werknav" data-v="1">Overslaan ›</button></div></div>`}
@@ -784,6 +785,7 @@ function planOpties(){
 }
 function planRegelHint(s){
   const n=stuksIn(planKeuze,moment,s);if(!n)return'Niet klaarzetten';
+  if(s.type!=='afbakken'){let t=`${n} ${s.type==='vers'?'broden':'stuks'}`;if(S.momenten.length>1){const tot=dagTotaal(planKeuze,s);if(tot!==n)t+=` – dag totaal ${tot}`}return t}
   const v=verdeling(n,s.max);let t=`${v.platen} ${v.platen===1?'plaat':'platen'} (${v.delen.join(' + ')})`;
   if(S.momenten.length>1){const tot=dagTotaal(planKeuze,s);if(tot!==n)t+=` – dag totaal ${tot}`}
   if(s.min>0&&v.rest<s.min)t+=` <span class="let">laatste plaat onder min. ${s.min}</span>`;
@@ -982,7 +984,7 @@ function soortenHtml(){
     const lijst=S.soorten.filter(s=>s.kar===nr),kar=S.karren.find(k=>k.nr===nr);
     h+=`<div class="sectie"><div class="karkop"><input data-kar="${nr}" value="${esc(kar?kar.naam:'')}" placeholder="Kar ${nr}">${lijst.length?'':`<button class="link" data-a="karweg" data-v="${nr}">Verwijder</button>`}</div>`;
     for(const s of lijst)h+=`<div class="rij"><button class="regel" data-a="open" data-v="${s.id}">${S.fotos[s.id]?`<img class="duim" src="${S.fotos[s.id]}" alt="">`:''}<div class="groei"><div class="naam">${esc(s.naam)}${s.groep?`<span class="groep">samen: ${esc(s.groep.toUpperCase())}</span>`:''}</div>
-      <div class="sub">Plaat ${s.min||0}–${s.max||'?'}${s.programma?`, prog. ${esc(s.programma)}`:''}${s.temp||s.baktijd?`, ${[s.temp?s.temp+'°C':'',s.baktijd?s.baktijd+' min':''].filter(Boolean).join(' ')}`:''}${s.perDoos?`, ${s.perDoos} per doos`:''}</div></div><span class="pijl">›</span></button></div>`;
+      <div class="sub">${s.type==='ontdooien'?'Ontdooien, in stuks':s.type==='vers'?(s.gesneden==='on'?'Vers, ongesneden':'Vers, voorgesneden'):`Plaat ${s.min||0}–${s.max||'?'}`}${s.programma?`, prog. ${esc(s.programma)}`:''}${s.temp||s.baktijd?`, ${[s.temp?s.temp+'°C':'',s.baktijd?s.baktijd+' min':''].filter(Boolean).join(' ')}`:''}${s.perDoos?`, ${s.perDoos} per doos`:''}</div></div><span class="pijl">›</span></button></div>`;
     h+=`<button class="toevoegen" data-a="nieuw" data-v="${nr}">+ Broodsoort toevoegen</button></div>`;
   }
   h+=`<div class="knoppen"><button class="knop rand" data-a="karerbij">Kar toevoegen</button></div>
@@ -1064,15 +1066,16 @@ function openSoort(s){
   toonTypeVelden();
 }
 function toonTypeVelden(){const t=bewerk.type,z=(id,aan)=>{const e=document.getElementById(id);if(e)e.style.display=aan?'':'none'};
-  z('secSnij',t==='vers');z('secPlaat',t!=='vers');z('secOven',t==='afbakken');z('secDeeg',t!=='vers')}
+  z('secSnij',t==='vers');z('secPlaat',t==='afbakken');z('secOven',t==='afbakken');z('secDeeg',t!=='vers')}
 
 
 function soortOpslaan(){
-  const w=id=>getal(document.getElementById(id).value),naam=document.getElementById('fNaam').value.trim(),min=w('fMin'),max=w('fMax');
-  const fout=t=>document.getElementById('fout').textContent=t;
-  if(!naam)return fout('Vul de naam in.');if(!max)return fout('Vul het maximum per plaat in.');if(min!=null&&min>max)return fout('Minimum is groter dan maximum.');
-  const nw={id:bewerk.id,naam,kar:bewerk.kar,groep:document.getElementById('fGroep').value.trim().toUpperCase(),min:min||0,max,temp:w('fTemp'),baktijd:w('fTijd'),perDoos:w('fDoos'),
-    programma:document.getElementById('fProg').value.trim(),instructie:document.getElementById('fInstr').value.trim()};
+  const w=id=>{const e=document.getElementById(id);return e?getal(e.value):null},tekst=id=>{const e=document.getElementById(id);return e?e.value.trim():''};
+  const naam=tekst('fNaam'),t=bewerk.type||'afbakken',afb=t==='afbakken',vers=t==='vers',min=afb?w('fMin'):0,max=afb?w('fMax'):(w('fMax')||null);
+  const fout=x=>document.getElementById('fout').textContent=x;
+  if(!naam)return fout('Vul de naam in.');if(afb&&!max)return fout('Vul het maximum per plaat in.');if(afb&&min!=null&&min>max)return fout('Minimum is groter dan maximum.');
+  const nw={id:bewerk.id,naam,kar:bewerk.kar,type:t,gesneden:bewerk.gesneden||'voor',groep:afb?tekst('fGroep').toUpperCase():'',min:min||0,max,
+    temp:afb?w('fTemp'):null,baktijd:afb?w('fTijd'):null,perDoos:vers?null:w('fDoos'),programma:afb?tekst('fProg'):'',instructie:tekst('fInstr')};
   if(bewerk.foto)S.fotos[nw.id]=bewerk.foto;else if(S.fotos[nw.id])S.fotos[nw.id]=null;
   const i=S.soorten.findIndex(x=>x.id===nw.id);
   if(i>=0)S.soorten[i]=nw;else{const l=S.soorten.map(x=>x.kar).lastIndexOf(nw.kar);S.soorten.splice(l+1,0,nw)}
