@@ -345,6 +345,12 @@ nav button{position:relative}
 .printvoorbeeld .printkop{display:flex;justify-content:space-between;border-bottom:3px solid #f17d04;padding-bottom:6px;margin-bottom:8px;font-size:13px;gap:8px}
 .printvoorbeeld h1{font-size:16px;margin:10px 0 4px}.printvoorbeeld h2{font-size:14px;margin:10px 0 4px;background:#f17d04;color:#fff;padding:4px 8px}
 .printvoorbeeld table{width:100%;border-collapse:collapse}.printvoorbeeld th,.printvoorbeeld td{border:1px solid #999;padding:4px 5px;text-align:left}
+
+.fotozoom{overflow:auto;border-radius:12px;margin-top:8px;max-height:75vh}
+.fotozoom img{width:100%;display:block;border-radius:12px}
+.fotozoom.groot img{width:auto;max-width:none;border-radius:0}
+.exptabel th,.exptabel td{white-space:nowrap;font-size:12px;padding:6px 8px}
+.karkop .link{color:#fff;font-weight:700}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script></head>
 <body><div id="app"><div id="statusplek"></div><div id="opslagmelding">Opslaan mislukt: het geheugen is vol. Verwijder een paar foto's bij Broodsoorten.</div><main id="scherm"></main><nav id="nav"></nav></div>
@@ -409,7 +415,7 @@ function naarV6(S){
   delete S.sessie;delete S.laatsteActie;S.versie=6;return S;
 }
 function vulAan(S){
-  for(const k of['historie','derving','karOverride','afwijkend','notities','voorraad','vinkjes','status','avond','dervBest','aanpas','timers','log','fotos','snij','ontdooi','dervHH','bijbak','profielen','berichten','karTaak','afsluit','feestNee'])S[k]=isObj(S[k])?S[k]:{};
+  for(const k of['historie','derving','karOverride','afwijkend','notities','voorraad','vinkjes','status','avond','dervBest','aanpas','timers','log','fotos','snij','ontdooi','dervHH','bijbak','profielen','berichten','karTaak','afsluit','feestNee','notfotos'])S[k]=isObj(S[k])?S[k]:{};
   for(const k of['gebruikers','soorten','karren'])S[k]=Array.isArray(S[k])?S[k]:[];
   S.plan=isObj(S.plan)?S.plan:{};for(const k of['ma','di','wo','do','vr','za','zo'])S.plan[k]=isObj(S.plan[k])?S.plan[k]:{};
   S.leverdagen=Array.isArray(S.leverdagen)?S.leverdagen:[1,3,5];S.ovenMax=S.ovenMax||10;
@@ -513,6 +519,8 @@ function snapshot(){
   const grens=plusDagen(d,-180);
   for(const k of['historie','derving','notities','dervBest','aanpas','dervHH','bijbak','afsluit'])for(const x of Object.keys(S[k]))if(x<grens)delete S[k][x];
   for(const k of['vinkjes','status','avond','snij','ontdooi','karTaak'])for(const x of Object.keys(S[k]))if(x<plusDagen(d,-35))delete S[k][x];
+  const nodig=new Set();for(const d of Object.keys(S.notities))for(const n of Object.values(S.notities[d]||{}))if(n.fotoId)nodig.add(n.fotoId);
+  for(const id of Object.keys(S.notfotos))if(!nodig.has(id)&&S.notfotos[id]===null)delete S.notfotos[id];
   const lg=Date.now()-60*864e5;for(const[id,l]of Object.entries(S.log))if(l.t<lg)delete S.log[id];
 }
 function historie(s,groep){
@@ -592,6 +600,7 @@ function splitsen(){
   for(const d of dagen){const x={};for(const k of DAGVELDEN)if(S[k][d]!==undefined)x[k]=S[k][d];o['dag:'+d]=x}
   for(const[id,l]of Object.entries(S.log)){const k='log:'+iso(new Date(l.t));(o[k]=o[k]||{})[id]=l}
   for(const[id,f]of Object.entries(S.fotos))o['foto:'+id]={data:f||null};
+  for(const[id,f]of Object.entries(S.notfotos))o['notfoto:'+id]={data:f||null};
   return o;
 }
 function pasToe(k,v){
@@ -606,6 +615,7 @@ function pasToe(k,v){
   else if(k.startsWith('dag:')){const d=k.slice(4);for(const f of DAGVELDEN){if(v[f]!==undefined)S[f][d]=v[f];else delete S[f][d]}}
   else if(k.startsWith('log:')){const d=k.slice(4);for(const[id,l]of Object.entries(S.log))if(iso(new Date(l.t))===d&&!v[id])delete S.log[id];Object.assign(S.log,v)}
   else if(k.startsWith('foto:')){const id=k.slice(5);if(v.data)S.fotos[id]=v.data;else delete S.fotos[id]}
+  else if(k.startsWith('notfoto:')){const id=k.slice(8);if(v.data)S.notfotos[id]=v.data;else S.notfotos[id]=null}
   vulAan(S);
 }
 function diff(a,b,pad=[],ops=[]){
@@ -758,7 +768,7 @@ function lijstHtml(){
   const uur=new Date().getHours(),groet=uur<12?'Goedemorgen':uur<18?'Goedemiddag':'Goedenavond',naamIk=(ik()?.naam||'').split(' ')[0];
   const ring=n?`<svg class="ring" viewBox="0 0 66 66" role="img" aria-label="${k} van ${n} klaar"><circle cx="33" cy="33" r="27" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="7"/><circle cx="33" cy="33" r="27" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-dasharray="${(169.6*k/n).toFixed(1)} 169.6" transform="rotate(-90 33 33)"/><text x="33" y="38" text-anchor="middle" font-size="${n>99?12:15}" font-weight="800" fill="#fff">${k}/${n}</text></svg>`:'';
   const P=prof();
-  let h=P.groet?`<div class="kop"><div class="koprij"><div><div class="groet">${vandaag?groet:'Klaarzetten'}</div><h1>${vandaag?esc(naamIk)+' '+(P.emoji||'👋'):esc(datumTekst(datum))}</h1><p>${n?(k===n?`Alles klaar voor ${esc(momentNaam(moment).toLowerCase())}`:`Klaarzetten · nog ${n-k} te gaan${S.momenten.length>1?` voor ${esc(momentNaam(moment).toLowerCase())}`:''}`):'Niets klaar te zetten'}</p></div><div class="kopeind">${ring}<button class="info" data-a="zoek" aria-label="Zoeken">⌕</button>${info('klaarzetten')}</div></div></div>`:`<div class="kop"><div class="koprij"><h1>Klaarzetten</h1><div class="kopeind"><button class="info" data-a="zoek" aria-label="Zoeken">⌕</button>${info('klaarzetten')}</div></div><p>${n?`${k} van ${n} klaar`:'Niets klaar te zetten'}</p></div>
+  let h=(P.groet?`<div class="kop"><div class="koprij"><div><div class="groet">${vandaag?groet:'Klaarzetten'}</div><h1>${vandaag?esc(naamIk)+' '+(P.emoji||'👋'):esc(datumTekst(datum))}</h1><p>${n?(k===n?`Alles klaar voor ${esc(momentNaam(moment).toLowerCase())}`:`Klaarzetten · nog ${n-k} te gaan${S.momenten.length>1?` voor ${esc(momentNaam(moment).toLowerCase())}`:''}`):'Niets klaar te zetten'}</p></div><div class="kopeind">${ring}<button class="info" data-a="zoek" aria-label="Zoeken">⌕</button>${info('klaarzetten')}</div></div></div>`:`<div class="kop"><div class="koprij"><h1>Klaarzetten</h1><div class="kopeind"><button class="info" data-a="zoek" aria-label="Zoeken">⌕</button>${info('klaarzetten')}</div></div><p>${n?`${k} van ${n} klaar`:'Niets klaar te zetten'}</p></div>`)+`
    <div class="datumnav"><button class="pijlk" data-a="datum" data-v="-1">‹</button><button class="dlabel" data-a="vandaag">${vandaag?'Vandaag':esc(datumTekst(datum))}<small>${vandaag?esc(datumTekst(datum)):'tik voor vandaag'}</small></button><button class="pijlk" data-a="datum" data-v="1">›</button></div>`;
   h+=weerRegel(datum);
   if(zoekOpen)h+=`<div class="zoekbalk"><input class="veld" id="kzZoek" type="search" placeholder="Zoek op naam of PLU" value="${esc(zoekTerm)}" autocomplete="off"></div>`;
@@ -847,7 +857,7 @@ function histTabel(hs){const b=hs.some(x=>x.bij);return`<div class="histtab"><ta
 
 function notitiesHtml(d){
   const lijst=Object.values(S.notities[d]||{}).sort((a,b)=>a.t-b.t);
-  return`<div class="notities">${lijst.map(n=>`<div class="notitie">${n.foto?`<button class="notfoto" data-a="notfoto" data-v="${esc(n.id)}"><img src="${n.foto}" alt=""></button>`:''}<div><div>${esc(n.tekst)}</div><div class="wie">${esc(n.wie)}, ${tijdTekst(n.t)}</div></div>${isAdmin()||n.wie===ik()?.naam?`<button data-a="notweg" data-v="${esc(n.id)}">×</button>`:''}</div>`).join('')}
+  return`<div class="notities">${lijst.map(n=>`<div class="notitie">${notFotoSrc(n)?`<button class="notfoto" data-a="notfoto" data-v="${esc(n.id)}"><img src="${notFotoSrc(n)}" alt=""></button>`:''}<div><div>${esc(n.tekst)}</div><div class="wie">${esc(n.wie)}, ${tijdTekst(n.t)}</div></div>${isAdmin()||n.wie===ik()?.naam?`<button data-a="notweg" data-v="${esc(n.id)}">×</button>`:''}</div>`).join('')}
    <div class="notitieform"><label class="fotoknop ${notFoto?'aan':''}" aria-label="Foto toevoegen">${notFoto?'✓':'📷'}<input type="file" accept="image/*" id="notFotoIn" style="display:none"></label><input id="notitieIn" placeholder="${lijst.length?'Notitie toevoegen':'Dagnotitie, bijv. croissants later geleverd'}" maxlength="200"><button data-a="notitie">+</button></div></div>`;
 }
 function openAanpas(id){
@@ -946,6 +956,7 @@ const UITLEG=[
  ['weer','Weer','Bij Klaarzetten en Invullen zie je het weer in Vogelenzang met een hint bij opvallend weer. Het advies verandert daar niet vanzelf door.'],
  ['nieuw','Nieuwe producten','Zet bij een broodsoort "Nieuw product" aan. Onder Meer → Nieuwe producten zie je per week hoe het verkoopt.'],
  ['export','Exporteren naar Excel','Onder Meer → Exporteren kies je derving, weekrapport of planning en een periode. Het Excel-bestand deel je via het deelmenu: opslaan, mailen of versturen.'],
+ ['notities','Notities','Onder Meer → Notities vind je alle dagnotities van de afgelopen 6 maanden, nieuwste eerst. Zoek op een woord of naam, of toon alleen notities met een foto. Met Bekijk dag ga je naar Klaarzetten op die dag. Tik op een foto om hem groot te zien; tik nog eens om in te zoomen.'],
  ['plu','PLU-lijst','Onder Meer → PLU-lijst vind je alle PLU-nummers. Typ een deel van de naam of het nummer om te zoeken. Kies Op naam of Per kar. Het PLU-nummer staat ook achter de naam op Klaarzetten en groot in de werkmodus. Vul PLU-nummers in bij Broodsoorten.'],
  ['koppelen','Koppelen en inloggen','Elk toestel wordt één keer gekoppeld met de winkel-login of de beheerders-login. Daarna logt iedereen in met naam en pincode. Na 60 minuten niets doen wordt er automatisch uitgelogd. Bovenaan zie je of de app online is; offline wijzigingen worden later verzonden.']
 ];
@@ -989,6 +1000,19 @@ function renderProgLijst(){
   document.getElementById('progLijst').innerHTML=`<div class="sectie" style="margin:0">${l.map(x=>{const ander=x.programmaId&&x.programmaId!==bewerk.id?S.programmas[x.programmaId]:null;
     return`<div class="rij"><button class="regel ${k[x.id]?'gekozen':''}" data-a="progsoort" data-v="${x.id}">${S.fotos[x.id]?`<img class="duim klein" src="${S.fotos[x.id]}" alt="">`:''}<div class="groei"><div class="naam">${esc(x.naam)}</div>${ander?`<div class="sub">${k[x.id]?'verhuist van':'nu'}: ${esc(ander.naam)}</div>`:''}</div><div class="kiesvak">${k[x.id]?'✓':''}</div></button></div>`}).join('')}</div>`;
   const n=Object.keys(k).length;document.getElementById('progVoet').innerHTML=`<b>${n} ${n===1?'product':'producten'} gekoppeld</b>`;
+}
+let notZoek='',notMetFoto=false;
+function notOverzichtHtml(){
+  return`<div class="kop"><div class="koprij"><h1>Notities</h1>${info('notities')}</div><p>Alle dagnotities, nieuwste eerst.</p></div>
+   <div class="zoekbalk"><input class="veld" id="notZoek" type="search" placeholder="Zoek op woord of naam" value="${esc(notZoek)}" autocomplete="off"></div>
+   <label class="schakel" style="margin:0 16px;color:var(--tekst);font-weight:400;border:0">Alleen met foto<input type="checkbox" id="notMetFoto" ${notMetFoto?'checked':''}></label>
+   <div id="notLijst">${notLijstHtml()}</div>`}
+function notLijstHtml(){
+  const z=notZoek.trim().toLowerCase(),dagen=Object.keys(S.notities).sort().reverse();let h='';
+  for(const d of dagen){const l=Object.values(S.notities[d]||{}).filter(n=>(!z||n.tekst.toLowerCase().includes(z)||(n.wie||'').toLowerCase().includes(z))&&(!notMetFoto||notFotoSrc(n))).sort((a,b)=>b.t-a.t);
+    if(!l.length)continue;
+    h+=`<div class="sectie"><div class="karkop"><b>${esc(datumTekst(d))} ${vanIso(d).getFullYear()}</b><button class="link" data-a="bekijkdag" data-v="${d}">Bekijk dag</button></div>${l.map(n=>`<div class="rij inv">${notFotoSrc(n)?`<button class="notfoto" data-a="notfoto" data-v="${esc(n.id)}"><img src="${notFotoSrc(n)}" alt=""></button>`:''}<div class="groei"><div class="naam" style="font-weight:500">${esc(n.tekst)}</div><div class="sub">${esc(n.wie)}, ${tijdTekst(n.t)}</div></div>${isAdmin()||n.wie===ik()?.naam?`<button class="knop rand klein rood" data-a="notweg" data-v="${esc(n.id)}">${afwStap==='nt:'+n.id?'Zeker?':'×'}</button>`:''}</div>`).join('')}</div>`}
+  return h||'<p class="leeg">Geen notities gevonden.</p>';
 }
 let pluSort='naam',pluZoek='',pluZonder='';
 function pluHtml(){
@@ -1049,9 +1073,11 @@ function zoekFilter(){const z=zoekTerm.trim().toLowerCase(),m=document.getElemen
 
 /* ---------- foto bij notitie ---------- */
 let notFoto=null;
+const notFotoSrc=n=>(n.fotoId&&S.notfotos[n.fotoId])||n.foto||null;
 function verkleinNaar(file,max,cb){const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{const sc=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement('canvas');
-  c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);c.getContext('2d').drawImage(img,0,0,c.width,c.height);cb(c.toDataURL('image/jpeg',.65))};img.src=r.result};r.readAsDataURL(file)}
-function toonFoto(src){toonSheet(`<div class="pkop"><span style="width:70px"></span><b>Foto</b><button data-a="sluit" style="font-weight:700">Sluiten</button></div><div class="pinhoud"><img src="${src}" alt="" style="width:100%;border-radius:12px;margin-top:12px"></div>`)}
+  c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);const x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(img,0,0,c.width,c.height);cb(c.toDataURL('image/jpeg',.8))};img.src=r.result};r.readAsDataURL(file)}
+function toonFoto(src){toonSheet(`<div class="pkop"><span style="width:70px"></span><b>Foto</b><button data-a="sluit" style="font-weight:700">Sluiten</button></div><div class="pinhoud"><p class="hulp" style="text-align:center">Tik op de foto om in of uit te zoomen.</p><div class="fotozoom"><img src="${src}" alt="" data-a="fotozoom"></div></div>`)}
+
 
 /* ---------- taken per kar ---------- */
 const karTaak=(d,nr)=>S.karTaak[d]?.[nr]||null;
@@ -1214,37 +1240,48 @@ function nieuwHtml(){
 
 /* ---------- exporteren naar Excel ---------- */
 let exportPeriode='week',exportSoort='derving';
-function exportHtml(){
+function exportHtml(){laadXlsx().catch(()=>{});const v=window._export;
   return`<div class="kop"><div class="koprij"><h1>Exporteren</h1>${info('export')}</div><p>Als Excel-bestand, via het deelmenu.</p></div>
    <div class="kaartje"><h3>Wat</h3><div class="segment" style="margin:8px 0 0">${[['derving','Derving'],['rapport','Weekrapport'],['planning','Planning']].map(([k,l])=>`<button data-a="expsoort" data-v="${k}" class="${exportSoort===k?'aan':''}">${l}</button>`).join('')}</div>
    ${exportSoort==='planning'?'':`<h3 style="margin-top:14px">Periode</h3><div class="segment" style="margin:8px 0 0">${[['week','Deze week'],['vorige','Vorige week'],['4w','4 weken'],['maand','Deze maand']].map(([k,l])=>`<button data-a="expper" data-v="${k}" class="${exportPeriode===k?'aan':''}">${l}</button>`).join('')}</div>`}</div>
-   <div class="knoppen"><button class="knop" data-a="exporteer">Excel-bestand maken</button></div><p class="hulp" style="margin:10px 20px;text-align:center" id="expStatus"></p>`;
+   <div class="knoppen"><button class="knop ${v?'rand':''}" data-a="exportvoorbeeld">Voorbeeld maken</button>${v?`<button class="knop" data-a="exportdeel">Openen of delen</button>`:''}</div>
+   <p class="hulp" style="margin:10px 20px;text-align:center" id="expStatus"></p>
+   ${v?`<div class="kaartje"><h3>${esc(v.bestand)}</h3><div class="sub">${v.rij.length-1} ${v.rij.length-1===1?'regel':'regels'}${v.rij.length>21?', hieronder de eerste 20':''}</div>
+     <div class="tabelwrap" style="margin-top:8px"><table class="tabel exptabel">${v.rij.slice(0,21).map((r,i)=>`<tr>${r.map(c=>i?`<td>${esc(c)}</td>`:`<th>${esc(c)}</th>`).join('')}</tr>`).join('')}</table></div>
+     <p class="hulp">Tik op <b>Openen of delen</b> en kies <b>Excel</b>. Staat Excel er niet tussen, veeg de rij met apps naar links en tik op <b>Meer</b>, of kies <b>Bewaar in Bestanden</b> en open het daar.</p></div>`:''}`;
 }
+
 function periodeDagen(){const t=iso();let van,tot=t;
   if(exportPeriode==='week')van=maandag(t);else if(exportPeriode==='vorige'){van=plusDagen(maandag(t),-7);tot=plusDagen(van,6)}else if(exportPeriode==='4w')van=plusDagen(t,-27);else van=t.slice(0,8)+'01';
   const r=[];for(let d=van;d<=tot;d=plusDagen(d,1))r.push(d);return r}
 function laadXlsx(){return window.XLSX?Promise.resolve():new Promise((ok,nee)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';s.onload=ok;s.onerror=nee;document.head.appendChild(s)})}
-async function exporteer(){
-  const st=document.getElementById('expStatus');st.textContent='Bezig…';
-  try{await laadXlsx()}catch(e){st.textContent='Excel-onderdeel kon niet laden. Controleer je internetverbinding.';return}
-  const wb=XLSX.utils.book_new(),dagen=periodeDagen();let naam;
-  if(exportSoort==='planning'){const rij=[['Soort','Kar',...DAGEN.map(d=>d[2])]];for(const s of S.soorten)rij.push([s.naam,karNaam(effKar(s)),...DAGEN.map(([k])=>dagTotaal(k,s))]);
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rij),'Planning');naam='planning'}
-  else if(exportSoort==='derving'){const rij=[['Datum','Dag','Soort','PLU','Opgezet','Over','Weggegooid','Voedselbank','Too Good To Go','Verkocht','Derving %']];
+function maakExport(){
+  const dagen=periodeDagen();let rij,naam,blad;
+  if(exportSoort==='planning'){rij=[['Soort','Kar',...DAGEN.map(d=>d[2])]];for(const s of S.soorten)rij.push([s.naam,karNaam(effKar(s)),...DAGEN.map(([k])=>dagTotaal(k,s))]);naam='planning';blad='Planning'}
+  else if(exportSoort==='derving'){rij=[['Datum','Dag','Soort','PLU','Opgezet','Over','Weggegooid','Voedselbank','Too Good To Go','Verkocht','Derving %']];
     for(const d of dagen)for(const s of S.soorten){const g=S.historie[d]?.gezet?.[s.id]||0,x=dervDetail(d,s.id);if(!g&&!x)continue;const o=x?x.weg+x.vb+x.tg:null;
-      rij.push([d,dagNaam(dagKey(d)),s.naam,s.plu||'',g,o,x?.weg??'',x?.vb??'',x?.tg??'',o==null?'':Math.max(0,g-o),o==null||!g?'':Math.round(o/g*1000)/10])}
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rij),'Derving');naam='derving'}
-  else{const rij=[['Soort','PLU','Opgezet','Bijgebakken','Over (geteld)','Derving %','Dagen geteld']];
+      rij.push([d,dagNaam(dagKey(d)),s.naam,s.plu||'',g,o??'',x?.weg??'',x?.vb??'',x?.tg??'',o==null?'':Math.max(0,g-o),o==null||!g?'':Math.round(o/g*1000)/10])}
+    naam='derving';blad='Derving'}
+  else{rij=[['Soort','PLU','Opgezet','Bijgebakken','Over (geteld)','Derving %','Dagen geteld']];
     for(const s of S.soorten){let g=0,gg=0,o=0,tel=0,bij=0;for(const d of dagen){const x=S.historie[d]?.gezet?.[s.id]||0;g+=x;bij+=bijbakStuks(d,s.id);const w=S.derving[d]?.[s.id];if(w!=null){o+=w;gg+=x;tel++}}
       if(g||o)rij.push([s.naam,s.plu||'',g,bij,tel?o:'',gg?Math.round(o/gg*1000)/10:'',tel])}
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rij),'Weekrapport');naam='rapport'}
+    naam='rapport';blad='Weekrapport'}
   const bestand=`brood-opzet-${naam}-${exportSoort==='planning'?iso():dagen[0]+'_tm_'+dagen[dagen.length-1]}.xlsx`;
-  const blob=new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-  const file=new File([blob],bestand,{type:blob.type});
-  try{if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:bestand});st.textContent='Klaar.';return}}catch(e){if(e&&e.name==='AbortError'){st.textContent='';return}}
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=bestand;document.body.appendChild(a);a.click();a.remove();st.textContent='Bestand gemaakt: '+bestand;
-  log(`Export ${naam} gemaakt`);
+  return{rij,naam,blad,bestand};
 }
+async function exporteer(){const st=document.getElementById('expStatus');
+  if(!window.XLSX){st.textContent='Excel-onderdeel laden…';try{await laadXlsx()}catch(e){st.textContent='Excel-onderdeel kon niet laden. Controleer je internetverbinding.';return}}
+  window._export=maakExport();render();
+}
+async function exportDeel(){
+  const v=window._export,st=document.getElementById('expStatus');if(!v||!window.XLSX)return;
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(v.rij),v.blad);
+  const blob=new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),file=new File([blob],v.bestand,{type:blob.type});
+  try{if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:v.bestand});log(`Export ${v.naam} gedeeld`);return}}
+  catch(e){if(e&&e.name==='AbortError')return;if(e&&e.name==='NotAllowedError'){st.textContent='Tik nog een keer op Openen of delen.';return}}
+  st.textContent='Delen wordt op dit toestel niet ondersteund.';
+}
+
 
 /* ---------- Werkmodus ---------- */
 function werkPlaten(){
@@ -1366,6 +1403,7 @@ function meerHtml(){
   if(sub==='afsluiten'&&mag('derving'))return terug+afsluitHtml();
   if(sub==='nieuw'&&mag('rapport'))return terug+nieuwHtml();
   if(sub==='export'&&mag('rapport'))return terug+exportHtml();
+  if(sub==='notities')return terug+notOverzichtHtml();
   if(sub==='uitleg')return terug+uitlegHtml();
   if(sub==='instellingen')return terug+instellingenHtml();
   if(sub==='plu')return terug+pluHtml();
@@ -1380,7 +1418,7 @@ function meerHtml(){
   sub=null;const g=ik();
   const o=ongelezen();
   const items=[...(isAdmin()?[['berichten',`Berichten${o?` <span class="telbol">${o}</span>`:''}`,'Vragen en meldingen van medewerkers',()=>true]]:[['vraag','Vraag of melding','Stuur een bericht naar de beheerder',()=>true]]),
-    ['afsluiten','Dag afsluiten','Checklist voor het eind van de dag',()=>mag('derving')],['ontdooi','Ontdooien zoet','Wat moet er uit de vriezer',()=>mag('vinken')],['rapport','Weekrapport','Derving per soort per week',()=>mag('rapport')],
+    ['afsluiten','Dag afsluiten','Checklist voor het eind van de dag',()=>mag('derving')],['notities','Notities','Alle dagnotities terugzoeken',()=>true],['ontdooi','Ontdooien zoet','Wat moet er uit de vriezer',()=>mag('vinken')],['rapport','Weekrapport','Derving per soort per week',()=>mag('rapport')],
     ['bestel','Deegbestelling en voorraad','Voorraad tellen en dozen bestellen',()=>mag('bestellen')],['afwijkend','Afwijkende dagen','Feestdagen, gesloten dagen',()=>mag('invullen')],
     ['soorten','Broodsoorten en instellingen','Soorten, karren, bakmomenten, oven',()=>mag('soorten')],['programmas',"Bakprogramma's","Programma's koppelen aan producten",()=>mag('soorten')],['team','Medewerkers en rechten','Accounts beheren',()=>isAdmin()&&kanBeheren(),isAdmin()?'Alleen op je eigen telefoon':null],
     ['gedaan','Vandaag gedaan','Per persoon wat er is gedaan',()=>isAdmin()],['log','Logboek','Wie deed wat en wanneer',()=>isAdmin()],
@@ -1615,11 +1653,11 @@ document.addEventListener('click',async e=>{
     aanpas:'vinken',aanpasopslaan:'vinken',extrakies:'vinken',extrastap:'vinken',bijnieuw:'vinken',bijkies:'vinken',bijstap:'vinken',bijopslaan:'vinken',bijklaar:'vinken',bijweg:'vinken',aanpasterug:'vinken',extra:'vinken',extraopslaan:'vinken',hele:'vinken',ontvink:'vinken',ontweg:'vinken',ontnieuw:'vinken',ontopslaan:'vinken',
     gebruik:'invullen',karwissel:'invullen',allesadvies:'invullen',adviestoepassen:'invullen',afwtoevoegen:'invullen',afwweg:'invullen',afwbewerk:'invullen',afwnul:'invullen',kopieer:'invullen',kopieerdoe:'invullen',
     step:'derving',stepH:'derving',tel:'bestellen',telopslaan:'bestellen',leverdag:'bestellen',deelrapport:'rapport',fotoweg:'soorten',typekies:'soorten',snijkies:'soorten',
-    open:'soorten',nieuw:'soorten',allerg:'soorten',nieuwstop:'soorten',feestkopie:'invullen',feestnul:'invullen',feestnee:'invullen',kartaak:'invullen',kartaakzet:'invullen',dagafsluiten:'derving',expsoort:'rapport',expper:'rapport',exporteer:'rapport',progopen:'soorten',prognieuw:'soorten',progopslaan:'soorten',progweg:'soorten',progsoort:'soorten',progkies:'soorten',karerbij:'soorten',karweg:'soorten',opslaan:'soorten',omhoog:'soorten',omlaag:'soorten',weg:'soorten',momenterbij:'soorten',momentweg:'soorten'};
+    open:'soorten',nieuw:'soorten',allerg:'soorten',nieuwstop:'soorten',feestkopie:'invullen',feestnul:'invullen',feestnee:'invullen',kartaak:'invullen',kartaakzet:'invullen',dagafsluiten:'derving',expsoort:'rapport',expper:'rapport',exportvoorbeeld:'rapport',exportdeel:'rapport',progopen:'soorten',prognieuw:'soorten',progopslaan:'soorten',progweg:'soorten',progsoort:'soorten',progkies:'soorten',karerbij:'soorten',karweg:'soorten',opslaan:'soorten',omhoog:'soorten',omlaag:'soorten',weg:'soorten',momenterbij:'soorten',momentweg:'soorten'};
   if(NODIG[a]&&!mag(NODIG[a]))return;
   if(['nieuwegebruiker','gweg','ontkoppel'].includes(a)&&!isAdmin())return;
   if(a==='gebruiker'&&!isAdmin()&&v!==L.sessie)return;
-  if(!['afwweg','momentweg','wis','ontkoppel','afwnul','ontweg','bijweg'].includes(a)){if(afwStap==='wis'||afwStap==='ontkoppel'){afwStap=null;if(a!=='vink')render()}else afwStap=null}
+  if(!['afwweg','momentweg','wis','ontkoppel','afwnul','ontweg','bijweg','notweg'].includes(a)){if(afwStap==='wis'||afwStap==='ontkoppel'){afwStap=null;if(a!=='vink')render()}else afwStap=null}
   switch(a){
   case'koppel':{const mail=document.getElementById('kMail').value.trim(),ww=document.getElementById('kWw').value;koppelFout='';
     if(!mail||!ww){document.getElementById('fout').textContent='Vul e-mailadres en wachtwoord in.';return}
@@ -1670,8 +1708,8 @@ document.addEventListener('click',async e=>{
     S.aanpas[datum]=S.aanpas[datum]||{};S.aanpas[datum][moment]=S.aanpas[datum][moment]||{};for(const id of ids)S.aanpas[datum][moment][id]=k[id];
     log(`Extra klaarzetten ${datumTekst(datum)}: ${ids.map(id=>`${S.soorten.find(x=>x.id===id)?.naam} ${k[id]}`).join(', ')}`);bewaar();sluit();render();undoToon();return}
   case'notitie':{const i=document.getElementById('notitieIn'),t=i.value.trim();if(!t&&!notFoto)return;const d=tab==='derving'?dervDatum:datum,id=nieuwId();
-    S.notities[d]=S.notities[d]||{};S.notities[d][id]={id,tekst:t||'📷',wie:ik().naam,t:Date.now(),...(notFoto?{foto:notFoto}:{})};notFoto=null;log(`Notitie ${datumTekst(d)}: ${t}`);bewaar();render();return}
-  case'notweg':{for(const d in S.notities){const n=S.notities[d][v];if(n&&(isAdmin()||n.wie===ik().naam))delete S.notities[d][v]}bewaar();render();return}
+    S.notities[d]=S.notities[d]||{};let fotoId=null;if(notFoto){fotoId='nf'+id;S.notfotos[fotoId]=notFoto}S.notities[d][id]={id,tekst:t||'📷',wie:ik().naam,t:Date.now(),...(fotoId?{fotoId}:{})};notFoto=null;log(`Notitie ${datumTekst(d)}: ${t}`);bewaar();render();return}
+  case'notweg':{if(sub==='notities'&&afwStap!=='nt:'+v){afwStap='nt:'+v;render();return}afwStap=null;for(const d in S.notities){const n=S.notities[d][v];if(n&&(isAdmin()||n.wie===ik().naam)){if(n.fotoId)S.notfotos[n.fotoId]=null;delete S.notities[d][v]}}bewaar();render();return}
   case'werkmodus':{werk={i:0};ovenModus=false;const p=werkPlaten(),vk=S.vinkjes[datum]?.[moment]||{};const eerste=p.findIndex(x=>!x.regels.every(r=>vk[r.s.id]));werk.i=eerste<0?p.length:eerste;renderWerk();return}
   case'werkdicht':werk=null;document.getElementById('werk').classList.remove('open');render();return;
   case'werknav':werk.i+=+v;renderWerk();return;
@@ -1685,9 +1723,11 @@ document.addEventListener('click',async e=>{
   case'uitleg':tab='meer';sub='uitleg';uitlegOpen=v;ovenModus=false;render();setTimeout(()=>document.getElementById('u-'+v)?.scrollIntoView({block:'start'}),30);return;
   case'uitlegopen':uitlegOpen=uitlegOpen===v?null:v;render();return;
   case'undo':undoDoe();return;
+  case'bekijkdag':tab='lijst';datum=v;volgVandaag=v===iso();sub=null;render();m.scrollTop=0;return;
   case'zoek':zoekOpen=!zoekOpen;if(!zoekOpen)zoekTerm='';render();if(zoekOpen)setTimeout(()=>document.getElementById('kzZoek')?.focus(),30);return;
   case'pinfo':openInfo(v);return;
-  case'notfoto':{for(const d in S.notities){const n=S.notities[d][v];if(n&&n.foto){toonFoto(n.foto);return}}return}
+  case'notfoto':{for(const d in S.notities){const n=S.notities[d][v];if(n&&notFotoSrc(n)){toonFoto(notFotoSrc(n));return}}return}
+  case'fotozoom':b.closest('.fotozoom').classList.toggle('groot');return;
   case'feestkopie':case'feestnul':{if(S.afwijkend[v])return;const dk=dagKey(v),plan={};if(a==='feestkopie')for(const mo of S.momenten){plan[mo.id]={};for(const s of S.soorten){const x=stuksIn(dk,mo.id,s);if(x>0)plan[mo.id][s.id]=x}}
     S.afwijkend[v]={naam:b.dataset.n,plan};log(`Feestdag ${b.dataset.n} (${datumTekst(v)}) als afwijkende dag${a==='feestnul'?', gesloten':''}`);bewaar();render();toast(a==='feestnul'?'Gesloten gezet':'Afwijkende dag gemaakt – aanpassen via Invullen');return}
   case'feestnee':S.feestNee[v]=true;bewaar();render();return;
@@ -1709,9 +1749,10 @@ document.addEventListener('click',async e=>{
   case'printen':printDag();return;
   case'printdeel':printDeel();return;
   case'nieuwstop':{const s=S.soorten.find(x=>x.id===v);if(s){s.nieuwSinds=null;log(`${s.naam} niet meer als nieuw gevolgd`);bewaar();render()}return}
-  case'expsoort':exportSoort=v;render();return;
-  case'expper':exportPeriode=v;render();return;
-  case'exporteer':exporteer();return;
+  case'expsoort':exportSoort=v;window._export=null;render();return;
+  case'expper':exportPeriode=v;window._export=null;render();return;
+  case'exportvoorbeeld':exporteer();return;
+  case'exportdeel':exportDeel();return;
   case'allerg':{const l=bewerk.allergenen,i=l.indexOf(v);if(i>=0)l.splice(i,1);else l.push(v);b.classList.toggle('aan',i<0);return}
   case'feestdicht':document.getElementById('feest').classList.remove('open');return;
   case'thema':zetProf('thema',v);return;
@@ -1824,6 +1865,7 @@ document.addEventListener('input',e=>{
   else if(ds.plan){if(!mag('invullen'))return;zetStuks(planKeuze,moment,ds.plan,getal(t.value));bewaar();
     const s=S.soorten.find(x=>x.id===ds.plan),el=document.getElementById('h-'+ds.plan);if(el)el.innerHTML=planRegelHint(s)}
   else if(ds.derv){if(!mag('derving'))return;const n=getal(t.value);if(n==null)wisDerving(dervDatum,ds.derv,best);else zetDerving(dervDatum,ds.derv,best,n);bewaar()}
+  else if(t.id==='notZoek'){notZoek=t.value;const el=document.getElementById('notLijst');if(el)el.innerHTML=notLijstHtml()}
   else if(t.id==='kzZoek'){zoekTerm=t.value;zoekFilter()}
   else if(t.id==='pluZoek'){pluZoek=t.value;const el=document.getElementById('pluLijst');if(el)el.innerHTML=pluLijstHtml()}
   else if(t.id==='afwNaam')afwForm.naam=t.value;
@@ -1841,7 +1883,8 @@ document.addEventListener('change',e=>{
   else if(ds.derv&&ds.oud!==t.value){log(`Derving ${datumTekst(dervDatum)}: ${naam(ds.derv)} ${BESTEMMING.find(y=>y[0]===best)[1].toLowerCase()} = ${t.value||'leeg'}`,'d:'+dervDatum+ds.derv+best);bewaar();ds.oud=t.value;
     const el=document.getElementById('ds-'+ds.derv);if(el)el.innerHTML=dervSub(dervDatum,ds.derv,S.historie[dervDatum]?.gezet?.[ds.derv]??0)}
   else if(t.id==='fFoto'&&t.files&&t.files[0])verkleinFoto(t.files[0]);
-  else if(t.id==='notFotoIn'&&t.files&&t.files[0])verkleinNaar(t.files[0],520,src=>{notFoto=src;const l=t.closest('.fotoknop');if(l){l.classList.add('aan');l.firstChild.textContent='✓'}toast('Foto klaar – typ eventueel tekst en tik op +')});
+  else if(t.id==='notFotoIn'&&t.files&&t.files[0])verkleinNaar(t.files[0],1600,src=>{notFoto=src;const l=t.closest('.fotoknop');if(l){l.classList.add('aan');l.firstChild.textContent='✓'}toast('Foto klaar – typ eventueel tekst en tik op +')});
+  else if(t.id==='notMetFoto'){notMetFoto=t.checked;const el=document.getElementById('notLijst');if(el)el.innerHTML=notLijstHtml()}
   else if(t.id==='pluZonder'){pluZonder=t.value;const el=document.getElementById('pluLijst');if(el)el.innerHTML=pluLijstHtml()}
   else if(t.id==='ovenMaxIn'){log(`Oven max. ${S.ovenMax} platen`,'ovenmax');t.value=S.ovenMax}
   else if(ds.moment){log(`Bakmoment hernoemd: ${t.value}`);bewaar()}
