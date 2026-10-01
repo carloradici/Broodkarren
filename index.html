@@ -1138,6 +1138,36 @@ function afsluitHtml(){
 }
 
 /* ---------- printen ---------- */
+function laadPdf(){if(window.jspdf&&window.jspdf.jsPDF&&window.jspdf.jsPDF.API.autoTable)return Promise.resolve();
+  const laad=src=>new Promise((ok,nee)=>{const x=document.createElement('script');x.src=src;x.onload=ok;x.onerror=nee;document.head.appendChild(x)});
+  return laad('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js').then(()=>laad('https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js'))}
+function printGegevens(){
+  const d=datum,delen=[];
+  for(const mo of S.momenten){const sec=maakLijst(d,mo.id),vers=versRegels(d,mo.id);if(!sec.length&&!vers.length)continue;const blokken=[];
+    for(const s of sec){const k=karTaak(d,s.nr),nm=k?S.gebruikers.find(g=>g.id===k)?.naam:'';blokken.push({titel:s.naam+(nm?' – '+nm:''),rijen:s.regels.map(r=>[r.ontdooi?'–':r.plaat,r.s.naam,r.s.plu||'',`${r.n}${!r.ontdooi&&r.v.platen>1?` (${r.v.delen.join('+')})`:''}`,''])})}
+    if(vers.length)blokken.push({titel:'Vers brood',rijen:vers.map(r=>['–',r.s.naam,r.s.plu||'',String(r.n),''])});
+    delen.push({moment:mo.naam,blokken})}
+  return{titel:'Brood Opzet – Coop Vogelenzang',datum:`${datumTekst(d)} ${vanIso(d).getFullYear()}${S.afwijkend[d]?' – '+S.afwijkend[d].naam:''}`,delen};
+}
+function maakPdf(){
+  const g=printGegevens(),doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'}),O=[241,125,4];let y=16;
+  doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(g.titel,14,y);doc.setFont('helvetica','normal');doc.setFontSize(11);doc.text(g.datum,196,y,{align:'right'});
+  doc.setDrawColor(...O);doc.setLineWidth(1);doc.line(14,y+3,196,y+3);y+=10;
+  if(!g.delen.length){doc.text('Niets gepland.',14,y)}
+  for(const deel of g.delen){if(g.delen.length>1){doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text(deel.moment,14,y);y+=4}
+    for(const bl of deel.blokken){
+      doc.autoTable({startY:y,head:[[{content:bl.titel,colSpan:5,styles:{fillColor:O,textColor:255,fontStyle:'bold',fontSize:11}}],['Plaat','Product','PLU','Aantal','OK']],body:bl.rijen,theme:'grid',
+        styles:{fontSize:10,cellPadding:2,lineColor:[150,150,150],lineWidth:.2,textColor:20},headStyles:{fillColor:[240,240,240],textColor:20},
+        columnStyles:{0:{cellWidth:18},2:{cellWidth:22},3:{cellWidth:32},4:{cellWidth:12}},margin:{left:14,right:14},rowPageBreak:'avoid'});
+      y=doc.lastAutoTable.finalY+6}}
+  return new File([doc.output('blob')],`brood-opzet-${datum}.pdf`,{type:'application/pdf'});
+}
+async function printDeel(){
+  if(!(window.jspdf&&window.jspdf.jsPDF&&window.jspdf.jsPDF.API.autoTable)){toast('Even geduld, de PDF wordt voorbereid…');try{await laadPdf()}catch(e){toast('PDF maken lukt niet zonder internet');return}}
+  let f;try{f=maakPdf()}catch(e){toast('PDF maken mislukt');return}
+  try{if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:'Klaarzetlijst '+datumTekst(datum)});log('Klaarzetlijst als PDF gedeeld');return}}catch(e){if(e&&e.name==='AbortError')return;if(e&&e.name==='NotAllowedError'){toast('Tik nog een keer op de knop');return}}
+  const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;document.body.appendChild(a);a.click();a.remove();
+}
 function printDag(){
   const d=datum,delen=S.momenten.map(mo=>{const sec=maakLijst(d,mo.id),vers=versRegels(d,mo.id);if(!sec.length&&!vers.length)return'';
     const tab=(titel,rows)=>`<h2>${esc(titel)}</h2><table><tr><th>Plaat</th><th>Product</th><th>PLU</th><th>Aantal</th><th>✓</th></tr>${rows}</table>`;
@@ -1147,19 +1177,11 @@ function printDag(){
   const el=document.getElementById('printvak');
   el.innerHTML=`<div class="printkop"><b>Brood Opzet – Coop Vogelenzang</b><span>${esc(datumTekst(d))} ${vanIso(d).getFullYear()}${S.afwijkend[d]?' – '+esc(S.afwijkend[d].naam):''}</span></div>${delen||'<p>Niets gepland.</p>'}`;
   toonSheet(`<div class="pkop"><button data-a="sluit">Sluiten</button><b>Afdrukvoorbeeld</b><span style="width:60px"></span></div>
-   <div class="pinhoud"><div class="knoppen" style="margin:12px 0"><button class="knop" data-a="printnu">Printen</button><button class="knop rand" data-a="printdeel">Delen</button></div>
+   <div class="pinhoud"><div class="knoppen" style="margin:12px 0"><button class="knop" data-a="printdeel">Printen of delen (PDF)</button></div><p class="hulp" style="text-align:center;margin:-4px 0 10px">Kies in het deelmenu <b>Afdrukken</b>, of bewaar of verstuur de PDF.</p>
    <div class="printvoorbeeld">${el.innerHTML}</div></div>`);
+  laadPdf().catch(()=>{});
 }
-function printNu(){try{window.print()}catch(e){toast('Printen lukt hier niet – gebruik Delen')}}
-async function printDeel(){
-  const html=`<!doctype html><html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Brood Opzet ${datum}</title><style>
-   body{font-family:Arial,sans-serif;color:#000;margin:16px}.printkop{display:flex;justify-content:space-between;border-bottom:3px solid #f17d04;padding-bottom:6px;margin-bottom:10px;font-size:14px}
-   h1{font-size:18px;margin:14px 0 4px}h2{font-size:15px;margin:12px 0 4px;background:#f17d04;color:#fff;padding:4px 8px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-   table{width:100%;border-collapse:collapse;font-size:13px;page-break-inside:avoid}th,td{border:1px solid #999;padding:5px 6px;text-align:left}td.vak{width:28px}</style></head><body>${document.getElementById('printvak').innerHTML}</body></html>`;
-  const f=new File([html],`brood-opzet-${datum}.html`,{type:'text/html'});
-  try{if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:'Klaarzetlijst '+datumTekst(datum)});return}}catch(e){if(e&&e.name==='AbortError')return}
-  const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;document.body.appendChild(a);a.click();a.remove();
-}
+
 
 /* ---------- feestdagen ---------- */
 function pasen(j){const a=j%19,b=Math.floor(j/100),c=j%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),n=h+l-7*m+114;return iso(new Date(j,Math.floor(n/31)-1,n%31+1))}
@@ -1685,7 +1707,6 @@ document.addEventListener('click',async e=>{
     if(t){const m2=plusDagen(d,1),id=nieuwId();S.notities[m2]=S.notities[m2]||{};S.notities[m2][id]={id,tekst:t,wie:ik().naam,t:Date.now()}}
     log(`Dag ${datumTekst(d)} afgesloten`);bewaar();render();toast('Dag afgesloten');return}
   case'printen':printDag();return;
-  case'printnu':printNu();return;
   case'printdeel':printDeel();return;
   case'nieuwstop':{const s=S.soorten.find(x=>x.id===v);if(s){s.nieuwSinds=null;log(`${s.naam} niet meer als nieuw gevolgd`);bewaar();render()}return}
   case'expsoort':exportSoort=v;render();return;

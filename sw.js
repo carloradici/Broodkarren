@@ -1,5 +1,5 @@
 // Brood Opzet: werkt ook zonder internet. Verhoog VERSIE bij elke nieuwe versie.
-const VERSIE = 'broodopzet-8.1';
+const VERSIE = 'broodopzet-8.2';
 const SUPA_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js';
 const BESTANDEN = ['./', 'index.html', 'manifest.webmanifest', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', SUPA_JS];
 self.addEventListener('install', e => {
