@@ -389,6 +389,18 @@ nav button{position:relative}
 .cijferblok button:active{background:#ffe1bf}
 .cijferblok .wis{background:transparent;color:#fff;font-size:24px}
 .merkhint{text-align:center;color:rgba(255,255,255,.9);font-size:12px;margin:10px 0 0}
+
+.cijfers{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 16px}
+.cijfer{background:var(--kaart);border:1px solid var(--lijn);border-radius:12px;padding:10px;text-align:center}
+.cijfer b{display:block;font-size:18px;color:var(--tekst)}.cijfer span{font-size:12px;color:var(--grijs)}
+.cbnr{min-width:64px;font-size:19px;font-weight:900;color:var(--oranje);font-variant-numeric:tabular-nums;margin-right:10px}
+.cbmelding{border-width:2px;border-color:var(--groen)}.cbmelding.rood{border-color:var(--rood)}
+.hoog{color:var(--rood)}.goed{color:var(--groen)}
+
+.bedragscherm{font-size:34px;font-weight:900;text-align:center;padding:10px 0 6px;color:var(--tekst);font-variant-numeric:tabular-nums}
+.cijferblok.licht button{background:var(--achter);color:var(--tekst);border:1px solid var(--lijn)}
+.cijferblok.licht .wis{background:transparent;border:0;color:var(--tekst)}
+.cijfer small{display:block;font-size:12px;color:var(--oranje);font-weight:700;margin-top:2px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script></head>
 <body><div id="app"><div id="statusplek"></div><div id="opslagmelding">Opslaan mislukt: het geheugen is vol. Verwijder een paar foto's bij Broodsoorten.</div><main id="scherm"></main><nav id="nav"></nav></div>
@@ -454,7 +466,7 @@ function naarV6(S){
   delete S.sessie;delete S.laatsteActie;S.versie=6;return S;
 }
 function vulAan(S){
-  for(const k of['historie','derving','karOverride','afwijkend','notities','voorraad','vinkjes','status','avond','dervBest','aanpas','timers','log','fotos','snij','ontdooi','dervHH','bijbak','profielen','berichten','karTaak','afsluit','feestNee','notfotos','dervReg','levering'])S[k]=isObj(S[k])?S[k]:{};
+  for(const k of['historie','derving','karOverride','afwijkend','notities','voorraad','vinkjes','status','avond','dervBest','aanpas','timers','log','fotos','snij','ontdooi','dervHH','bijbak','profielen','berichten','karTaak','afsluit','feestNee','notfotos','dervReg','levering','cadeau'])S[k]=isObj(S[k])?S[k]:{};
   for(const k of['gebruikers','soorten','karren'])S[k]=Array.isArray(S[k])?S[k]:[];
   S.plan=isObj(S.plan)?S.plan:{};for(const k of['ma','di','wo','do','vr','za','zo'])S.plan[k]=isObj(S.plan[k])?S.plan[k]:{};
   S.leverdagen=Array.isArray(S.leverdagen)?S.leverdagen:[1,3,5];S.ovenMax=S.ovenMax||10;
@@ -643,6 +655,7 @@ function splitsen(){
   for(const[id,l]of Object.entries(S.log)){const k='log:'+iso(new Date(l.t));(o[k]=o[k]||{})[id]=l}
   for(const[id,f]of Object.entries(S.fotos))o['foto:'+id]={data:f||null};
   for(const[id,f]of Object.entries(S.notfotos))o['notfoto:'+id]={data:f||null};
+  if(kanBeheren()&&Object.keys(S.cadeau).length)o['prive:cadeau']={bonnen:S.cadeau};
   return o;
 }
 function pasToe(k,v){
@@ -654,6 +667,7 @@ function pasToe(k,v){
   else if(k==='voorraad')S.voorraad=v;
   else if(k==='profielen')S.profielen=v;
   else if(k==='berichten')S.berichten=v;
+  else if(k==='prive:cadeau')S.cadeau=v.bonnen||{};
   else if(k.startsWith('dag:')){const d=k.slice(4);for(const f of DAGVELDEN){if(v[f]!==undefined)S[f][d]=v[f];else delete S[f][d]}}
   else if(k.startsWith('log:')){const d=k.slice(4);for(const[id,l]of Object.entries(S.log))if(iso(new Date(l.t))===d&&!v[id])delete S.log[id];Object.assign(S.log,v)}
   else if(k.startsWith('foto:')){const id=k.slice(5);if(v.data)S.fotos[id]=v.data;else delete S.fotos[id]}
@@ -686,7 +700,7 @@ async function sync(){
   syncBezig=true;let veranderd=false,fout=false;
   try{
     for(const k of Object.keys(splitsen())){
-      if(k.startsWith('beheer:')&&!L.beheerder)continue;
+      if((k.startsWith('beheer:')||k.startsWith('prive:'))&&!L.beheerder)continue;
       for(let poging=0;;poging++){
         const lokaal=splitsen()[k],lokaalJ=stabiel(lokaal);
         if(lokaal===undefined||lokaalJ===basis[k])break;
@@ -1062,6 +1076,74 @@ function renderProgLijst(){
   const n=Object.keys(k).length;document.getElementById('progVoet').innerHTML=`<b>${n} ${n===1?'product':'producten'} gekoppeld</b>`;
 }
 let managerOpen=false;
+/* ---------- cadeaubonnen (alleen beheerder) ---------- */
+let cbTab='uit',cbZoek='',cbSelect=false,cbSel=new Set();
+const euro=c=>'€ '+((c||0)/100).toFixed(2).replace('.',',');
+const centen=t=>{const m=String(t||'').replace(/[^0-9,\.]/g,'').replace(',','.');const x=parseFloat(m);return isNaN(x)?null:Math.round(x*100)};
+function cadeauTellers(){const l=Object.values(S.cadeau);return{voorraadWaarde:l.filter(b=>b.status==='voorraad').reduce((t,b)=>t+(b.bedrag||0),0),voorraad:l.filter(b=>b.status==='voorraad').length,uit:l.filter(b=>b.status==='uit').length,gebruikt:l.filter(b=>b.status==='gebruikt').length,
+  open:l.filter(b=>b.status==='uit').reduce((t,b)=>t+(b.bedrag||0),0),ingewisseld:l.filter(b=>b.status==='gebruikt').reduce((t,b)=>t+(b.bedrag||0),0)}}
+const cbStatus={voorraad:['Op voorraad','ontd'],uit:['Uitgegeven','gebak'],gebruikt:['Ingewisseld','schap']};
+const cbSort=(a,b)=>a.nr.length-b.nr.length||a.nr.localeCompare(b.nr);
+function bedragBlok(){const t=bewerk.bedragTekst||'';
+  return`<div class="bedragscherm">€ ${t?esc(t):'<span class="let">0</span>'}</div><div class="cijferblok licht">${['1','2','3','4','5','6','7','8','9',',','0'].map(k=>`<button data-a="bdk" data-v="${k}">${k}</button>`).join('')}<button class="wis" data-a="bdk" data-v="wis" aria-label="Wissen">⌫</button></div>`}
+function bedragVernieuw(){const el=document.querySelector('.bedragscherm');if(el){const t=bewerk.bedragTekst||'';el.innerHTML=`€ ${t?esc(t):'<span class="let">0</span>'}`}}
+function cadeauHtml(){const t=cadeauTellers(),l=cbZichtbaar(),selW=[...cbSel].reduce((x,nr)=>x+(S.cadeau[nr]?.bedrag||0),0);
+  return`<div class="kop"><div class="koprij"><h1>Cadeaubonnen</h1></div><p>Alleen zichtbaar voor jou.</p></div>
+   <div class="cijfers"><div class="cijfer"><b>${t.voorraad}</b><span>voorraad</span><small>${euro(t.voorraadWaarde)}</small></div><div class="cijfer"><b>${t.uit}</b><span>uitgegeven</span><small>${euro(t.open)} open</small></div><div class="cijfer"><b>${t.gebruikt}</b><span>ingewisseld</span><small>${euro(t.ingewisseld)}</small></div></div>
+   <div class="zoekbalk" style="margin-top:12px"><input class="veld" id="cbZoek" inputmode="numeric" placeholder="Zoek een bonnummer" value="${esc(cbZoek)}" autocomplete="off"></div>
+   <div id="cbVondst">${cbVondstHtml()}</div>
+   <div class="segment">${[['uit',`Uitgegeven (${t.uit})`],['voorraad',`Voorraad (${t.voorraad})`],['gebruikt',`Gebruikt (${t.gebruikt})`],['alle','Alle']].map(([k,l2])=>`<button data-a="cbtab" data-v="${k}" class="${cbTab===k?'aan':''}">${l2}</button>`).join('')}</div>
+   <div class="knoppen" style="justify-content:flex-start;margin:6px 16px 0;padding:0;flex-wrap:wrap">${cbSelect?`<button class="knop rand klein" data-a="cbselalles">${l.length&&l.every(b=>cbSel.has(b.nr))?'Niets selecteren':'Alles selecteren'}</button><button class="knop rand klein" data-a="cbselreeks">Reeks…</button><button class="knop rand klein" data-a="cbselmodus">Klaar</button>`:`<button class="knop rand klein" data-a="cbselmodus">Selecteren</button>`}</div>
+   <div id="cbLijst">${cbLijstHtml()}</div>
+   ${cbSelect&&cbSel.size?`<div class="ovenbalk"><div><b>${cbSel.size} ${cbSel.size===1?'bon':'bonnen'} geselecteerd</b>${selW?` – samen ${euro(selW)}`:''}</div><div class="rijtje"><button class="knop rand" data-a="cbselwaarde">Waarde instellen</button><button class="knop" style="margin-left:auto" data-a="cbseluitgeven">Uitgeven</button></div></div>`:''}
+   <div class="knoppen"><button class="knop" data-a="cbtoevoegen">+ Bonnen toevoegen</button><button class="knop rand" data-a="cbexport">Exporteren</button></div>
+   <p class="hulp" style="margin:12px 20px">Tik op een bon om hem uit te geven of in te wisselen. Met Selecteren geef je veel bonnen tegelijk een waarde of geef je ze uit.</p>`}
+function cbZichtbaar(){const z=cbZoek.trim();return Object.values(S.cadeau).filter(b=>(cbTab==='alle'||b.status===cbTab)&&(!z||b.nr.includes(z))).sort(cbSort)}
+
+function cbVondstHtml(){const z=cbZoek.trim();if(!z)return'';const b=S.cadeau[z];
+  if(!b)return`<div class="kaartje cbmelding rood"><b>Bon ${esc(z)} is onbekend</b><div class="sub">Dit nummer staat niet in de lijst.</div><div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:8px"><button class="knop klein" data-a="cbnieuw" data-v="${esc(z)}">Toevoegen als nieuwe bon</button></div></div>`;
+  const w=b.status==='gebruikt'?`<b class="hoog">Let op: al ingewisseld op ${esc(datumTekst(iso(new Date(b.gebruikt.t))))}</b>`:b.status==='voorraad'?'<b class="hoog">Let op: deze bon is nog niet uitgegeven</b>':`<b class="goed">Geldig: ${euro(b.bedrag)}</b>`;
+  return`<div class="kaartje cbmelding ${b.status==='uit'?'':'rood'}">${w}<div class="sub">Bon ${esc(b.nr)}${b.notitie?' · '+esc(b.notitie):''}</div><div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:8px"><button class="knop klein" data-a="cbopen" data-v="${esc(b.nr)}">Openen</button></div></div>`}
+function cbLijstHtml(){const l=cbZichtbaar();
+  if(!l.length)return'<p class="leeg">Geen bonnen.</p>';
+  return`<div class="sectie">${l.slice(0,300).map(b=>{const[st,kl]=cbStatus[b.status],gek=cbSel.has(b.nr);return`<div class="rij"><button class="regel ${gek?'gekozen':''}" data-a="${cbSelect?'cbsel':'cbopen'}" data-v="${esc(b.nr)}"><div class="cbnr">${esc(b.nr)}</div><div class="groei"><div class="naam">${b.bedrag?euro(b.bedrag):'<span class="let">geen waarde</span>'}${b.notitie?` <span class="sub">· ${esc(b.notitie)}</span>`:''}</div>
+    <div class="sub">${b.uit?`uit ${esc(datumTekst(iso(new Date(b.uit.t))))}`:''}${b.gebruikt?` · ingewisseld ${esc(datumTekst(iso(new Date(b.gebruikt.t))))}`:''}</div></div>${cbSelect?`<div class="kiesvak">${gek?'✓':''}</div>`:`<span class="st ${kl}">${st}</span>`}</button></div>`}).join('')}${l.length>300?`<p class="hulp" style="margin:10px 14px">En nog ${l.length-300} – zoek op nummer.</p>`:''}</div>`}
+
+function openBon(nr){const b=S.cadeau[nr];if(!b)return;bewerk={soort:'bon',nr,bedragTekst:''};verwStap=false;const[st]=cbStatus[b.status];
+  const regel=(l,x)=>x?`<div><span>${l}</span><b>${esc(datumTekst(iso(new Date(x.t))))} ${tijdTekst(x.t)} · ${esc(x.wie)}</b></div>`:'';
+  toonSheet(`<div class="pkop"><button data-a="sluit">Sluiten</button><b>Bon ${esc(nr)}</b><span style="width:60px"></span></div><div class="pinhoud">
+   <div class="infotabel"><div><span>Status</span><b>${st}</b></div><div><span>Waarde</span><b>${b.bedrag?euro(b.bedrag):'nog niet ingevuld'}</b></div>${regel('Toegevoegd',b.toegevoegd)}${regel('Uitgegeven',b.uit)}${regel('Ingewisseld',b.gebruikt)}</div>
+   ${b.status==='voorraad'?(b.bedrag?`<label>Notitie (optioneel)</label><input class="veld" id="cbNotitie" maxlength="60" placeholder="bijv. naam klant"><div class="knoppen"><button class="knop" data-a="cbuitgeven">Uitgeven (${euro(b.bedrag)})</button></div><div class="knoppen" style="margin-top:8px"><button class="knop rand klein" data-a="cbwaardewijzig">Waarde wijzigen</button></div>`
+       :`<label>Waarde</label>${bedragBlok()}<div class="fout" id="fout"></div><div class="knoppen"><button class="knop" data-a="cbwaardezet">Waarde opslaan</button></div>`)+`<button class="verwijder" data-a="cbweg">Bon verwijderen</button>`:''}
+   ${b.status==='uit'?`${b.notitie?`<p class="hulp">Notitie: ${esc(b.notitie)}</p>`:''}<div class="knoppen"><button class="knop" data-a="cbinwisselen">Ingewisseld</button></div><div class="knoppen" style="margin-top:8px"><button class="knop rand klein" data-a="cbuitterug">Uitgifte ongedaan maken</button></div>`:''}
+   ${b.status==='gebruikt'?`<p class="hulp hoog" style="text-align:center">Deze bon is al ingewisseld en kan niet opnieuw worden gebruikt.</p><div class="knoppen"><button class="knop rand klein" data-a="cbgebruiktterug">Inwisselen ongedaan maken</button></div>`:''}</div>`)}
+function openWaarde(titel,aantal){bewerk={...bewerk,soort:'waarde',bedragTekst:''};
+  toonSheet(`<div class="pkop"><button data-a="sluit">Annuleren</button><b>${esc(titel)}</b><button data-a="cbwaardeopslaan" style="font-weight:700">Opslaan</button></div><div class="pinhoud">
+   <p class="hulp">${aantal?`Deze waarde komt op ${aantal} ${aantal===1?'bon':'bonnen'}. Bonnen die al zijn ingewisseld worden overgeslagen.`:'Nieuwe waarde voor deze bon.'}</p>${bedragBlok()}<div class="fout" id="fout"></div></div>`)}
+
+function openBonToevoegen(start){bewerk={soort:'bontoe',bedragTekst:''};
+  toonSheet(`<div class="pkop"><button data-a="sluit">Annuleren</button><b>Bonnen toevoegen</b><button data-a="cbtoeopslaan" style="font-weight:700">Toevoegen</button></div><div class="pinhoud">
+   <p class="hulp">Eén bon: vul alleen het eerste nummer in. Een reeks: vul ook het laatste nummer in, bijvoorbeeld 1001 t/m 1050.</p>
+   <div class="minmax"><div><div class="hulp" style="margin:0 0 4px">Nummer</div><input class="veld" id="cbVan" inputmode="numeric" value="${esc(start||'')}"></div><div><div class="hulp" style="margin:0 0 4px">t/m (optioneel)</div><input class="veld" id="cbTot" inputmode="numeric"></div></div>
+   <label>Waarde per bon</label>${bedragBlok()}
+   <div class="fout" id="fout"></div></div>`)}
+function openReeksSelectie(){bewerk={soort:'reeks'};
+  toonSheet(`<div class="pkop"><button data-a="sluit">Annuleren</button><b>Reeks selecteren</b><button data-a="cbreeksok" style="font-weight:700">Selecteren</button></div><div class="pinhoud">
+   <div class="minmax"><div><div class="hulp" style="margin:0 0 4px">Van</div><input class="veld" id="cbRVan" inputmode="numeric"></div><div><div class="hulp" style="margin:0 0 4px">t/m</div><input class="veld" id="cbRTot" inputmode="numeric"></div></div>
+   <div class="fout" id="fout"></div><p class="hulp">Selecteert alle bonnen in deze reeks, behalve bonnen die al zijn ingewisseld.</p></div>`)}
+
+function b2tekst(e){const k=e.target.closest('[data-a]');if(k)k.textContent='Tik nogmaals om te verwijderen'}
+function cbVernieuw(){const a=document.getElementById('cbVondst'),b=document.getElementById('cbLijst');if(a)a.innerHTML=cbVondstHtml();if(b)b.innerHTML=cbLijstHtml()}
+async function cbExport(){
+  if(!window.XLSX){toast('Excel-onderdeel laden…');try{await laadXlsx()}catch(e){toast('Excel kon niet laden, controleer je internet');return}}
+  const d=x=>x?`${iso(new Date(x.t))} ${tijdTekst(x.t)}`:'';
+  const rij=[['Nummer','Status','Bedrag','Notitie','Toegevoegd','Uitgegeven','Uitgegeven door','Ingewisseld','Ingewisseld door']];
+  for(const b of Object.values(S.cadeau).sort(cbSort))rij.push([b.nr,cbStatus[b.status][0],b.bedrag?b.bedrag/100:'',b.notitie||'',d(b.toegevoegd),d(b.uit),b.uit?.wie||'',d(b.gebruikt),b.gebruikt?.wie||'']);
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rij),'Cadeaubonnen');
+  const blob=new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),f=new File([blob],`cadeaubonnen-${iso()}.xlsx`,{type:blob.type});
+  try{if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:f.name});return}}catch(e){if(e&&e.name==='AbortError')return;if(e&&e.name==='NotAllowedError'){toast('Tik nog een keer op Exporteren');return}}
+  toast('Delen wordt op dit toestel niet ondersteund');
+}
 let notZoek='',notMetFoto=false;
 function notOverzichtHtml(){
   return`<div class="kop"><div class="koprij"><h1>Notities</h1>${info('notities')}</div><p>Alle dagnotities, nieuwste eerst.</p></div>
@@ -1509,6 +1591,7 @@ function meerHtml(){
   if(sub==='nieuw'&&mag('rapport'))return terug+nieuwHtml();
   if(sub==='export'&&mag('rapport'))return terug+exportHtml();
   if(sub==='notities')return terug+notOverzichtHtml();
+  if(sub==='cadeau'&&isAdmin()&&kanBeheren())return terug+cadeauHtml();
   if(sub==='dervlijsten'&&mag('derving'))return terug+dervLijstenHtml();
   if(sub==='uitleg')return terug+uitlegHtml();
   if(sub==='instellingen')return terug+instellingenHtml();
@@ -1534,6 +1617,7 @@ function meerHtml(){
       const wel=items.filter(x=>x[3]()),niet=items.filter(x=>!x[3]());
       return wel.map(x=>rij(x,true)).join('')+(niet.length?`<div class="rij"><button class="regel managerkop" data-a="managertoggle"><div class="groei"><div class="naam">${SLOT} Manager <span class="telbol grijs">${niet.length}</span></div><div class="sub">${isAdmin()?'Alleen op je eigen telefoon':'Onderdelen waar je (nog) geen rechten voor hebt'}</div></div><span class="pijl">${managerOpen?'▴':'▾'}</span></button></div>${managerOpen?niet.map(x=>rij(x,false)).join(''):''}`:'');})()}
     ${kanBeheren()?`<div class="rij"><button class="regel" data-a="gebruiker" data-v="${g.id}"><div class="groei"><div class="naam">Mijn pincode wijzigen</div></div><span class="pijl">›</span></button></div>`:''}</div>
+    ${isAdmin()&&kanBeheren()?`<div class="sectie menu"><div class="karkop"><b>Beheer</b><span>alleen voor jou</span></div><div class="rij"><button class="regel" data-a="sub" data-v="cadeau"><div class="groei"><div class="naam">🎁 Cadeaubonnen</div><div class="sub">${cadeauTellers().uit} uitgegeven · ${euro(cadeauTellers().open)} openstaand</div></div><span class="pijl">›</span></button></div></div>`:''}
     <div class="kaartje"><h3>Dit toestel</h3>${statusHtml()}<div class="sub">${L.modus==='lokaal'?'Gegevens staan alleen op dit toestel.':`Gekoppeld met de ${L.beheerder?'beheerders':'winkel'}-login.`}</div>
     <div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:10px">${L.modus==='lokaal'?`<button class="knop rand" data-a="naarkoppel">Toestel koppelen</button>`:isAdmin()?`<button class="knop rand" data-a="ontkoppel">${afwStap==='ontkoppel'?'Zeker? Tik nogmaals':'Toestel ontkoppelen'}</button>`:''}</div></div>
     <div class="knoppen"><button class="knop rand" data-a="uitloggen">Uitloggen</button></div>`;
@@ -1844,6 +1928,43 @@ document.addEventListener('click',async e=>{
   case'uitleg':tab='meer';sub='uitleg';uitlegOpen=v;ovenModus=false;render();setTimeout(()=>document.getElementById('u-'+v)?.scrollIntoView({block:'start'}),30);return;
   case'uitlegopen':uitlegOpen=uitlegOpen===v?null:v;render();return;
   case'undo':undoDoe();return;
+  case'cbtab':case'cbopen':case'cbtoevoegen':case'cbnieuw':case'cbtoeopslaan':case'cbuitgeven':case'cbinwisselen':case'cbuitterug':case'cbgebruiktterug':case'cbweg':case'cbexport':case'bdk':case'cbselmodus':case'cbsel':case'cbselalles':case'cbselreeks':case'cbreeksok':case'cbselwaarde':case'cbwaardeopslaan':case'cbseluitgeven':case'cbwaardezet':case'cbwaardewijzig':{
+    if(!isAdmin()||!kanBeheren())return;const nu={wie:ik().naam,t:Date.now()};
+    if(a==='bdk'){let t=bewerk.bedragTekst||'';if(v==='wis')t=t.slice(0,-1);else if(v===','){if(!t.includes(','))t=(t||'0')+','}else{const[g,d]=t.split(',');if(d!==undefined?d.length<2:(g||'').length<5)t=(t==='0'?'':t)+v}bewerk.bedragTekst=t;bedragVernieuw();return}
+    if(a==='cbselmodus'){cbSelect=!cbSelect;cbSel.clear();render();return}
+    if(a==='cbsel'){if(cbSel.has(v))cbSel.delete(v);else cbSel.add(v);render();return}
+    if(a==='cbselalles'){const l=cbZichtbaar();if(l.length&&l.every(b=>cbSel.has(b.nr)))l.forEach(b=>cbSel.delete(b.nr));else l.forEach(b=>cbSel.add(b.nr));render();return}
+    if(a==='cbselreeks'){openReeksSelectie();return}
+    if(a==='cbreeksok'){const van=document.getElementById('cbRVan').value.trim(),tot=document.getElementById('cbRTot').value.trim(),f=t=>document.getElementById('fout').textContent=t;
+      if(!/^\d+$/.test(van)||!/^\d+$/.test(tot))return f('Vul twee nummers in.');const a2=parseInt(van,10),b2=parseInt(tot,10);if(b2<a2)return f('Het laatste nummer is kleiner dan het eerste.');
+      let n=0;for(const x of Object.values(S.cadeau)){if(!/^\d+$/.test(x.nr))continue;const g=parseInt(x.nr,10);if(g>=a2&&g<=b2&&x.status!=='gebruikt'){cbSel.add(x.nr);n++}}
+      cbSelect=true;cbTab='alle';sluit();render();toast(`${n} ${n===1?'bon':'bonnen'} geselecteerd`);return}
+    if(a==='cbselwaarde'){if(!cbSel.size)return;openWaarde('Waarde instellen',cbSel.size);return}
+    if(a==='cbwaardewijzig'){openWaarde('Waarde wijzigen',0);return}
+    if(a==='cbwaardeopslaan'){const c=centen(bewerk.bedragTekst);if(!c||c<=0)return document.getElementById('fout').textContent='Vul een geldig bedrag in.';
+      if(bewerk.soort==='waarde'&&bewerk.nr&&!cbSel.size){const x=S.cadeau[bewerk.nr];if(x&&x.status!=='gebruikt')x.bedrag=c;bewaar();render();openBon(bewerk.nr);return}
+      let n=0;for(const nr of cbSel){const x=S.cadeau[nr];if(x&&x.status!=='gebruikt'){x.bedrag=c;n++}}bewaar();sluit();render();toast(`${n} ${n===1?'bon':'bonnen'} op ${euro(c)} gezet`);return}
+    if(a==='cbseluitgeven'){let n=0,geen=0,al=0;for(const nr of cbSel){const x=S.cadeau[nr];if(!x)continue;if(x.status!=='voorraad'){al++;continue}if(!x.bedrag){geen++;continue}x.status='uit';x.uit=nu;n++}
+      bewaar();cbSel.clear();cbSelect=false;render();toast(`${n} ${n===1?'bon':'bonnen'} uitgegeven${geen?` · ${geen} zonder waarde overgeslagen`:''}${al?` · ${al} niet op voorraad`:''}`);return}
+    if(a==='cbtab'){cbTab=v;render();return}
+    if(a==='cbopen'){openBon(v);return}
+    if(a==='cbtoevoegen'){openBonToevoegen('');return}
+    if(a==='cbnieuw'){openBonToevoegen(v);return}
+    if(a==='cbexport'){cbExport();return}
+    if(a==='cbtoeopslaan'){const van=document.getElementById('cbVan').value.trim(),tot=document.getElementById('cbTot').value.trim(),f=t=>document.getElementById('fout').textContent=t;
+      if(!van)return f('Vul een nummer in.');let nrs=[van];
+      if(tot){if(!/^\d+$/.test(van)||!/^\d+$/.test(tot))return f('Een reeks kan alleen met cijfers.');const a2=parseInt(van,10),b2=parseInt(tot,10);if(b2<a2)return f('Het laatste nummer is kleiner dan het eerste.');if(b2-a2>=1000)return f('Maximaal 1000 bonnen per keer.');
+        nrs=[];for(let x=a2;x<=b2;x++)nrs.push(String(x).padStart(van.length,'0'))}
+      const waarde=centen(bewerk.bedragTekst);let nieuw=0,al=0;for(const nr of nrs){if(S.cadeau[nr]){al++;continue}S.cadeau[nr]={nr,status:'voorraad',bedrag:waarde||null,notitie:'',toegevoegd:nu};nieuw++}
+      bewaar();sluit();cbTab='voorraad';render();toast(`${nieuw} ${nieuw===1?'bon':'bonnen'} toegevoegd${waarde?` à ${euro(waarde)}`:''}${al?`, ${al} bestond${al===1?'':'en'} al`:''}`);return}
+    const b=S.cadeau[bewerk?.nr];if(!b)return;
+    if(a==='cbwaardezet'){const c=centen(bewerk.bedragTekst);if(!c||c<=0)return document.getElementById('fout').textContent='Vul een geldig bedrag in.';b.bedrag=c;bewaar();render();openBon(b.nr);return}
+    if(a==='cbuitgeven'){if(!b.bedrag)return;b.status='uit';b.notitie=document.getElementById('cbNotitie')?.value.trim()||'';b.uit=nu;bewaar();sluit();render();toast(`Bon ${b.nr} uitgegeven: ${euro(b.bedrag)}`);return}
+    if(a==='cbinwisselen'){if(b.status!=='uit')return;b.status='gebruikt';b.gebruikt=nu;bewaar();sluit();render();toast(`Bon ${b.nr} ingewisseld (${euro(b.bedrag)})`);return}
+    if(a==='cbuitterug'){b.status='voorraad';b.uit=null;b.notitie='';bewaar();openBon(b.nr);render();return}
+    if(a==='cbgebruiktterug'){b.status='uit';b.gebruikt=null;bewaar();openBon(b.nr);render();return}
+    if(a==='cbweg'){if(b.status!=='voorraad')return;if(!verwStap){verwStap=true;b2tekst(e);return}delete S.cadeau[b.nr];bewaar();sluit();render();return}
+    return}
   case'managertoggle':managerOpen=!managerOpen;render();return;
   case'levering':openLevering();return;
   case'levfoto':{const lv=S.levering[datum];if(lv?.fotoId&&S.notfotos[lv.fotoId])toonFoto(S.notfotos[lv.fotoId]);return}
@@ -2016,6 +2137,7 @@ document.addEventListener('input',e=>{
     const s=S.soorten.find(x=>x.id===ds.plan),el=document.getElementById('h-'+ds.plan);if(el)el.innerHTML=planRegelHint(s)}
   else if(ds.cderv){if(!mag('derving'))return;const c=conceptVan(dervDatum),n=getal(t.value);if(n==null){if(c[ds.cderv]){delete c[ds.cderv][best];if(!['weg','vb','tg'].some(k=>c[ds.cderv][k]!=null))delete c[ds.cderv]}}else{c[ds.cderv]=c[ds.cderv]||{};c[ds.cderv][best]=n}bewaarL()}
   else if(ds.derv){if(!mag('derving'))return;const n=getal(t.value);if(n==null)wisDerving(dervDatum,ds.derv,best);else zetDerving(dervDatum,ds.derv,best,n);bewaar()}
+  else if(t.id==='cbZoek'){cbZoek=t.value.trim();cbVernieuw()}
   else if(t.id==='notZoek'){notZoek=t.value;const el=document.getElementById('notLijst');if(el)el.innerHTML=notLijstHtml()}
   else if(t.id==='kzZoek'){zoekTerm=t.value;zoekFilter()}
   else if(t.id==='pluZoek'){pluZoek=t.value;const el=document.getElementById('pluLijst');if(el)el.innerHTML=pluLijstHtml()}
