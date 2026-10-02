@@ -368,6 +368,27 @@ nav button{position:relative}
 .plugroot small{display:block;font-size:14px;text-align:right;color:var(--grijs)}
 .managerkop{background:var(--oranjeLicht)}
 .telbol.grijs{background:var(--grijs)}
+
+.merkscherm.compact{padding-top:6px}
+.merkkop.klein .merklogo{width:170px}
+.merkregel{display:flex;align-items:center;gap:8px;margin-top:8px}
+.merkkop.klein .merkcroissant{width:44px;height:29px;margin:0}
+.merkkop.klein .merktitel{font-size:24px;margin:0}
+.naamkeuze{position:relative;display:flex;align-items:center;gap:10px;background:#fff;border-radius:14px;height:56px;padding:0 16px}
+.naamkeuze select{flex:1;min-width:0;height:100%;border:0;background:transparent;font-size:18px!important;font-weight:700;color:#222;-webkit-appearance:none;appearance:none;font-family:inherit;padding:0}
+.naamkeuze .rol{color:#f17d04;font-size:13px;font-weight:700;margin:0}
+.naamkeuze .naamemoji{font-size:22px;margin:0}
+.pijlneer{color:#999;font-size:16px;pointer-events:none}
+.pinbolletjes{display:flex;justify-content:center;gap:20px;margin:6px 0 4px}
+.pinbolletjes i{width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.85)}
+.pinbolletjes i.vol{background:#fff;border-color:#fff}
+.pinbolletjes.fout{animation:schud .35s}
+@keyframes schud{25%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-4px)}}
+.cijferblok{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}
+.cijferblok button{height:58px;border-radius:16px;border:0;background:rgba(255,255,255,.95);color:#222;font-size:26px;font-weight:500}
+.cijferblok button:active{background:#ffe1bf}
+.cijferblok .wis{background:transparent;color:#fff;font-size:24px}
+.merkhint{text-align:center;color:rgba(255,255,255,.9);font-size:12px;margin:10px 0 0}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script></head>
 <body><div id="app"><div id="statusplek"></div><div id="opslagmelding">Opslaan mislukt: het geheugen is vol. Verwijder een paar foto's bij Broodsoorten.</div><main id="scherm"></main><nav id="nav"></nav></div>
@@ -1645,11 +1666,25 @@ function setupHtml(){
   <label>Herhaal pincode</label><input class="veld pinveld" id="sPin2" inputmode="numeric" type="password" maxlength="4">
   <div class="fout" id="fout"></div><button class="merkknop" data-a="setup">Account aanmaken</button></div>`}
 
+let pinInvoer='',pinMelding='';
 function loginHtml(){
-  const lijst=S.gebruikers.filter(g=>g.rol==='admin'||g.actief!==false);
-  return`<div class="merkscherm">${merkKop('Brood Opzet')}<p class="merktekst" style="text-align:center">Kies je naam en vul je pincode in.</p>
-  ${lijst.map(g=>`<button class="naamknop ${loginKeuze===g.id?'aan':''}" data-a="kiesnaam" data-v="${g.id}">${prof(g.id).emoji?`<span class="naamemoji">${prof(g.id).emoji}</span>`:''}${esc(g.naam)}${g.rol==='admin'?'<span class="rol">Beheerder</span>':''}</button>`).join('')}
-  ${loginKeuze?`<label>Pincode</label><input class="veld pinveld" id="lPin" inputmode="numeric" type="password" maxlength="4"><div class="fout" id="fout"></div><button class="merkknop" data-a="login">Inloggen</button>`:''}</div>`}
+  const lijst=S.gebruikers.filter(g=>g.rol==='admin'||g.actief!==false).sort((a,b)=>a.naam.localeCompare(b.naam,'nl'));
+  if(!loginKeuze&&L.laatsteGebruiker&&lijst.some(g=>g.id===L.laatsteGebruiker))loginKeuze=L.laatsteGebruiker;
+  const g=lijst.find(x=>x.id===loginKeuze),P=g?prof(g.id):null;
+  return`<div class="merkscherm compact"><div class="merkkop klein"><img src="${LOGO_SRC}" alt="Coop Vogelenzang" class="merklogo"><div class="merkregel"><svg class="merkcroissant" viewBox="0 0 300 200" aria-hidden="true">${CROISSANT('#fff','#f17d04')}</svg><span class="merktitel">Brood Opzet</span></div></div>
+   <label>Naam</label>
+   <div class="naamkeuze">${P?.emoji?`<span class="naamemoji">${P.emoji}</span>`:''}<select id="loginNaam" aria-label="Kies je naam"><option value="" ${g?'':'selected'} disabled>Kies je naam</option>${lijst.map(x=>`<option value="${x.id}" ${x.id===loginKeuze?'selected':''}>${esc(x.naam)}</option>`).join('')}</select>${g?.rol==='admin'?'<span class="rol">Beheerder</span>':''}<span class="pijlneer">▾</span></div>
+   ${g?`<label>Pincode</label><div class="pinbolletjes ${pinMelding?'fout':''}">${[0,1,2,3].map(i=>`<i class="${i<pinInvoer.length?'vol':''}"></i>`).join('')}</div>
+   <div class="fout" id="fout">${esc(pinMelding)}</div>
+   <div class="cijferblok">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-a="pin" data-v="${n}">${n}</button>`).join('')}<span></span><button data-a="pin" data-v="0">0</button><button class="wis" data-a="pinwis" aria-label="Wissen">⌫</button></div>
+   <p class="merkhint">Na het 4e cijfer log je automatisch in</p>`:'<p class="merkhint" style="margin-top:18px">Kies eerst je naam.</p>'}</div>`}
+function probeerLogin(){
+  const g=S.gebruikers.find(x=>x.id===loginKeuze),p=pinInvoer;pinInvoer='';
+  if(Date.now()<geblokkeerdTot){pinMelding=`Te vaak fout. Probeer het over ${Math.ceil((geblokkeerdTot-Date.now())/1000)} seconden opnieuw.`;render();return}
+  if(g&&g.pin===hashPin(p,g.id)){fouteLogins=0;pinMelding='';L.sessie=g.id;L.laatsteGebruiker=g.id;loginKeuze=null;const P=prof(g.id);tab=P.start||'lijst';if(P.moment&&S.momenten.some(x=>x.id===P.moment))moment=P.moment;sub=null;datum=iso();volgVandaag=true;log('Ingelogd');bewaar();render();if(!prof().rondleiding){tourStap=0;toonTour()}else toonOverdracht();return}
+  fouteLogins++;if(fouteLogins>=5){geblokkeerdTot=Date.now()+30000;fouteLogins=0;pinMelding='5 keer fout. Wacht 30 seconden.'}else pinMelding=`Pincode klopt niet (${fouteLogins} van 5).`;render();
+}
+
 
 function openGebruiker(u){
   bewerk={...u,soort:'gebruiker'};verwStap=false;const admin=u.rol==='admin',rechtenTonen=isAdmin()&&!admin,zelf=u.id===L.sessie;
@@ -1758,12 +1793,10 @@ document.addEventListener('click',async e=>{
     L={modus:'online'};basis={};revs={};bewaarL();try{localStorage.removeItem(OPSLAG_BASIS);localStorage.removeItem('broodkarren-revs')}catch(e){}render();return;
   case'setup':{const n=document.getElementById('sNaam').value.trim(),p=document.getElementById('sPin').value,p2=document.getElementById('sPin2').value,f=t=>document.getElementById('fout').textContent=t;
     if(!n)return f('Vul je naam in.');if(!/^[0-9]{4}$/.test(p))return f('Pincode moet 4 cijfers zijn.');if(p!==p2)return f('De pincodes zijn niet gelijk.');
-    const id=nieuwId();S.gebruikers.push({id,naam:n,rol:'admin',pin:hashPin(p,id)});L.sessie=id;log('Beheerdersaccount aangemaakt');bewaar();render();return}
-  case'kiesnaam':loginKeuze=v;render();setTimeout(()=>document.getElementById('lPin')?.focus(),50);return;
-  case'login':{const g=S.gebruikers.find(x=>x.id===loginKeuze),p=document.getElementById('lPin').value,f=document.getElementById('fout');
-    if(Date.now()<geblokkeerdTot){f.textContent=`Te vaak fout. Probeer het over ${Math.ceil((geblokkeerdTot-Date.now())/1000)} seconden opnieuw.`;return}
-    if(g&&g.pin===hashPin(p,g.id)){fouteLogins=0;L.sessie=g.id;loginKeuze=null;const P=prof(g.id);tab=P.start||'lijst';if(P.moment&&S.momenten.some(x=>x.id===P.moment))moment=P.moment;sub=null;datum=iso();volgVandaag=true;log('Ingelogd');bewaar();render();if(!prof().rondleiding){tourStap=0;toonTour()}else toonOverdracht()}
-    else{fouteLogins++;document.getElementById('lPin').value='';if(fouteLogins>=5){geblokkeerdTot=Date.now()+30000;fouteLogins=0;f.textContent='5 keer fout. Wacht 30 seconden.'}else f.textContent=`Pincode klopt niet (${fouteLogins} van 5).`}return}
+    const id=nieuwId();S.gebruikers.push({id,naam:n,rol:'admin',pin:hashPin(p,id)});L.sessie=id;L.laatsteGebruiker=id;log('Beheerdersaccount aangemaakt');bewaar();render();return}
+  case'kiesnaam':loginKeuze=v;pinInvoer='';pinMelding='';render();return;
+  case'pin':if(pinInvoer.length>=4)return;pinInvoer+=v;pinMelding='';if(pinInvoer.length===4){render();setTimeout(probeerLogin,120)}else render();return;
+  case'pinwis':pinInvoer=pinInvoer.slice(0,-1);pinMelding='';render();return;
   case'uitloggen':log('Uitgelogd');L.sessie=null;ovenModus=false;bewaar();render();return;
   case'gebruiker':openGebruiker(S.gebruikers.find(x=>x.id===v));return;
   case'nieuwegebruiker':openGebruiker({id:nieuwId(),naam:'',rol:'medewerker',rechten:{...STANDAARD_RECHTEN},actief:true,nieuw:true});return;
@@ -1994,6 +2027,7 @@ document.addEventListener('change',e=>{
   const t=e.target,ds=t.dataset||{},naam=id=>S.soorten.find(x=>x.id===id)?.naam;
   if(t.id==='dervdatum'&&t.value){dervDatum=t.value>iso()?iso():t.value;render()}
   else if(t.id==='planSelect'){planKeuze=t.value;render()}
+  else if(t.id==='loginNaam'){loginKeuze=t.value;pinInvoer='';pinMelding='';render()}
   else if(t.id==='afwDatum'&&t.value)afwForm.datum=t.value;
   else if(t.id==='verberg0'){L.verberg0=t.checked;bewaarL();render()}
   else if(ds.prof){zetProf(ds.prof,t.checked)}
@@ -2009,7 +2043,7 @@ document.addEventListener('change',e=>{
   else if(t.id==='ovenMaxIn'){log(`Oven max. ${S.ovenMax} platen`,'ovenmax');t.value=S.ovenMax}
   else if(ds.moment){log(`Bakmoment hernoemd: ${t.value}`);bewaar()}
 });
-document.addEventListener('keydown',e=>{if(e.key!=='Enter')return;
+document.addEventListener('keydown',e=>{if(document.querySelector('.cijferblok')&&!/INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||'')){if(/^[0-9]$/.test(e.key)){document.querySelector(`.cijferblok [data-v="${e.key}"]`)?.click();return}if(e.key==='Backspace'){document.querySelector('.cijferblok .wis')?.click();return}}if(e.key!=='Enter')return;
   if(e.target.id==='notitieIn'){document.querySelector('[data-a=notitie]')?.click();return}
   const b=document.querySelector('[data-a=login],[data-a=setup],[data-a=koppel]');if(b)b.click()});
 document.addEventListener('visibilitychange',()=>{if(document.hidden){bewaarNu();return}weerLaden();if(volgVandaag)datum=iso();controleerSessie();if(L.gekoppeld&&db)sync();render()});
