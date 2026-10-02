@@ -366,6 +366,8 @@ nav button{position:relative}
 .snijlabel{font-weight:700;font-size:15px}
 .snijstatus{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 14px 10px;background:var(--oranjeLicht);font-size:14px;font-weight:600}
 .plugroot small{display:block;font-size:14px;text-align:right;color:var(--grijs)}
+.managerkop{background:var(--oranjeLicht)}
+.telbol.grijs{background:var(--grijs)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script></head>
 <body><div id="app"><div id="statusplek"></div><div id="opslagmelding">Opslaan mislukt: het geheugen is vol. Verwijder een paar foto's bij Broodsoorten.</div><main id="scherm"></main><nav id="nav"></nav></div>
@@ -1038,6 +1040,7 @@ function renderProgLijst(){
     return`<div class="rij"><button class="regel ${k[x.id]?'gekozen':''}" data-a="progsoort" data-v="${x.id}">${S.fotos[x.id]?`<img class="duim klein" src="${S.fotos[x.id]}" alt="">`:''}<div class="groei"><div class="naam">${esc(x.naam)}</div>${ander?`<div class="sub">${k[x.id]?'verhuist van':'nu'}: ${esc(ander.naam)}</div>`:''}</div><div class="kiesvak">${k[x.id]?'✓':''}</div></button></div>`}).join('')}</div>`;
   const n=Object.keys(k).length;document.getElementById('progVoet').innerHTML=`<b>${n} ${n===1?'product':'producten'} gekoppeld</b>`;
 }
+let managerOpen=false;
 let notZoek='',notMetFoto=false;
 function notOverzichtHtml(){
   return`<div class="kop"><div class="koprij"><h1>Notities</h1>${info('notities')}</div><p>Alle dagnotities, nieuwste eerst.</p></div>
@@ -1506,7 +1509,9 @@ function meerHtml(){
     ['gedaan','Vandaag gedaan','Per persoon wat er is gedaan',()=>isAdmin()],['log','Logboek','Wie deed wat en wanneer',()=>isAdmin()],
     ['nieuw','Nieuwe producten','Verkoop van nieuwe producten volgen',()=>mag('rapport')],['export','Exporteren naar Excel','Planning, derving of weekrapport',()=>mag('rapport')],['plu','PLU-lijst','PLU-nummers opzoeken',()=>true],['instellingen','App-instellingen','Weergave en persoonlijke keuzes',()=>true],['uitleg','Uitleg','Hoe werkt de app?',()=>true]];
   return`<div class="kop"><div class="koprij"><h1>Meer</h1>${info('meer')}</div><p>Ingelogd als <b>${esc(g.naam)}</b> (${g.rol==='admin'?'beheerder':'medewerker'})</p></div>
-    <div class="sectie menu">${items.map(([k,t,s,ok,slotTekst])=>{const mg=ok();return`<div class="rij"><button class="regel ${mg?'':'op-slot'}" data-a="${mg?'sub':'slot'}" data-v="${k}" ${!mg&&slotTekst?`data-m="${esc(slotTekst)}"`:''}><div class="groei"><div class="naam">${mg?'':SLOT+' '}${t}</div><div class="sub">${!mg&&slotTekst?esc(slotTekst):s}</div></div><span class="pijl">${mg?'›':''}</span></button></div>`}).join('')}
+    <div class="sectie menu">${(()=>{const rij=([k,t,s,ok,slotTekst],mg)=>`<div class="rij"><button class="regel ${mg?'':'op-slot'}" data-a="${mg?'sub':'slot'}" data-v="${k}" ${!mg&&slotTekst?`data-m="${esc(slotTekst)}"`:''}><div class="groei"><div class="naam">${mg?'':SLOT+' '}${t}</div><div class="sub">${!mg&&slotTekst?esc(slotTekst):s}</div></div><span class="pijl">${mg?'›':''}</span></button></div>`;
+      const wel=items.filter(x=>x[3]()),niet=items.filter(x=>!x[3]());
+      return wel.map(x=>rij(x,true)).join('')+(niet.length?`<div class="rij"><button class="regel managerkop" data-a="managertoggle"><div class="groei"><div class="naam">${SLOT} Manager <span class="telbol grijs">${niet.length}</span></div><div class="sub">${isAdmin()?'Alleen op je eigen telefoon':'Onderdelen waar je (nog) geen rechten voor hebt'}</div></div><span class="pijl">${managerOpen?'▴':'▾'}</span></button></div>${managerOpen?niet.map(x=>rij(x,false)).join(''):''}`:'');})()}
     ${kanBeheren()?`<div class="rij"><button class="regel" data-a="gebruiker" data-v="${g.id}"><div class="groei"><div class="naam">Mijn pincode wijzigen</div></div><span class="pijl">›</span></button></div>`:''}</div>
     <div class="kaartje"><h3>Dit toestel</h3>${statusHtml()}<div class="sub">${L.modus==='lokaal'?'Gegevens staan alleen op dit toestel.':`Gekoppeld met de ${L.beheerder?'beheerders':'winkel'}-login.`}</div>
     <div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:10px">${L.modus==='lokaal'?`<button class="knop rand" data-a="naarkoppel">Toestel koppelen</button>`:isAdmin()?`<button class="knop rand" data-a="ontkoppel">${afwStap==='ontkoppel'?'Zeker? Tik nogmaals':'Toestel ontkoppelen'}</button>`:''}</div></div>
@@ -1806,6 +1811,7 @@ document.addEventListener('click',async e=>{
   case'uitleg':tab='meer';sub='uitleg';uitlegOpen=v;ovenModus=false;render();setTimeout(()=>document.getElementById('u-'+v)?.scrollIntoView({block:'start'}),30);return;
   case'uitlegopen':uitlegOpen=uitlegOpen===v?null:v;render();return;
   case'undo':undoDoe();return;
+  case'managertoggle':managerOpen=!managerOpen;render();return;
   case'levering':openLevering();return;
   case'levfoto':{const lv=S.levering[datum];if(lv?.fotoId&&S.notfotos[lv.fotoId])toonFoto(S.notfotos[lv.fotoId]);return}
   case'levstap':{const i=document.getElementById('lev-'+v);const cur=getal(i.value);i.value=Math.max(0,(cur??(+b.dataset.n>0?0:0))+ +b.dataset.n);return}
