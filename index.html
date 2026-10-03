@@ -424,6 +424,19 @@ body.oefen #statusplek{padding-top:40px}
 .welkomtitel{font-size:19px;font-weight:900;color:#f17d04}
 .welkompin{font-size:16px;margin-top:6px}.welkompin b{font-size:24px;letter-spacing:3px}
 .welkomqr{width:150px;margin:10px auto}.welkomqr.groot{width:240px}.welkomqr svg{width:100%;height:auto;display:block}
+
+.matrij{flex-wrap:wrap}.matrij.op{background:color-mix(in srgb,var(--rood) 10%,var(--kaart))}.matrij.bijna{background:var(--oranjeLicht)}
+.matknoppen{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.st.rood{background:var(--rood);color:#fff}
+.knop.rood{background:var(--rood);border-color:var(--rood);color:#fff}
+.pot.ster{width:44px;font-size:20px;color:var(--grijs)}.pot.ster.aan{color:var(--oranje)}
+.groepkop{display:flex;justify-content:space-between;align-items:center;width:100%;border:0;background:var(--oranje);color:#fff;padding:12px 16px;font-size:16px;font-family:inherit}
+.groepkop span{font-size:13px;font-weight:600}
+.meergroep .meerinhoud{display:none}.meergroep.open .meerinhoud,#meerGroepen.zoekend .meerinhoud{display:block}
+.belknop{position:absolute;top:10px;right:14px;width:40px;height:34px;border-radius:12px;border:1.5px solid rgba(255,255,255,.85);background:rgba(255,255,255,.12);font-size:17px;padding:0}
+.belgetal{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;border-radius:10px;background:#e30613;color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 5px;border:2px solid #f17d04}
+.wisselknop.metbel{right:62px}
+.werkvloer .hist,.werkvloer .taakregel:not(.mijn){display:none}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script></head>
 <body><div id="app"><div id="statusplek"></div><div id="opslagmelding">Opslaan mislukt: het geheugen is vol. Verwijder een paar foto's bij Broodsoorten.</div><main id="scherm"></main><nav id="nav"></nav></div>
@@ -489,7 +502,7 @@ function naarV6(S){
   delete S.sessie;delete S.laatsteActie;S.versie=6;return S;
 }
 function vulAan(S){
-  for(const k of['historie','derving','karOverride','afwijkend','notities','voorraad','vinkjes','status','avond','dervBest','aanpas','timers','log','fotos','snij','ontdooi','dervHH','bijbak','profielen','berichten','karTaak','afsluit','feestNee','notfotos','dervReg','levering','cadeau','pins'])S[k]=isObj(S[k])?S[k]:{};
+  for(const k of['historie','derving','karOverride','afwijkend','notities','voorraad','vinkjes','status','avond','dervBest','aanpas','timers','log','fotos','snij','ontdooi','dervHH','bijbak','profielen','berichten','karTaak','afsluit','feestNee','notfotos','dervReg','levering','cadeau','pins','push'])S[k]=isObj(S[k])?S[k]:{};
   for(const k of['gebruikers','soorten','karren'])S[k]=Array.isArray(S[k])?S[k]:[];
   S.plan=isObj(S.plan)?S.plan:{};for(const k of['ma','di','wo','do','vr','za','zo'])S.plan[k]=isObj(S.plan[k])?S.plan[k]:{};
   S.leverdagen=Array.isArray(S.leverdagen)?S.leverdagen:[1,3,5];S.ovenMax=S.ovenMax||10;
@@ -498,6 +511,7 @@ function vulAan(S){
   if(!isObj(S.programmas)){S.programmas={};for(const x of S.soorten){const n=(x.programma||'').trim();if(!n)continue;const id='p_'+n.toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,30);
     if(!S.programmas[id])S.programmas[id]={id,naam:n,temp:x.temp||null,baktijd:x.baktijd||null,notitie:''};x.programmaId=id}}
   syncProgVelden(S);
+  S.materiaal=vulMateriaal(S.materiaal);
   S.versie=6;return S;
 }
 function syncProgVelden(T=S){for(const x of T.soorten){const p=x.programmaId&&T.programmas?.[x.programmaId];if(x.programmaId&&!p)x.programmaId=null;if(p){x.programma=p.naam;x.temp=p.temp;x.baktijd=p.baktijd}}}
@@ -598,6 +612,8 @@ function snapshot(){
   const grens=plusDagen(d,-180);
   for(const k of['historie','derving','notities','dervBest','aanpas','dervHH','bijbak','afsluit','dervReg'])for(const x of Object.keys(S[k]))if(x<grens)delete S[k][x];
   for(const k of['vinkjes','status','avond','snij','ontdooi','karTaak'])for(const x of Object.keys(S[k]))if(x<plusDagen(d,-35))delete S[k][x];
+  {const grens=Date.now()-30*864e5,dgrens=plusDagen(iso(),-30);for(const[id,b2]of Object.entries(S.berichten))if(b2.gelezen&&b2.t<grens)delete S.berichten[id];
+   for(const d of Object.keys(S.dervReg))if(d<dgrens){const l=Object.values(S.dervReg[d]||{});if(l.length&&l.every(r=>r.kassa))delete S.dervReg[d]}}
   const nodig=new Set();for(const d of Object.keys(S.notities))for(const n of Object.values(S.notities[d]||{}))if(n.fotoId)nodig.add(n.fotoId);for(const lv of Object.values(S.levering))if(lv?.fotoId)nodig.add(lv.fotoId);
   for(const id of Object.keys(S.notfotos))if(!nodig.has(id)&&S.notfotos[id]===null)delete S.notfotos[id];
   const lg=Date.now()-60*864e5;for(const[id,l]of Object.entries(S.log))if(l.t<lg)delete S.log[id];
@@ -687,13 +703,14 @@ function maakDb(){
 }
 function splitsen(){
   const o={'beheer:gebruikers':{lijst:S.gebruikers},instellingen:{soorten:S.soorten,karren:S.karren,momenten:S.momenten,ovenMax:S.ovenMax,leverdagen:S.leverdagen,programmas:S.programmas},
-    plan:{plan:S.plan,karOverride:S.karOverride,feestNee:S.feestNee},afwijkend:S.afwijkend,voorraad:S.voorraad,profielen:S.profielen,berichten:S.berichten,pins:S.pins};
+    plan:{plan:S.plan,karOverride:S.karOverride,feestNee:S.feestNee},afwijkend:S.afwijkend,voorraad:S.voorraad,profielen:S.profielen,berichten:S.berichten,pins:S.pins,materiaal:S.materiaal};
   const dagen=new Set();for(const k of DAGVELDEN)for(const d of Object.keys(S[k]))dagen.add(d);
   for(const d of dagen){const x={};for(const k of DAGVELDEN)if(S[k][d]!==undefined)x[k]=S[k][d];o['dag:'+d]=x}
   for(const[id,l]of Object.entries(S.log)){const k='log:'+iso(new Date(l.t));(o[k]=o[k]||{})[id]=l}
   for(const[id,f]of Object.entries(S.fotos))o['foto:'+id]={data:f||null};
   for(const[id,f]of Object.entries(S.notfotos))o['notfoto:'+id]={data:f||null};
   if(kanBeheren()&&Object.keys(S.cadeau).length)o['prive:cadeau']={bonnen:S.cadeau};
+  if(kanBeheren()&&(S.push.subs?.length||S.push.stil))o['prive:push']=S.push;
   return o;
 }
 function pasToe(k,v){
@@ -706,6 +723,8 @@ function pasToe(k,v){
   else if(k==='profielen')S.profielen=v;
   else if(k==='berichten')S.berichten=v;
   else if(k==='pins')S.pins=v;
+  else if(k==='materiaal')S.materiaal=vulMateriaal(v);
+  else if(k==='prive:push')S.push=v;
   else if(k==='prive:cadeau')S.cadeau=v.bonnen||{};
   else if(k.startsWith('dag:')){const d=k.slice(4);for(const f of DAGVELDEN){if(v[f]!==undefined)S[f][d]=v[f];else delete S[f][d]}}
   else if(k.startsWith('log:')){const d=k.slice(4);for(const[id,l]of Object.entries(S.log))if(iso(new Date(l.t))===d&&!v[id])delete S.log[id];Object.assign(S.log,v)}
@@ -773,12 +792,12 @@ function pasThemaToe(){
   const kleur=ACCENTEN.find(a=>a[0]===p.accent)?.[2]||'#f17d04';
   if(kleur!=='#f17d04'){r.style.setProperty('--oranje',kleur);r.style.setProperty('--oranjeLicht',`color-mix(in srgb, ${kleur} 16%, var(--kaart))`)}else{r.style.removeProperty('--oranje');r.style.removeProperty('--oranjeLicht')}
   r.style.setProperty('--zoom',Math.max(p.eenvoudig?1.12:1,{normaal:1,groot:1.12,xl:1.25}[p.tekst]||1));
-  app.classList.toggle('eenvoudig',!!p.eenvoudig);
+  app.classList.toggle('eenvoudig',!!p.eenvoudig);app.classList.toggle('werkvloer',!!(p.werkvloer&&isAdmin()));
   app.classList.toggle('compact',!!p.compact);app.classList.toggle('geenfotos',!p.fotos);app.classList.toggle('geenpatroon',!p.patroon);app.classList.toggle('geenplu',!p.plu);
 }
 const ACCENTEN=[['oranje','Coop-oranje','#f17d04'],['groen','Groen','#2e8b57'],['blauw','Blauw','#1f6fb2'],['paars','Paars','#7b3fa0']];
 const EMOJI=['🥐','🥖','🍞','🥨','🧁','🍰','🧑‍🍳','👩‍🍳','👨‍🍳','😀','😎','🌻','⭐','🔥','💪','☕'];
-const PROF_STANDAARD={eenvoudig:false,thema:'auto',tekst:'normaal',compact:false,fotos:true,patroon:true,plu:true,emoji:'',accent:'oranje',start:'lijst',moment:null,feest:true,groet:true};
+const PROF_STANDAARD={bevestig:true,werkvloer:false,fav:[],meerOpen:{dagelijks:true},eenvoudig:false,thema:'auto',tekst:'normaal',compact:false,fotos:true,patroon:true,plu:true,emoji:'',accent:'oranje',start:'lijst',moment:null,feest:true,groet:true};
 function prof(id=L.sessie){const p={...PROF_STANDAARD,...((id&&S.profielen[id])||{})};if(id&&!S.profielen[id]?.thema&&L.thema?.[id])p.thema=L.thema[id];return p}
 function zetProf(k,v){const id=L.sessie;if(!id)return;S.profielen[id]={...(S.profielen[id]||{}),[k]:v};bewaar();render()}
 
@@ -815,7 +834,7 @@ rapWeek=maandag(iso());
 function render(){
   const m=document.getElementById('scherm');pasThemaToe();_render();const merk=!!m.querySelector('.merkscherm');document.getElementById('app').classList.toggle('merkmodus',merk);
   if(tab==='lijst'&&zoekOpen)zoekFilter();
-  const k=m.querySelector('.kop');if(k&&!merk){k.insertAdjacentHTML('afterbegin',`<img class="koplogo" src="${LOGO_SRC}" alt="Coop Vogelenzang">${ik()&&S.gebruikers.filter(g=>g.rol==='admin'||g.actief!==false).length>1?`<button class="wisselknop" data-a="wissel">${prof().emoji||'👤'} ${esc((ik().naam||'').split(' ')[0])} ⇄</button>`:''}`);const t=m.querySelector(':scope > .terug');if(t)k.prepend(t)}
+  const k=m.querySelector('.kop');if(k&&!merk){k.insertAdjacentHTML('afterbegin',`<img class="koplogo" src="${LOGO_SRC}" alt="Coop Vogelenzang">${isAdmin()?(()=>{const n=belItems().length;return`<button class="belknop" data-a="bel" aria-label="Meldingen">🔔${n?`<span class="belgetal">${n}</span>`:''}</button>`})():''}${ik()&&S.gebruikers.filter(g=>g.rol==='admin'||g.actief!==false).length>1?`<button class="wisselknop ${isAdmin()?'metbel':''}" data-a="wissel">${prof().emoji||'👤'} ${esc((ik().naam||'').split(' ')[0])} ⇄</button>`:''}`);const t=m.querySelector(':scope > .terug');if(t)k.prepend(t)}
 }
 function _render(){
   const m=document.getElementById('scherm'),nav=document.getElementById('nav'),st=document.getElementById('statusplek');
@@ -828,7 +847,7 @@ function _render(){
   const g=ik();if(!g||(g.rol!=='admin'&&g.actief===false)){if(L.sessie){L.sessie=null;bewaarL()}m.innerHTML=loginHtml();nav.innerHTML='';return}
   const t=TABS.find(x=>x[0]===tab);if(!t||(t[2]&&!mag(t[2])))tab='lijst';
   m.innerHTML=tab==='lijst'?lijstHtml():tab==='plan'?planHtml():tab==='derving'?dervingHtml():meerHtml();
-  nav.innerHTML=TABS.filter(([k,l,r])=>!r||mag(r)).map(([k,l,r])=>{const ok=true;return`<button data-a="${ok?'tab':'slot'}" data-v="${k}" class="${tab===k?'aan':''} ${ok?'':'op-slot'}">${ok?'':SLOT+' '}${l}${k==='meer'&&isAdmin()&&ongelezen()?'<span class="navbol"></span>':''}</button>`}).join('');
+  nav.innerHTML=TABS.filter(([k,l,r])=>!r||mag(r)).map(([k,l,r])=>{const ok=true;return`<button data-a="${ok?'tab':'slot'}" data-v="${k}" class="${tab===k?'aan':''} ${ok?'':'op-slot'}">${ok?'':SLOT+' '}${l}</button>`}).join('');
   if(werk)renderWerk();
 }
 const momentSegment=()=>S.momenten.length<2?'':`<div class="segment">${S.momenten.map(x=>`<button data-a="moment" data-v="${x.id}" class="${x.id===moment?'aan':''}">${esc(x.naam)}</button>`).join('')}</div>`;
@@ -874,14 +893,14 @@ function lijstHtml(){
   if(zoekOpen)h+=`<div class="zoekbalk"><input class="veld" id="kzZoek" type="search" placeholder="Zoek op naam of PLU" value="${esc(zoekTerm)}" autocomplete="off"></div>`;
   if(pk.startsWith('afw:'))h+=`<span class="pil">Afwijkende planning: ${esc(S.afwijkend[datum].naam)}</span>`;
   if(S.afsluit[datum])h+=`<span class="pil groen">✓ Dag afgesloten door ${esc(S.afsluit[datum].wie)} om ${tijdTekst(S.afsluit[datum].t)}</span>`;
-  if(vandaag&&mag('invullen')){const f=volgendeFeest();if(f){const dg=Math.round((vanIso(f[0])-vanIso(iso()))/864e5);
+  if(vandaag&&mag('invullen')&&!isAdmin()){const f=volgendeFeest();if(f){const dg=Math.round((vanIso(f[0])-vanIso(iso()))/864e5);
     h+=`<div class="kaartje feestkaart2"><h3>${esc(f[1])} over ${dg} ${dg===1?'dag':'dagen'}</h3><div class="sub">${esc(datumTekst(f[0]))} – afwijkende dag maken?</div>
     <div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:10px;flex-wrap:wrap"><button class="knop klein" data-a="feestkopie" data-v="${f[0]}" data-n="${esc(f[1])}">Kopie van planning</button><button class="knop rand klein" data-a="feestnul" data-v="${f[0]}" data-n="${esc(f[1])}">Gesloten</button><button class="knop rand klein" data-a="feestnee" data-v="${f[0]}">Niet nodig</button></div></div>`}}
   h+=momentSegment()+notitiesHtml(datum);
   if(vandaag&&mag('vinken')){const od=ontdooiLijst(plusDagen(iso(),1));if(od.length)h+=`<button class="avondkaart" data-a="sub2" data-v="ontdooi"><b>Ontdooien zoet voor morgen</b><span>${od.filter(x=>x.klaar).length} van ${od.length} gedaan ›</span></button>`}
   if(sec.length&&mag('vinken'))h+=`<div class="acties"><button class="knop" data-a="werkmodus">Werkmodus</button>${heeftAfbak?`<button class="knop rand" data-a="ovenmodus">${ovenModus?'Oven annuleren':'Oven vullen'}</button>`:''}</div>`;
   if(!n&&!bijbakLijst(datum).length)h+=`<p class="leeg">Voor ${esc(momentNaam(moment).toLowerCase())} op ${esc(datumTekst(datum))} staat niets gepland.</p>`;
-  const gezien={},kanTaak=isAdmin()||mag('invullen');
+  const gezien={},kanTaak=(isAdmin()||mag('invullen'))&&!prof().werkvloer;
   sec.sort((a,b)=>(karTaak(datum,b.nr)===L.sessie)-(karTaak(datum,a.nr)===L.sessie));
   for(const s of sec){const tk=karTaak(datum,s.nr),tkNaam=tk?S.gebruikers.find(g=>g.id===tk)?.naam:'';
     h+=`<div class="sectie" style="border-color:${karKleur(s.nr)}"><div class="karkop" style="background:${karKleur(s.nr)}" ${kanTaak?`data-a="kartaak" data-v="${s.nr}"`:''}><b>${esc(s.naam)}</b><span>${s.platen?`${s.platen} platen, `:''}${s.totaal} stuks</span></div>${tk||kanTaak?`<div class="taakregel ${tk===L.sessie?'mijn':''}" ${kanTaak?`data-a="kartaak" data-v="${s.nr}"`:''}>${tk?`👤 ${esc(tkNaam||'?')}${tk===L.sessie?' (jij)':''}`:'+ Iemand toewijzen'}</div>`:''}`;
@@ -1073,6 +1092,7 @@ const UITLEG=[
  ['export','Exporteren naar Excel','Onder Meer → Exporteren kies je derving, weekrapport of planning en een periode. Het Excel-bestand deel je via het deelmenu: opslaan, mailen of versturen.'],
  ['begeleid','Winkel-iPhone: alleen Brood Opzet (Begeleide toegang)','Zo zorg je dat op de winkel-iPhone alleen Brood Opzet open kan. 1) Open Instellingen → Toegankelijkheid → Begeleide toegang en zet het aan. 2) Tik op Toegangscode-instellingen → Stel toegangscode in en kies een code die alleen jij kent. 3) Open Brood Opzet vanaf het beginscherm. 4) Druk 3 keer snel op de zijknop en tik rechtsboven op Start. Nu kan niemand de app verlaten. Stoppen: druk weer 3 keer op de zijknop, vul je code in en tik linksboven op Stop. Tip: zet bij Begeleide toegang ook Automatische vergrendeling op Nooit als de telefoon aan de lader in de winkel ligt.'],
  ['oefenen','Oefenen','Via Meer → Uitleg → Oefenen werkt de app tijdelijk met een kopie van de gegevens. Je kunt alles uitproberen: afvinken, derving, bijbakken. Er wordt niets echt opgeslagen. Met Stoppen in de oranje balk ga je terug naar de echte app.'],
+ ['materiaal','Materiaal','Onder Meer → Materiaal meld je dat verpakkingsmateriaal bijna op is: tik op Bijna op, en als het echt op is op Op!. Je naam en de tijd komen erbij, zodat niemand het dubbel meldt. Staat het er niet tussen? Tik op + Iets anders. De beheerder krijgt een melding en zet het op Besteld en later op Aangevuld.'],
  ['notities','Notities','Onder Meer → Notities vind je alle dagnotities van de afgelopen 6 maanden, nieuwste eerst. Zoek op een woord of naam, of toon alleen notities met een foto. Met Bekijk dag ga je naar Klaarzetten op die dag. Tik op een foto om hem groot te zien; tik nog eens om in te zoomen.'],
  ['plu','PLU-lijst','Onder Meer → PLU-lijst vind je alle PLU-nummers. Typ een deel van de naam of het nummer om te zoeken. Kies Op naam of Per kar. Het PLU-nummer staat ook achter de naam op Klaarzetten en groot in de werkmodus. Vul PLU-nummers in bij Broodsoorten.'],
  ['koppelen','Koppelen en inloggen','Elk toestel wordt één keer gekoppeld met de winkel-login of de beheerders-login. Daarna logt iedereen in met naam en pincode. Na 60 minuten niets doen wordt er automatisch uitgelogd. Bovenaan zie je of de app online is; offline wijzigingen worden later verzonden.']
@@ -1090,8 +1110,8 @@ function instellingenHtml(){const p=prof();
    <div class="hulp" style="margin-top:14px">Startpagina na inloggen</div>${seg('start',[['lijst','Klaarzetten'],['derving','Derving'],['plan','Invullen']])}
    ${S.momenten.length>1?`<div class="hulp" style="margin-top:14px">Standaard bakmoment</div>${seg('moment',[['','Geen'],...S.momenten.map(m=>[m.id,esc(m.naam)])])}`:''}</div>
    <div class="kaartje"><h3>Pincode</h3>${ik()?.rol==='admin'&&!kanBeheren()?'<p class="hulp">Je eigen pincode wijzig je op je eigen telefoon.</p>':'<div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:6px"><button class="knop rand klein" data-a="pinwijzig">Pincode wijzigen</button></div>'}</div>
-   <div class="kaartje"><h3>Eenvoud</h3>${sw('eenvoudig','Eenvoudige modus (minder informatie, grotere knoppen)')}</div>
-   <div class="kaartje"><h3>Meldingen</h3>${sw('feest','"Alles klaargezet!"-melding')}${sw('groet','Begroeting en voortgangsring')}</div>`}
+   <div class="kaartje"><h3>Eenvoud</h3>${sw('eenvoudig','Eenvoudige modus (minder informatie, grotere knoppen)')}${isAdmin()?sw('werkvloer','Werkvloer-weergave (beheerdersdingen op Klaarzetten verbergen)'):''}</div>
+   <div class="kaartje"><h3>Meldingen</h3>${sw('bevestig','Groene bevestiging na een actie')}${sw('feest','"Alles klaargezet!"-melding')}${sw('groet','Begroeting en voortgangsring')}</div>`}
 
 function programmasHtml(){
   const l=Object.values(S.programmas).sort((a,b)=>a.naam.localeCompare(b.naam,'nl')),zonder=S.soorten.filter(x=>x.type==='afbakken'&&!x.programmaId);
@@ -1121,6 +1141,73 @@ function renderProgLijst(){
   const n=Object.keys(k).length;document.getElementById('progVoet').innerHTML=`<b>${n} ${n===1?'product':'producten'} gekoppeld</b>`;
 }
 let managerOpen=false;
+/* ---------- materiaal ---------- */
+function vulMateriaal(m){m=isObj(m)?m:{};if(!Array.isArray(m.lijst))m.lijst=['Broodzakken groot','Broodzakken klein','Papieren zakjes','Croissantzakjes','Labels weegschaal','Bakpapier','Handschoenen'].map((n,i)=>({id:'m'+(i+1),naam:n}));if(!isObj(m.meld))m.meld={};if(!isObj(m.los))m.los={};return m}
+const matNaam=id=>S.materiaal.lijst.find(x=>x.id===id)?.naam||S.materiaal.los[id]?.naam||'?';
+function matGemeld(){return[...Object.entries(S.materiaal.meld).map(([id,x])=>({id,naam:matNaam(id),...x})),...Object.values(S.materiaal.los).map(x=>({...x,los:true}))].filter(x=>x.staat)}
+const MAT_LABEL={bijna:['Bijna op','aangepast'],op:['Op!','rood'],besteld:['Besteld','schap']};
+const MEER_GROEP={berichten:'dagelijks',vraag:'dagelijks',materiaal:'dagelijks',notities:'dagelijks',dervlijsten:'dagelijks',ontdooi:'dagelijks',afsluiten:'dagelijks',plu:'dagelijks',
+  afwijkend:'planning',bestel:'planning',rapport:'rapporten',nieuw:'rapporten',export:'rapporten',gedaan:'rapporten',log:'rapporten',
+  soorten:'instellingen',programmas:'instellingen',team:'instellingen',instellingen:'instellingen',klaar:'beheer',qrwinkel:'beheer',cadeau:'beheer',push:'beheer',uitleg:'hulp'};
+const GROEPEN=[['dagelijks','Dagelijks'],['planning','Planning'],['rapporten','Rapporten'],['instellingen','Instellingen'],['beheer','Beheer – alleen voor jou'],['hulp','Hulp']];
+function meerLijstHtml(items){
+  if(isAdmin()&&kanBeheren())items=[...items,['klaar','✅ Klaar voor gebruik',"Wat nog ontbreekt: foto's, PLU, programma's, pincodes",()=>true],['qrwinkel','📱 QR-code voor de winkel','A4 om op te hangen bij de broodafdeling',()=>true,null,'qrwinkel'],
+    ['cadeau','🎁 Cadeaubonnen',`${cadeauTellers().uit} uitgegeven · ${euro(cadeauTellers().open)} openstaand`,()=>true],['push','🔔 Pushmeldingen',pushStatus()==='granted'&&S.push.subs?.length?'Staan aan':'Meldingen op je telefoon',()=>true]];
+  const wel=items.filter(x=>x[3]()),P=prof(),fav=P.fav||[];
+  const rij=x=>{const[k,t,sb,,,act]=x;return`<div class="rij" data-zoekmeer="${esc((String(t).replace(/<[^>]+>/g,'')+' '+sb).toLowerCase())}"><div class="rijflex"><button class="regel" data-a="${act||'sub'}" data-v="${k}"><div class="groei"><div class="naam">${t}</div><div class="sub">${sb}</div></div><span class="pijl">›</span></button>${wel.length>9?`<button class="pot ster ${fav.includes(k)?'aan':''}" data-a="fav" data-v="${k}" aria-label="Favoriet">${fav.includes(k)?'★':'☆'}</button>`:''}</div></div>`};
+  if(wel.length<=9)return`<div class="sectie menu">${wel.map(rij).join('')}</div>`;
+  const favs=wel.filter(x=>fav.includes(x[0]));
+  return`<div class="zoekbalk"><input class="veld" id="meerZoek" type="search" placeholder="Zoek een onderdeel" autocomplete="off"></div><div id="meerGroepen">
+   ${favs.length?`<div class="sectie menu meergroep open" data-groep="fav"><div class="karkop"><b>★ Favorieten</b></div><div class="meerinhoud">${favs.map(rij).join('')}</div></div>`:''}
+   ${GROEPEN.map(([g,naam])=>{const l=wel.filter(x=>(MEER_GROEP[x[0]]||'hulp')===g);if(!l.length)return'';const open=!!(P.meerOpen||{})[g];
+     return`<div class="sectie menu meergroep ${open?'open':''}" data-groep="${g}"><button class="groepkop" data-a="meergroep" data-v="${g}"><b>${naam}</b><span>${l.length} ${open?'▴':'▾'}</span></button><div class="meerinhoud">${l.map(rij).join('')}</div></div>`}).join('')}</div>`}
+function meerZoekFilter(z){const c=document.getElementById('meerGroepen');if(!c)return;z=z.trim().toLowerCase();c.classList.toggle('zoekend',!!z);
+  c.querySelectorAll('[data-zoekmeer]').forEach(r=>r.style.display=!z||r.dataset.zoekmeer.includes(z)?'':'none');
+  c.querySelectorAll('.meergroep').forEach(g=>{const rs=[...g.querySelectorAll('[data-zoekmeer]')];g.style.display=!z||rs.some(r=>r.style.display!=='none')?'':'none'})}
+function belItems(){if(!isAdmin())return[];const l=[],o=ongelezen(),mg=matGemeld().filter(x=>x.staat!=='besteld');
+  if(o)l.push({i:'💬',t:`${o} ${o===1?'bericht':'berichten'} van medewerkers`,a:'sub',v:'berichten'});
+  if(mg.length)l.push({i:'📦',t:`${mg.length} ${mg.length===1?'materiaal':'materialen'} ${mg.some(x=>x.staat==='op')?'op of bijna op':'bijna op'}: ${mg.map(x=>x.naam).join(', ')}`,a:'sub',v:'materiaal'});
+  const f=volgendeFeest();if(f){const dg=Math.round((vanIso(f[0])-vanIso(iso()))/864e5);l.push({i:'🎉',t:`${f[1]} over ${dg} ${dg===1?'dag':'dagen'} – afwijkende dag maken?`,feest:f})}
+  const h=new Date().getHours();if(S.soorten.some(x=>x.type==='vers'&&x.naam.trim())&&!S.levering[iso()]&&h>=6)l.push({i:'🥖',t:'Levering van vandaag nog niet ingevuld',a:'levnu'});
+  if(h>=19&&!S.afsluit[iso()])l.push({i:'🌙',t:'Dag nog niet afgesloten',a:'sub',v:'afsluiten'});
+  if(prof().versieGezien!==APP_VERSIE)l.push({i:'✨',t:`Nieuw in versie ${APP_VERSIE}`,a:'nieuwsnu'});
+  return l}
+function openBel(){const l=belItems(),P=prof();
+  toonSheet(`<div class="pkop"><span style="width:60px"></span><b>Meldingen</b><button data-a="sluit" style="font-weight:700">Sluiten</button></div><div class="pinhoud">
+   ${l.length?`<div class="sectie" style="margin:10px 0 0">${l.map(x=>x.feest?`<div class="rij inv" style="flex-wrap:wrap"><div class="nieuwsicoon">${x.i}</div><div class="groei"><div class="naam" style="font-weight:600">${esc(x.t)}</div>
+     <div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:8px;flex-wrap:wrap"><button class="knop klein" data-a="feestkopie" data-v="${x.feest[0]}" data-n="${esc(x.feest[1])}">Kopie</button><button class="knop rand klein" data-a="feestnul" data-v="${x.feest[0]}" data-n="${esc(x.feest[1])}">Gesloten</button><button class="knop rand klein" data-a="feestnee" data-v="${x.feest[0]}">Niet nodig</button></div></div></div>`
+     :`<div class="rij"><button class="regel" data-a="belga" data-g="${x.a}" data-v="${x.v||''}"><div class="nieuwsicoon">${x.i}</div><div class="groei"><div class="naam" style="font-weight:600">${esc(x.t)}</div></div><span class="pijl">›</span></button></div>`).join('')}</div>`:'<p class="leeg">Geen meldingen. Alles is bij! 👌</p>'}
+   <label class="schakel" style="margin:16px 0 0;color:var(--tekst);font-weight:400">Werkvloer-weergave (beheerdersdingen op Klaarzetten verbergen)<input type="checkbox" data-prof="werkvloer" ${P.werkvloer?'checked':''}></label></div>`)}
+function pushHtml(){const st=pushStatus(),aan=st==='granted'&&S.push.subs?.length,stil=S.push.stil||{van:21,tot:7},uren=[...Array(24).keys()];
+  return`<div class="kop"><div class="koprij"><h1>Pushmeldingen</h1></div><p>Een melding op je telefoon als materiaal bijna op is, ook als de app dicht is.</p></div>
+   <div class="kaartje"><h3>${aan?'✓ Staan aan':'Staan uit'}</h3><div class="sub">${st==='niet'?'Dit werkt alleen als Brood Opzet op het beginscherm staat, op iOS 16.4 of nieuwer.':st==='denied'?'Meldingen zijn geweigerd. Zet ze aan via Instellingen → Meldingen → Brood Opzet.':`${(S.push.subs||[]).length} ${(S.push.subs||[]).length===1?'toestel':'toestellen'} aangemeld.`}</div>
+    <div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:10px;flex-wrap:wrap">${st!=='niet'&&st!=='denied'?`<button class="knop klein" data-a="pushaan">${aan?'Dit toestel opnieuw aanmelden':'Pushmeldingen aanzetten'}</button>`:''}${aan?'<button class="knop rand klein" data-a="pushtest">Testmelding sturen</button>':''}</div></div>
+   <div class="kaartje"><h3>Stille uren</h3><div class="sub">In deze uren komen alleen meldingen van "Op!" door. "Bijna op" volgt daarna.</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:10px">Van <select class="veld" id="stilVan" style="width:90px">${uren.map(u=>`<option value="${u}" ${u===stil.van?'selected':''}>${u}:00</option>`).join('')}</select> tot <select class="veld" id="stilTot" style="width:90px">${uren.map(u=>`<option value="${u}" ${u===stil.tot?'selected':''}>${u}:00</option>`).join('')}</select></div></div>
+   <p class="hulp" style="margin:12px 20px">De eenmalige instelling in Supabase staat in de uitleg die je bij deze update hebt gekregen.</p>`}
+function materiaalHtml(){const adm=isAdmin(),regel=(id,naam,x,los)=>{const st=x?.staat;
+    return`<div class="rij inv matrij ${st||''}"><div class="groei"><div class="naam">${esc(naam)}</div><div class="sub">${st?`<span class="st ${MAT_LABEL[st][1]}">${MAT_LABEL[st][0]}</span> ${esc(x.wie)} · ${tijdTekst(x.t)}${x.besteld?` · besteld door ${esc(x.besteld.wie)}`:''}`:'Op voorraad'}</div></div>
+     <div class="matknoppen">${!st?`<button class="knop rand klein" data-a="matmeld" data-v="${id}" data-n="bijna">Bijna op</button>`:''}${st==='bijna'?`<button class="knop klein rood" data-a="matmeld" data-v="${id}" data-n="op">Op!</button>`:''}
+     ${adm&&st&&st!=='besteld'?`<button class="knop rand klein" data-a="matbesteld" data-v="${id}">Besteld</button>`:''}${adm&&st?`<button class="knop klein" data-a="mataangevuld" data-v="${id}">Aangevuld</button>`:''}
+     ${!adm&&st&&x.wie===ik()?.naam&&st!=='besteld'?`<button class="knop rand klein" data-a="mataangevuld" data-v="${id}">Toch niet</button>`:''}</div></div>`};
+  return`<div class="kop"><div class="koprij"><h1>Materiaal</h1>${info('materiaal')}</div><p>${adm?'Wat medewerkers hebben gemeld. Tik op Besteld of Aangevuld.':'Is iets bijna op? Tik op Bijna op. De beheerder krijgt een melding.'}</p></div>
+   <div class="sectie">${S.materiaal.lijst.map(m=>regel(m.id,m.naam,S.materiaal.meld[m.id])).join('')}${Object.values(S.materiaal.los).map(x=>regel(x.id,x.naam,x,true)).join('')}</div>
+   <div class="knoppen"><button class="knop rand" data-a="matanders">+ Iets anders</button>${adm&&kanBeheren()?'<button class="knop rand" data-a="matlijst">Lijst aanpassen</button>':''}</div>`}
+function openMatLijst(){bewerk={soort:'matlijst',lijst:kloon(S.materiaal.lijst)};toonMatLijst()}
+function toonMatLijst(){toonSheet(`<div class="pkop"><button data-a="sluit">Annuleren</button><b>Lijst aanpassen</b><button data-a="matlijstopslaan" style="font-weight:700">Opslaan</button></div><div class="pinhoud">
+   <p class="hulp">Pas de namen aan, verwijder of voeg toe.</p>${bewerk.lijst.map((m,i)=>`<div style="display:flex;gap:8px;margin-bottom:8px"><input class="veld" data-matnaam="${i}" value="${esc(m.naam)}"><button class="knop rand klein rood" data-a="matlijstweg" data-v="${i}">×</button></div>`).join('')}
+   <button class="toevoegen" data-a="matlijsterbij">+ Materiaal toevoegen</button></div>`)}
+/* ---------- pushmeldingen ---------- */
+const VAPID_PUBLIEK='BMq2CTiL_Zpze43M7a5Ik1nZwFyB-xYRLeXAt4R6s7w_WBebpQvP_uHXS8QsH-0g1vkqTBVmEg3eaRe5NtTLj9o';
+function stuurPush(extra){try{const url=SUPA_URL+'/functions/v1/stuur-push';fetch(url,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY},body:JSON.stringify(extra||{})}).catch(()=>{})}catch(e){}}
+function pushStatus(){if(!('serviceWorker'in navigator)||!('PushManager'in window))return'niet';if(typeof Notification==='undefined')return'niet';return Notification.permission}
+async function pushAan(){
+  if(pushStatus()==='niet'){toast('Pushmeldingen werken alleen als de app op het beginscherm staat (iOS 16.4 of nieuwer)');return}
+  try{const p=await Notification.requestPermission();if(p!=='granted'){toast('Meldingen zijn niet toegestaan');render();return}
+    const reg=await navigator.serviceWorker.ready;const b64=VAPID_PUBLIEK.replace(/-/g,'+').replace(/_/g,'/'),raw=atob(b64+'='.repeat((4-b64.length%4)%4)),key=Uint8Array.from(raw,c=>c.charCodeAt(0));
+    const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key}),j=sub.toJSON();
+    S.push.subs=(S.push.subs||[]).filter(x=>x.endpoint!==j.endpoint);S.push.subs.push({endpoint:j.endpoint,keys:j.keys,toestel:navigator.userAgent.slice(0,60),t:Date.now()});
+    bewaar();render();toast('Pushmeldingen staan aan');setTimeout(()=>stuurPush({test:true}),1500)}catch(e){toast('Aanzetten lukte niet: '+(e.message||e))}}
 function appUrl(){return location.href.split('#')[0].split('?')[0].replace(/index\.html$/,'')}
 function laadQr(){return window.qrcode?Promise.resolve():new Promise((ok,nee)=>{const x=document.createElement('script');x.src='https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js';x.onload=ok;x.onerror=nee;document.head.appendChild(x)})}
 function qrSvg(tekst,cel=5){const q=qrcode(0,'M');q.addData(tekst);q.make();return q.createSvgTag({cellSize:cel,margin:2,scalable:true})}
@@ -1265,7 +1352,7 @@ let undoSnap=null,undoTimer=null;
 function undoStart(label){undoSnap={d:datum,label,v:kloon(S.vinkjes[datum]),st:kloon(S.status[datum]),a:kloon(S.aanpas[datum]),b:kloon(S.bijbak[datum]),sn:kloon(S.snij[datum]),h:kloon(S.historie[datum])}}
 function undoToon(){if(!undoSnap)return;const el=document.getElementById('undo');el.innerHTML=`<span>${esc(undoSnap.label)}</span><button data-a="undo">Ongedaan</button>`;el.classList.add('zichtbaar');clearTimeout(undoTimer);undoTimer=setTimeout(()=>{el.classList.remove('zichtbaar')},4000)}
 let bevTimer=null;
-function bevestig(t){const el=document.getElementById('bevestig');if(!el)return;el.textContent=t;el.classList.add('zichtbaar');clearTimeout(bevTimer);bevTimer=setTimeout(()=>el.classList.remove('zichtbaar'),1800)}
+function bevestig(t){const el=document.getElementById('bevestig');if(!el||prof().bevestig===false)return;el.textContent=t;el.classList.add('zichtbaar');clearTimeout(bevTimer);bevTimer=setTimeout(()=>el.classList.remove('zichtbaar'),1800)}
 function undoVerberg(){const el=document.getElementById('undo');if(el)el.classList.remove('zichtbaar')}
 
 function undoDoe(){const u=undoSnap;if(!u)return;const zet=(k,v)=>{if(v===undefined)delete S[k][u.d];else S[k][u.d]=v};
@@ -1682,6 +1769,8 @@ function meerHtml(){
   if(sub==='nieuw'&&mag('rapport'))return terug+nieuwHtml();
   if(sub==='export'&&mag('rapport'))return terug+exportHtml();
   if(sub==='notities')return terug+notOverzichtHtml();
+  if(sub==='materiaal')return terug+materiaalHtml();
+  if(sub==='push'&&isAdmin()&&kanBeheren())return terug+pushHtml();
   if(sub==='cadeau'&&isAdmin()&&kanBeheren())return terug+cadeauHtml();
   if(sub==='klaar'&&isAdmin()&&kanBeheren())return terug+klaarHtml();
   if(sub==='dervlijsten'&&mag('derving'))return terug+dervLijstenHtml();
@@ -1699,17 +1788,15 @@ function meerHtml(){
   sub=null;const g=ik();
   const o=ongelezen();
   const items=[...(isAdmin()?[['berichten',`Berichten${o?` <span class="telbol">${o}</span>`:''}`,'Vragen en meldingen van medewerkers',()=>true]]:[['vraag','Vraag of melding','Stuur een bericht naar de beheerder',()=>true]]),
-    ['afsluiten','Dag afsluiten','Checklist voor het eind van de dag',()=>mag('derving')],['notities','Notities','Alle dagnotities terugzoeken',()=>true],['dervlijsten','Dervinglijsten','Opgeslagen derving om in de kassa te zetten',()=>mag('derving')],['ontdooi','Ontdooien zoet','Wat moet er uit de vriezer',()=>mag('vinken')],['rapport','Weekrapport','Derving per soort per week',()=>mag('rapport')],
+    ['afsluiten','Dag afsluiten','Checklist voor het eind van de dag',()=>mag('derving')],['materiaal','Materiaal','Verpakking bijna op? Meld het hier',()=>true],['notities','Notities','Alle dagnotities terugzoeken',()=>true],['dervlijsten','Dervinglijsten','Opgeslagen derving om in de kassa te zetten',()=>mag('derving')],['ontdooi','Ontdooien zoet','Wat moet er uit de vriezer',()=>mag('vinken')],['rapport','Weekrapport','Derving per soort per week',()=>mag('rapport')],
     ['bestel','Deegbestelling en voorraad','Voorraad tellen en dozen bestellen',()=>mag('bestellen')],['afwijkend','Afwijkende dagen','Feestdagen, gesloten dagen',()=>mag('invullen')],
     ['soorten','Broodsoorten en instellingen','Soorten, karren, bakmomenten, oven',()=>mag('soorten')],['programmas',"Bakprogramma's","Programma's koppelen aan producten",()=>mag('soorten')],['team','Medewerkers en rechten','Accounts beheren',()=>isAdmin()&&kanBeheren(),isAdmin()?'Alleen op je eigen telefoon':null],
     ['gedaan','Vandaag gedaan','Per persoon wat er is gedaan',()=>isAdmin()],['log','Logboek','Wie deed wat en wanneer',()=>isAdmin()],
     ['nieuw','Nieuwe producten','Verkoop van nieuwe producten volgen',()=>mag('rapport')],['export','Exporteren naar Excel','Planning, derving of weekrapport',()=>mag('rapport')],['plu','PLU-lijst','PLU-nummers opzoeken',()=>true],['instellingen','App-instellingen','Weergave en persoonlijke keuzes',()=>true],['uitleg','Uitleg','Hoe werkt de app?',()=>true]];
   return`<div class="kop"><div class="koprij"><h1>Meer</h1>${info('meer')}</div><p>Ingelogd als <b>${esc(g.naam)}</b> (${g.rol==='admin'?'beheerder':'medewerker'})</p></div>
-    <div class="sectie menu">${(()=>{const rij=([k,t,s,ok,slotTekst],mg)=>`<div class="rij"><button class="regel ${mg?'':'op-slot'}" data-a="${mg?'sub':'slot'}" data-v="${k}" ${!mg&&slotTekst?`data-m="${esc(slotTekst)}"`:''}><div class="groei"><div class="naam">${mg?'':SLOT+' '}${t}</div><div class="sub">${!mg&&slotTekst?esc(slotTekst):s}</div></div><span class="pijl">${mg?'›':''}</span></button></div>`;
-      const wel=items.filter(x=>x[3]()),niet=items.filter(x=>!x[3]());
-      return wel.map(x=>rij(x,true)).join('')+(false&&niet.length?`<div class="rij"><button class="regel managerkop" data-a="managertoggle"><div class="groei"><div class="naam">${SLOT} Manager <span class="telbol grijs">${niet.length}</span></div><div class="sub">${isAdmin()?'Alleen op je eigen telefoon':'Onderdelen waar je (nog) geen rechten voor hebt'}</div></div><span class="pijl">${managerOpen?'▴':'▾'}</span></button></div>${managerOpen?niet.map(x=>rij(x,false)).join(''):''}`:'');})()}
+    ${meerLijstHtml(items)}
     ${kanBeheren()?`<div class="rij"><button class="regel" data-a="gebruiker" data-v="${g.id}"><div class="groei"><div class="naam">Mijn pincode wijzigen</div></div><span class="pijl">›</span></button></div>`:''}</div>
-    ${isAdmin()&&kanBeheren()?`<div class="sectie menu"><div class="karkop"><b>Beheer</b><span>alleen voor jou</span></div><div class="rij"><button class="regel" data-a="sub" data-v="klaar"><div class="groei"><div class="naam">✅ Klaar voor gebruik</div><div class="sub">Wat nog ontbreekt: foto's, PLU, programma's, pincodes</div></div><span class="pijl">›</span></button></div><div class="rij"><button class="regel" data-a="qrwinkel"><div class="groei"><div class="naam">📱 QR-code voor de winkel</div><div class="sub">A4 om op te hangen bij de broodafdeling</div></div><span class="pijl">›</span></button></div><div class="rij"><button class="regel" data-a="sub" data-v="cadeau"><div class="groei"><div class="naam">🎁 Cadeaubonnen</div><div class="sub">${cadeauTellers().uit} uitgegeven · ${euro(cadeauTellers().open)} openstaand</div></div><span class="pijl">›</span></button></div></div>`:''}
+
     <div class="kaartje"><h3>Dit toestel</h3>${statusHtml()}<div class="sub">${L.modus==='lokaal'?'Gegevens staan alleen op dit toestel.':`Gekoppeld met de ${L.beheerder?'beheerders':'winkel'}-login.`}</div>
     <div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:10px">${L.modus==='lokaal'?`<button class="knop rand" data-a="naarkoppel">Toestel koppelen</button>`:isAdmin()?`<button class="knop rand" data-a="ontkoppel">${afwStap==='ontkoppel'?'Zeker? Tik nogmaals':'Toestel ontkoppelen'}</button>`:''}</div></div>
     <div class="knoppen"><button class="knop rand" data-a="uitloggen">Uitloggen</button></div>`;
@@ -2061,6 +2148,23 @@ document.addEventListener('click',async e=>{
   case'uitleg':tab='meer';sub='uitleg';uitlegOpen=v;ovenModus=false;render();setTimeout(()=>document.getElementById('u-'+v)?.scrollIntoView({block:'start'}),30);return;
   case'uitlegopen':uitlegOpen=uitlegOpen===v?null:v;render();return;
   case'undo':undoDoe();return;
+  case'fav':{const f=[...(prof().fav||[])],i=f.indexOf(v);if(i>=0)f.splice(i,1);else f.push(v);zetProf('fav',f);return}
+  case'meergroep':{const o={...(prof().meerOpen||{})};o[v]=!o[v];zetProf('meerOpen',o);return}
+  case'bel':openBel();return;
+  case'belga':{const g=b.dataset.g;sluit();if(g==='sub'){tab='meer';sub=v;render();m.scrollTop=0}else if(g==='levnu'){tab='lijst';datum=iso();render();openLevering()}else if(g==='nieuwsnu'){toonNieuws()}return}
+  case'matmeld':{const los=S.materiaal.los[v],x=los||(S.materiaal.meld[v]=S.materiaal.meld[v]||{});x.staat=b.dataset.n;x.wie=ik().naam;x.t=Date.now();delete x.besteld;
+    log(`Materiaal ${matNaam(v)}: ${b.dataset.n==='op'?'op!':'bijna op'}`);bewaar();render();bevestig(`✓ Gemeld: ${matNaam(v)} ${b.dataset.n==='op'?'is op':'bijna op'}`);setTimeout(()=>stuurPush({}),800);return}
+  case'matbesteld':{if(!isAdmin())return;const x=S.materiaal.los[v]||S.materiaal.meld[v];if(!x)return;x.staat='besteld';x.besteld={wie:ik().naam,t:Date.now()};log(`Materiaal ${matNaam(v)} besteld`);bewaar();render();return}
+  case'mataangevuld':{const n=matNaam(v);if(S.materiaal.los[v])delete S.materiaal.los[v];else delete S.materiaal.meld[v];log(`Materiaal ${n} ${isAdmin()?'aangevuld':'melding ingetrokken'}`);bewaar();render();return}
+  case'matanders':{const n=(prompt('Wat is er bijna op?')||'').trim();if(!n)return;const id='l'+Date.now().toString(36);S.materiaal.los[id]={id,naam:n.slice(0,40),staat:'bijna',wie:ik().naam,t:Date.now()};log(`Materiaal ${n}: bijna op`);bewaar();render();bevestig(`✓ Gemeld: ${n}`);setTimeout(()=>stuurPush({}),800);return}
+  case'matlijst':if(!isAdmin())return;openMatLijst();return;
+  case'matlijsterbij':bewerk.lijst.forEach((m,i)=>{const e2=document.querySelector(`[data-matnaam="${i}"]`);if(e2)m.naam=e2.value});bewerk.lijst.push({id:'m'+Date.now().toString(36),naam:''});toonMatLijst();return;
+  case'matlijstweg':bewerk.lijst.forEach((m,i)=>{const e2=document.querySelector(`[data-matnaam="${i}"]`);if(e2)m.naam=e2.value});bewerk.lijst.splice(+v,1);toonMatLijst();return;
+  case'matlijstopslaan':{if(!isAdmin())return;bewerk.lijst.forEach((m,i)=>{const e2=document.querySelector(`[data-matnaam="${i}"]`);if(e2)m.naam=e2.value.trim()});S.materiaal.lijst=bewerk.lijst.filter(m=>m.naam);
+    for(const id of Object.keys(S.materiaal.meld))if(!S.materiaal.lijst.some(m=>m.id===id))delete S.materiaal.meld[id];log('Materiaallijst aangepast');bewaar();sluit();render();return}
+  case'pushaan':if(!isAdmin())return;pushAan();return;
+  case'pushtest':stuurPush({test:true});toast('Testmelding verstuurd');return;
+  case'stilvan':case'stiltot':{if(!isAdmin())return;S.push.stil={...(S.push.stil||{van:21,tot:7}),[a==='stilvan'?'van':'tot']:+v};bewaar();render();return}
   case'oefenstart':if(!confirm('Oefenmodus starten?\n\nDe app werkt dan met een kopie. Niets wordt echt opgeslagen. Met Stoppen ga je terug.'))return;OEFEN=true;S=kloon(S);document.body.classList.add('oefen');document.getElementById('oefenbalk').innerHTML='🎓 Oefenmodus – niets wordt opgeslagen <button data-a="oefenstop">Stoppen</button>';tab='lijst';sub=null;render();return;
   case'oefenstop':location.reload();return;
   case'nieuwsklaar':S.profielen[L.sessie]={...(S.profielen[L.sessie]||{}),versieGezien:APP_VERSIE};bewaar();sluit();toonOverdracht();return;
@@ -2286,6 +2390,7 @@ document.addEventListener('input',e=>{
   else if(ds.cderv){if(!mag('derving'))return;const c=conceptVan(dervDatum),n=getal(t.value);if(n==null){if(c[ds.cderv]){delete c[ds.cderv][best];if(!['weg','vb','tg'].some(k=>c[ds.cderv][k]!=null))delete c[ds.cderv]}}else{c[ds.cderv]=c[ds.cderv]||{};c[ds.cderv][best]=n}bewaarL()}
   else if(ds.derv){if(!mag('derving'))return;const n=getal(t.value);if(n==null)wisDerving(dervDatum,ds.derv,best);else zetDerving(dervDatum,ds.derv,best,n);bewaar()}
   else if(t.id==='cbZoek'){cbZoek=t.value.trim();cbVernieuw()}
+  else if(t.id==='meerZoek'){meerZoekFilter(t.value)}
   else if(t.id==='notZoek'){notZoek=t.value;const el=document.getElementById('notLijst');if(el)el.innerHTML=notLijstHtml()}
   else if(t.id==='kzZoek'){zoekTerm=t.value;zoekFilter()}
   else if(t.id==='pluZoek'){pluZoek=t.value;const el=document.getElementById('pluLijst');if(el)el.innerHTML=pluLijstHtml()}
@@ -2297,6 +2402,7 @@ document.addEventListener('change',e=>{
   const t=e.target,ds=t.dataset||{},naam=id=>S.soorten.find(x=>x.id===id)?.naam;
   if(t.id==='dervdatum'&&t.value){dervDatum=t.value>iso()?iso():t.value;render()}
   else if(t.id==='planSelect'){planKeuze=t.value;render()}
+  else if(t.id==='stilVan'||t.id==='stilTot'){if(isAdmin()){S.push.stil={...(S.push.stil||{van:21,tot:7}),[t.id==='stilVan'?'van':'tot']:+t.value};bewaar()}}
   else if(t.id==='loginNaam'){loginKeuze=t.value;pinInvoer='';pinMelding='';render()}
   else if(t.id==='afwDatum'&&t.value)afwForm.datum=t.value;
   else if(t.id==='verberg0'){L.verberg0=t.checked;bewaarL();render()}
@@ -2316,7 +2422,7 @@ document.addEventListener('change',e=>{
 document.addEventListener('keydown',e=>{if(document.querySelector('.cijferblok')&&!/INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||'')){if(/^[0-9]$/.test(e.key)){document.querySelector(`.cijferblok [data-v="${e.key}"]`)?.click();return}if(e.key==='Backspace'){document.querySelector('.cijferblok .wis')?.click();return}}if(e.key!=='Enter')return;
   if(e.target.id==='notitieIn'){document.querySelector('[data-a=notitie]')?.click();return}
   const b=document.querySelector('[data-a=login],[data-a=setup],[data-a=koppel]');if(b)b.click()});
-document.addEventListener('visibilitychange',()=>{if(document.hidden){bewaarNu();return}weerLaden();if(volgVandaag)datum=iso();controleerSessie();if(L.gekoppeld&&db)sync();render()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){bewaarNu();return}weerLaden();volgHash();if(volgVandaag)datum=iso();controleerSessie();if(L.gekoppeld&&db)sync();render()});
 setInterval(()=>{const was=!!L.sessie;controleerSessie();if(was&&!L.sessie){werk=null;document.getElementById('werk').classList.remove('open');sluit();render()}},60000);
 
 /* ================= start ================= */
@@ -2324,6 +2430,8 @@ if(window.ReactNativeWebView||window.__BEGINSTAAT__!==undefined)document.querySe
 for(const d of Object.keys(S.derving))borgHistorie(d);
 controleerSessie();
 weerLaden();
+function volgHash(){if(location.hash==='#materiaal'&&L.sessie){tab='meer';sub='materiaal';history.replaceState(null,'',location.pathname+location.search);render()}}
+window.addEventListener('hashchange',volgHash);setTimeout(volgHash,300);
 db=maakDb();
 if(L.modus==='lokaal')syncStatus='lokaal';
 else if(L.gekoppeld)syncStatus=db?'start':'offline';
