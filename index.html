@@ -401,10 +401,33 @@ nav button{position:relative}
 .cijferblok.licht button{background:var(--achter);color:var(--tekst);border:1px solid var(--lijn)}
 .cijferblok.licht .wis{background:transparent;border:0;color:var(--tekst)}
 .cijfer small{display:block;font-size:12px;color:var(--oranje);font-weight:700;margin-top:2px}
+
+#bevestig{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 70px);transform:translate(-50%,-10px);background:#2e7d32;color:#fff;font-weight:800;font-size:17px;padding:12px 20px;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:45;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:88%;text-align:center}
+#bevestig.zichtbaar{opacity:1;transform:translate(-50%,0)}
+#oefenbalk{display:none}
+body.oefen #oefenbalk{display:flex;align-items:center;justify-content:center;gap:12px;position:fixed;left:0;right:0;top:env(safe-area-inset-top,0px);z-index:40;padding:8px 12px;color:#fff;font-weight:800;font-size:14px;background:repeating-linear-gradient(45deg,#f17d04 0 14px,#d96f00 14px 28px)}
+body.oefen #oefenbalk button{border:0;background:#fff;color:#d96f00;font-weight:800;border-radius:10px;padding:6px 12px}
+body.oefen #statusplek{padding-top:40px}
+.pinbolletjes.donker i{border-color:var(--grijs)}.pinbolletjes.donker i.vol{background:var(--oranje);border-color:var(--oranje)}
+.pinwijzig .cijferblok{max-width:320px;margin:10px auto 0}
+.eenvoudig .hist,.eenvoudig .weer,.eenvoudig .ring{display:none}
+.eenvoudig .regel .naam{font-size:18px}
+.tourplaatje{width:100%;height:auto;display:block;border-radius:12px;margin:4px 0 12px;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+.nieuwsicoon{font-size:26px;width:40px;text-align:center;flex:none;margin-right:6px}
+.karkleuren{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--lijn);flex-wrap:wrap}
+.kleurbol{width:28px;height:28px;border-radius:50%;border:3px solid transparent;padding:0}
+.kleurbol.aan{border-color:var(--tekst)}
+.kop{position:relative}
+.wisselknop{position:absolute;top:12px;right:14px;border:1.5px solid rgba(255,255,255,.85);background:rgba(255,255,255,.12);color:#fff;font-weight:700;font-size:13px;border-radius:16px;padding:5px 10px}
+.welkomkaart{background:#fff;color:#222;border-radius:14px;padding:16px;border:2px solid #f17d04}
+.welkomkaart ol{padding-left:20px;margin:10px 0;font-size:14px;line-height:1.45}
+.welkomtitel{font-size:19px;font-weight:900;color:#f17d04}
+.welkompin{font-size:16px;margin-top:6px}.welkompin b{font-size:24px;letter-spacing:3px}
+.welkomqr{width:150px;margin:10px auto}.welkomqr.groot{width:240px}.welkomqr svg{width:100%;height:auto;display:block}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script></head>
 <body><div id="app"><div id="statusplek"></div><div id="opslagmelding">Opslaan mislukt: het geheugen is vol. Verwijder een paar foto's bij Broodsoorten.</div><main id="scherm"></main><nav id="nav"></nav></div>
-<div id="sheet"><div class="paneel" id="paneel"></div></div><div id="werk"></div><div id="feest"></div><div id="undo"></div><div id="tour"></div><div id="printvak"></div>
+<div id="sheet"><div class="paneel" id="paneel"></div></div><div id="werk"></div><div id="feest"></div><div id="undo"></div><div id="bevestig"></div><div id="oefenbalk"></div><div id="tour"></div><div id="printvak"></div>
 <script>
 const DEFAULTS={"items": [{"id": "b1", "kar": 1, "groep": "", "naam": "Croissant roomboter", "mv": {"p": 2, "s": 12}, "za": {"p": null, "s": null}, "zo": {"p": 1, "s": null}}, {"id": "b2", "kar": 1, "groep": "", "naam": "Croissant ham-kaas", "mv": {"p": 2, "s": 12}, "za": {"p": 3, "s": 12}, "zo": {"p": 1, "s": null}}, {"id": "b3", "kar": 1, "groep": "", "naam": "Croissant kaas", "mv": {"p": 2, "s": 12}, "za": {"p": 3, "s": 12}, "zo": {"p": 1, "s": null}}, {"id": "b4", "kar": 1, "groep": "", "naam": "Croissant choco", "mv": {"p": 1, "s": 12}, "za": {"p": null, "s": null}, "zo": {"p": null, "s": 9}}, {"id": "b5", "kar": 1, "groep": "", "naam": "Kaasstengels", "mv": {"p": 1, "s": 8}, "za": {"p": null, "s": null}, "zo": {"p": null, "s": null}}, {"id": "b6", "kar": 1, "groep": "", "naam": "Saucijzenbroodjes", "mv": {"p": 1, "s": 12}, "za": {"p": null, "s": null}, "zo": {"p": null, "s": null}}, {"id": "b7", "kar": 1, "groep": "", "naam": "Kaasbroodjes", "mv": {"p": 1, "s": 6}, "za": {"p": null, "s": null}, "zo": {"p": null, "s": null}}, {"id": "b8", "kar": 1, "groep": "", "naam": "Frikandelbroodjes", "mv": {"p": 1, "s": 6}, "za": {"p": null, "s": null}, "zo": {"p": null, "s": null}}, {"id": "b9", "kar": 1, "groep": "", "naam": "Gehaktbal broodje", "mv": {"p": 1, "s": 6}, "za": {"p": null, "s": null}, "zo": {"p": null, "s": null}}, {"id": "b10", "kar": 1, "groep": "A", "naam": "Gevulde koek groot", "mv": {"p": 1, "s": 10}, "za": {"p": null, "s": null}, "zo": {"p": null, "s": null}}, {"id": "b11", "kar": 1, "groep": "A", "naam": "Gevulde koek klein", "mv": {"p": 1, "s": 12}, "za": {"p": null, "s": null}, "zo": {"p": null, "s": null}}, {"id": "b12", "kar": 1, "groep": "B", "naam": "Kaneelbroodje", "mv": {"p": 1, "s": 4}, "za": {"p": null, "s": null}, "zo": {"p": null, "s": null}}, {"id": "b13", "kar": 1, "groep": "B", "naam": "Koffiebroodje", "mv": {"p": 1, "s": 2}, "za": {"p": null, "s": null}, "zo": {"p": null, "s": null}}, {"id": "b14", "kar": 1, "groep": "B", "naam": "Pecanbroodje", "mv": {"p": 1, "s": 2}, "za": {"p": null, "s": null}, "zo": {"p": null, "s": null}}, {"id": "b15", "kar": 2, "groep": "", "naam": "Witte pistolet", "mv": {"p": 1, "s": 16}, "za": {"p": null, "s": null}, "zo": {"p": null, "s": null}}, {"id": "b16", "kar": 2, "groep": "", "naam": "Bruine pistolet", "mv": {"p": 1, "s": 16}, "za": {"p": null, "s": null}, "zo": {"p": null, "s": null}}, {"id": "b17", "kar": 2, "groep": "", "naam": "Witte kaiser", "mv": {"p": 1, "s": 16}, "za": {"p": null, "s": null}, "zo": {"p": null, "s": null}}, {"id": "b18", "kar": 2, "groep": "", "naam": "Volkoren kaiser", "mv": {"p": 1, "s": 16}, "za": {"p": null, "s": null}, "zo": {"p": null, "s": null}}, {"id": "b19", "kar": 2, "groep": "A", "naam": "Italiaanse bol", "mv": {"p": 1, "s": 4}, "za": {"p": null, "s": null}, "zo": {"p": null, "s": null}}, {"id": "b20", "kar": 2, "groep": "A", "naam": "Kornbol", "mv": {"p": 1, "s": 4}, "za": {"p": null, "s": null}, "zo": {"p": null, "s": null}}, {"id": "b21", "kar": 2, "groep": "A", "naam": "Pompoenbroodje", "mv": {"p": 1, "s": 4}, "za": {"p": null, "s": null}, "zo": {"p": null, "s": null}}, {"id": "b22", "kar": 2, "groep": "B", "naam": "Tijgerbol", "mv": {"p": 1, "s": 6}, "za": {"p": null, "s": null}, "zo": {"p": null, "s": null}}, {"id": "b23", "kar": 2, "groep": "B", "naam": "Kaasbol", "mv": {"p": 1, "s": 6}, "za": {"p": null, "s": null}, "zo": {"p": null, "s": null}}, {"id": "b24", "kar": 2, "groep": "C", "naam": "Witte demi baguette", "mv": {"p": 1, "s": 4}, "za": {"p": null, "s": null}, "zo": {"p": null, "s": null}}, {"id": "b25", "kar": 2, "groep": "C", "naam": "Meerzaden baguette", "mv": {"p": 1, "s": 4}, "za": {"p": null, "s": null}, "zo": {"p": null, "s": null}}, {"id": "b26", "kar": 2, "groep": "", "naam": "Wit stokbrood", "mv": {"p": 1, "s": 4}, "za": {"p": null, "s": null}, "zo": {"p": null, "s": null}}, {"id": "b27", "kar": 2, "groep": "D", "naam": "Meerzaden stokbrood", "mv": {"p": 1, "s": 2}, "za": {"p": null, "s": null}, "zo": {"p": null, "s": null}}, {"id": "b28", "kar": 2, "groep": "D", "naam": "Wit luxe stokbrood", "mv": {"p": 1, "s": 2}, "za": {"p": null, "s": null}, "zo": {"p": null, "s": null}}], "karren": [{"nr": 1, "naam": "KAR 1 – DEEG"}, {"nr": 2, "naam": "KAR 2 – KLEINBROOD"}]};
 const SUPA_URL='https://dmvutkvpnoeenybznskz.supabase.co',SUPA_KEY='sb_publishable_bWdFBTPWPSK9nLo3UDZn5w_6uvDQ_eu';
@@ -466,7 +489,7 @@ function naarV6(S){
   delete S.sessie;delete S.laatsteActie;S.versie=6;return S;
 }
 function vulAan(S){
-  for(const k of['historie','derving','karOverride','afwijkend','notities','voorraad','vinkjes','status','avond','dervBest','aanpas','timers','log','fotos','snij','ontdooi','dervHH','bijbak','profielen','berichten','karTaak','afsluit','feestNee','notfotos','dervReg','levering','cadeau'])S[k]=isObj(S[k])?S[k]:{};
+  for(const k of['historie','derving','karOverride','afwijkend','notities','voorraad','vinkjes','status','avond','dervBest','aanpas','timers','log','fotos','snij','ontdooi','dervHH','bijbak','profielen','berichten','karTaak','afsluit','feestNee','notfotos','dervReg','levering','cadeau','pins'])S[k]=isObj(S[k])?S[k]:{};
   for(const k of['gebruikers','soorten','karren'])S[k]=Array.isArray(S[k])?S[k]:[];
   S.plan=isObj(S.plan)?S.plan:{};for(const k of['ma','di','wo','do','vr','za','zo'])S.plan[k]=isObj(S.plan[k])?S.plan[k]:{};
   S.leverdagen=Array.isArray(S.leverdagen)?S.leverdagen:[1,3,5];S.ovenMax=S.ovenMax||10;
@@ -532,6 +555,8 @@ function werkelijk(d,m,s){
 const werkDagTotaal=(d,s)=>S.momenten.reduce((t,m)=>t+werkelijk(d,m.id,s),0);
 function verdeling(n,max){max=max>0?max:n;const p=Math.ceil(n/max),rest=n-(p-1)*max;return{platen:p,delen:p?[...Array(p-1).fill(max),rest]:[],rest}}
 function karNrs(){return[...new Set([...S.karren.map(k=>k.nr),...S.soorten.map(effKar)])].filter(Number.isInteger).sort((a,b)=>a-b)}
+const KARKLEUREN=['#f17d04','#1f6fb2','#2e8b57','#7b3fa0','#c62828','#6b6b6b'];
+function karKleur(nr){return S.karren.find(x=>x.nr===nr)?.kleur||'var(--oranje)'}
 function karNaam(nr){const k=S.karren.find(x=>x.nr===nr);return(k&&k.naam&&k.naam.trim())||`Kar ${nr}`}
 function maakLijst(d,m){
   const out=[],pk=planKeyVoor(d);
@@ -613,8 +638,21 @@ function bestelBerekening(){
 
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
-function bewaarL(){try{localStorage.setItem(OPSLAG_LOKAAL,JSON.stringify(L))}catch(e){}}
-function bewaarNu(){clearTimeout(bewaarTimer);bewaarTimer=null;snapshot();const t=JSON.stringify(S);let ok=true;
+let OEFEN=false;
+const APP_VERSIE='9.3';
+const NIEUWS=[['🔑','Eigen pincode','Nieuwe medewerkers kiezen bij de eerste keer inloggen zelf een pincode. Je pincode wijzigen kan via Meer → App-instellingen.'],
+ ['🧹','Rustiger menu','Je ziet alleen nog de onderdelen die je mag gebruiken.'],
+ ['🔤','Eenvoudige modus','In App-instellingen kun je de app eenvoudiger maken: minder informatie en grotere knoppen.'],
+ ['🎓','Oefenen','Via Meer → Uitleg → Oefenen kun je alles uitproberen zonder dat er iets echt verandert.'],
+ ['✅','Duidelijke bevestiging','Na afvinken of opslaan zie je een groene melding. Bij een vreemd aantal vraagt de app "Klopt dit?".'],
+ ['🎨','Kleur per kar','Elke kar kan een eigen kleur hebben, zodat je de lijst makkelijk bij de echte kar vindt.'],
+ ['⇄','Snel wisselen','Werk je met meerdere mensen op één telefoon? Tik bovenin op je naam om te wisselen.']];
+function toonNieuws(){const p=prof();if(!L.sessie||p.versieGezien===APP_VERSIE)return false;
+  toonSheet(`<div class="pkop"><span style="width:70px"></span><b>Nieuw in versie ${APP_VERSIE}</b><button data-a="nieuwsklaar" style="font-weight:700">Top!</button></div><div class="pinhoud">
+   <div class="sectie" style="margin:10px 0 0">${NIEUWS.map(([i,t,x])=>`<div class="rij inv"><div class="nieuwsicoon">${i}</div><div class="groei"><div class="naam">${t}</div><div class="sub">${x}</div></div></div>`).join('')}</div>
+   <div class="knoppen"><button class="knop" data-a="nieuwsklaar">Begrepen</button></div></div>`);return true}
+function bewaarL(){if(OEFEN)return;try{localStorage.setItem(OPSLAG_LOKAAL,JSON.stringify(L))}catch(e){}}
+function bewaarNu(){clearTimeout(bewaarTimer);bewaarTimer=null;if(OEFEN)return;snapshot();const t=JSON.stringify(S);let ok=true;
   try{localStorage.setItem(OPSLAG,t);bewaarSync()}catch(e){ok=!!window.ReactNativeWebView}
   bewaarL();if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(t);
   if(ok!==!opslagFout){opslagFout=!ok;const el=document.getElementById('opslagmelding');if(el)el.style.display=opslagFout?'block':'none'}
@@ -649,7 +687,7 @@ function maakDb(){
 }
 function splitsen(){
   const o={'beheer:gebruikers':{lijst:S.gebruikers},instellingen:{soorten:S.soorten,karren:S.karren,momenten:S.momenten,ovenMax:S.ovenMax,leverdagen:S.leverdagen,programmas:S.programmas},
-    plan:{plan:S.plan,karOverride:S.karOverride,feestNee:S.feestNee},afwijkend:S.afwijkend,voorraad:S.voorraad,profielen:S.profielen,berichten:S.berichten};
+    plan:{plan:S.plan,karOverride:S.karOverride,feestNee:S.feestNee},afwijkend:S.afwijkend,voorraad:S.voorraad,profielen:S.profielen,berichten:S.berichten,pins:S.pins};
   const dagen=new Set();for(const k of DAGVELDEN)for(const d of Object.keys(S[k]))dagen.add(d);
   for(const d of dagen){const x={};for(const k of DAGVELDEN)if(S[k][d]!==undefined)x[k]=S[k][d];o['dag:'+d]=x}
   for(const[id,l]of Object.entries(S.log)){const k='log:'+iso(new Date(l.t));(o[k]=o[k]||{})[id]=l}
@@ -667,6 +705,7 @@ function pasToe(k,v){
   else if(k==='voorraad')S.voorraad=v;
   else if(k==='profielen')S.profielen=v;
   else if(k==='berichten')S.berichten=v;
+  else if(k==='pins')S.pins=v;
   else if(k==='prive:cadeau')S.cadeau=v.bonnen||{};
   else if(k.startsWith('dag:')){const d=k.slice(4);for(const f of DAGVELDEN){if(v[f]!==undefined)S[f][d]=v[f];else delete S[f][d]}}
   else if(k.startsWith('log:')){const d=k.slice(4);for(const[id,l]of Object.entries(S.log))if(iso(new Date(l.t))===d&&!v[id])delete S.log[id];Object.assign(S.log,v)}
@@ -688,14 +727,14 @@ function pasOpsToe(obj,ops){
   return root;
 }
 function ontvang(k,v){
-  if(!isObj(v))return;const rev=v._rev||0;if(revs[k]!=null&&rev<=revs[k])return;revs[k]=rev;v=zonderRev(v);
+  if(OEFEN||!isObj(v))return;const rev=v._rev||0;if(revs[k]!=null&&rev<=revs[k])return;revs[k]=rev;v=zonderRev(v);
   const lokaal=splitsen()[k],lj=stabiel(lokaal);
   if(basis[k]===undefined||lokaal===undefined||lj===basis[k]){basis[k]=stabiel(v);pasToe(k,v)}
   else{const ops=diff(JSON.parse(basis[k]),lokaal);basis[k]=stabiel(v);pasToe(k,pasOpsToe(kloon(v),ops));planSync()}
 }
 function planSync(){if(L.modus==='lokaal'||!db||!L.gekoppeld)return;clearTimeout(syncTimer);syncTimer=setTimeout(sync,250)}
 async function sync(){
-  if(!db||!L.gekoppeld||L.modus==='lokaal')return;
+  if(OEFEN||!db||!L.gekoppeld||L.modus==='lokaal')return;
   if(syncBezig){syncOpnieuw=true;return}
   syncBezig=true;let veranderd=false,fout=false;
   try{
@@ -733,12 +772,13 @@ function pasThemaToe(){
   if(t==='licht')r.dataset.theme='light';else if(t==='donker')r.dataset.theme='dark';else delete r.dataset.theme;
   const kleur=ACCENTEN.find(a=>a[0]===p.accent)?.[2]||'#f17d04';
   if(kleur!=='#f17d04'){r.style.setProperty('--oranje',kleur);r.style.setProperty('--oranjeLicht',`color-mix(in srgb, ${kleur} 16%, var(--kaart))`)}else{r.style.removeProperty('--oranje');r.style.removeProperty('--oranjeLicht')}
-  r.style.setProperty('--zoom',{normaal:1,groot:1.12,xl:1.25}[p.tekst]||1);
+  r.style.setProperty('--zoom',Math.max(p.eenvoudig?1.12:1,{normaal:1,groot:1.12,xl:1.25}[p.tekst]||1));
+  app.classList.toggle('eenvoudig',!!p.eenvoudig);
   app.classList.toggle('compact',!!p.compact);app.classList.toggle('geenfotos',!p.fotos);app.classList.toggle('geenpatroon',!p.patroon);app.classList.toggle('geenplu',!p.plu);
 }
 const ACCENTEN=[['oranje','Coop-oranje','#f17d04'],['groen','Groen','#2e8b57'],['blauw','Blauw','#1f6fb2'],['paars','Paars','#7b3fa0']];
 const EMOJI=['🥐','🥖','🍞','🥨','🧁','🍰','🧑‍🍳','👩‍🍳','👨‍🍳','😀','😎','🌻','⭐','🔥','💪','☕'];
-const PROF_STANDAARD={thema:'auto',tekst:'normaal',compact:false,fotos:true,patroon:true,plu:true,emoji:'',accent:'oranje',start:'lijst',moment:null,feest:true,groet:true};
+const PROF_STANDAARD={eenvoudig:false,thema:'auto',tekst:'normaal',compact:false,fotos:true,patroon:true,plu:true,emoji:'',accent:'oranje',start:'lijst',moment:null,feest:true,groet:true};
 function prof(id=L.sessie){const p={...PROF_STANDAARD,...((id&&S.profielen[id])||{})};if(id&&!S.profielen[id]?.thema&&L.thema?.[id])p.thema=L.thema[id];return p}
 function zetProf(k,v){const id=L.sessie;if(!id)return;S.profielen[id]={...(S.profielen[id]||{}),[k]:v};bewaar();render()}
 
@@ -775,10 +815,11 @@ rapWeek=maandag(iso());
 function render(){
   const m=document.getElementById('scherm');pasThemaToe();_render();const merk=!!m.querySelector('.merkscherm');document.getElementById('app').classList.toggle('merkmodus',merk);
   if(tab==='lijst'&&zoekOpen)zoekFilter();
-  const k=m.querySelector('.kop');if(k&&!merk){k.insertAdjacentHTML('afterbegin',`<img class="koplogo" src="${LOGO_SRC}" alt="Coop Vogelenzang">`);const t=m.querySelector(':scope > .terug');if(t)k.prepend(t)}
+  const k=m.querySelector('.kop');if(k&&!merk){k.insertAdjacentHTML('afterbegin',`<img class="koplogo" src="${LOGO_SRC}" alt="Coop Vogelenzang">${ik()&&S.gebruikers.filter(g=>g.rol==='admin'||g.actief!==false).length>1?`<button class="wisselknop" data-a="wissel">${prof().emoji||'👤'} ${esc((ik().naam||'').split(' ')[0])} ⇄</button>`:''}`);const t=m.querySelector(':scope > .terug');if(t)k.prepend(t)}
 }
 function _render(){
   const m=document.getElementById('scherm'),nav=document.getElementById('nav'),st=document.getElementById('statusplek');
+  if(L.sessie&&ik()&&pinTijdelijk(ik())){st.innerHTML=statusHtml();nav.innerHTML='';m.innerHTML=pinKiesHtml();return}
   if(st)st.innerHTML=statusHtml();
   if(!S.momenten.find(x=>x.id===moment))moment=S.momenten[0].id;
   if(L.modus!=='lokaal'&&!L.gekoppeld){m.innerHTML=koppelHtml();nav.innerHTML='';return}
@@ -787,7 +828,7 @@ function _render(){
   const g=ik();if(!g||(g.rol!=='admin'&&g.actief===false)){if(L.sessie){L.sessie=null;bewaarL()}m.innerHTML=loginHtml();nav.innerHTML='';return}
   const t=TABS.find(x=>x[0]===tab);if(!t||(t[2]&&!mag(t[2])))tab='lijst';
   m.innerHTML=tab==='lijst'?lijstHtml():tab==='plan'?planHtml():tab==='derving'?dervingHtml():meerHtml();
-  nav.innerHTML=TABS.map(([k,l,r])=>{const ok=!r||mag(r);return`<button data-a="${ok?'tab':'slot'}" data-v="${k}" class="${tab===k?'aan':''} ${ok?'':'op-slot'}">${ok?'':SLOT+' '}${l}${k==='meer'&&isAdmin()&&ongelezen()?'<span class="navbol"></span>':''}</button>`}).join('');
+  nav.innerHTML=TABS.filter(([k,l,r])=>!r||mag(r)).map(([k,l,r])=>{const ok=true;return`<button data-a="${ok?'tab':'slot'}" data-v="${k}" class="${tab===k?'aan':''} ${ok?'':'op-slot'}">${ok?'':SLOT+' '}${l}${k==='meer'&&isAdmin()&&ongelezen()?'<span class="navbol"></span>':''}</button>`}).join('');
   if(werk)renderWerk();
 }
 const momentSegment=()=>S.momenten.length<2?'':`<div class="segment">${S.momenten.map(x=>`<button data-a="moment" data-v="${x.id}" class="${x.id===moment?'aan':''}">${esc(x.naam)}</button>`).join('')}</div>`;
@@ -829,7 +870,7 @@ function lijstHtml(){
   const P=prof();
   let h=(P.groet?`<div class="kop"><div class="koprij"><div><div class="groet">${vandaag?groet:'Klaarzetten'}</div><h1>${vandaag?esc(naamIk)+' '+(P.emoji||'👋'):esc(datumTekst(datum))}</h1><p>${n?(k===n?`Alles klaar voor ${esc(momentNaam(moment).toLowerCase())}`:`Klaarzetten · nog ${n-k} te gaan${S.momenten.length>1?` voor ${esc(momentNaam(moment).toLowerCase())}`:''}`):'Niets klaar te zetten'}</p></div><div class="kopeind">${ring}<button class="info" data-a="zoek" aria-label="Zoeken">⌕</button>${info('klaarzetten')}</div></div></div>`:`<div class="kop"><div class="koprij"><h1>Klaarzetten</h1><div class="kopeind"><button class="info" data-a="zoek" aria-label="Zoeken">⌕</button>${info('klaarzetten')}</div></div><p>${n?`${k} van ${n} klaar`:'Niets klaar te zetten'}</p></div>`)+`
    <div class="datumnav"><button class="pijlk" data-a="datum" data-v="-1">‹</button><button class="dlabel" data-a="vandaag">${vandaag?'Vandaag':esc(datumTekst(datum))}<small>${vandaag?esc(datumTekst(datum)):'tik voor vandaag'}</small></button><button class="pijlk" data-a="datum" data-v="1">›</button></div>`;
-  h+=weerRegel(datum);
+  if(!prof().eenvoudig)h+=weerRegel(datum);
   if(zoekOpen)h+=`<div class="zoekbalk"><input class="veld" id="kzZoek" type="search" placeholder="Zoek op naam of PLU" value="${esc(zoekTerm)}" autocomplete="off"></div>`;
   if(pk.startsWith('afw:'))h+=`<span class="pil">Afwijkende planning: ${esc(S.afwijkend[datum].naam)}</span>`;
   if(S.afsluit[datum])h+=`<span class="pil groen">✓ Dag afgesloten door ${esc(S.afsluit[datum].wie)} om ${tijdTekst(S.afsluit[datum].t)}</span>`;
@@ -843,7 +884,7 @@ function lijstHtml(){
   const gezien={},kanTaak=isAdmin()||mag('invullen');
   sec.sort((a,b)=>(karTaak(datum,b.nr)===L.sessie)-(karTaak(datum,a.nr)===L.sessie));
   for(const s of sec){const tk=karTaak(datum,s.nr),tkNaam=tk?S.gebruikers.find(g=>g.id===tk)?.naam:'';
-    h+=`<div class="sectie"><div class="karkop" ${kanTaak?`data-a="kartaak" data-v="${s.nr}"`:''}><b>${esc(s.naam)}</b><span>${s.platen?`${s.platen} platen, `:''}${s.totaal} stuks</span></div>${tk||kanTaak?`<div class="taakregel ${tk===L.sessie?'mijn':''}" ${kanTaak?`data-a="kartaak" data-v="${s.nr}"`:''}>${tk?`👤 ${esc(tkNaam||'?')}${tk===L.sessie?' (jij)':''}`:'+ Iemand toewijzen'}</div>`:''}`;
+    h+=`<div class="sectie" style="border-color:${karKleur(s.nr)}"><div class="karkop" style="background:${karKleur(s.nr)}" ${kanTaak?`data-a="kartaak" data-v="${s.nr}"`:''}><b>${esc(s.naam)}</b><span>${s.platen?`${s.platen} platen, `:''}${s.totaal} stuks</span></div>${tk||kanTaak?`<div class="taakregel ${tk===L.sessie?'mijn':''}" ${kanTaak?`data-a="kartaak" data-v="${s.nr}"`:''}>${tk?`👤 ${esc(tkNaam||'?')}${tk===L.sessie?' (jij)':''}`:'+ Iemand toewijzen'}</div>`:''}`;
     for(const r of s.regels){
       const kl=!!v[r.s.id],gk=gKey(s.nr,r),eerste=!gezien[gk];gezien[gk]=true;
       const afb=r.s.type!=='ontdooien',gek=ovenKeuze[gk]!=null,a=advies(r.s,gr),hs=historie(r.s,gr),rest=restPlaten(r,s.nr),ab=afgebakken(gk);
@@ -1030,6 +1071,8 @@ const UITLEG=[
  ['weer','Weer','Bij Klaarzetten en Invullen zie je het weer in Vogelenzang met een hint bij opvallend weer. Het advies verandert daar niet vanzelf door.'],
  ['nieuw','Nieuwe producten','Zet bij een broodsoort "Nieuw product" aan. Onder Meer → Nieuwe producten zie je per week hoe het verkoopt.'],
  ['export','Exporteren naar Excel','Onder Meer → Exporteren kies je derving, weekrapport of planning en een periode. Het Excel-bestand deel je via het deelmenu: opslaan, mailen of versturen.'],
+ ['begeleid','Winkel-iPhone: alleen Brood Opzet (Begeleide toegang)','Zo zorg je dat op de winkel-iPhone alleen Brood Opzet open kan. 1) Open Instellingen → Toegankelijkheid → Begeleide toegang en zet het aan. 2) Tik op Toegangscode-instellingen → Stel toegangscode in en kies een code die alleen jij kent. 3) Open Brood Opzet vanaf het beginscherm. 4) Druk 3 keer snel op de zijknop en tik rechtsboven op Start. Nu kan niemand de app verlaten. Stoppen: druk weer 3 keer op de zijknop, vul je code in en tik linksboven op Stop. Tip: zet bij Begeleide toegang ook Automatische vergrendeling op Nooit als de telefoon aan de lader in de winkel ligt.'],
+ ['oefenen','Oefenen','Via Meer → Uitleg → Oefenen werkt de app tijdelijk met een kopie van de gegevens. Je kunt alles uitproberen: afvinken, derving, bijbakken. Er wordt niets echt opgeslagen. Met Stoppen in de oranje balk ga je terug naar de echte app.'],
  ['notities','Notities','Onder Meer → Notities vind je alle dagnotities van de afgelopen 6 maanden, nieuwste eerst. Zoek op een woord of naam, of toon alleen notities met een foto. Met Bekijk dag ga je naar Klaarzetten op die dag. Tik op een foto om hem groot te zien; tik nog eens om in te zoomen.'],
  ['plu','PLU-lijst','Onder Meer → PLU-lijst vind je alle PLU-nummers. Typ een deel van de naam of het nummer om te zoeken. Kies Op naam of Per kar. Het PLU-nummer staat ook achter de naam op Klaarzetten en groot in de werkmodus. Vul PLU-nummers in bij Broodsoorten.'],
  ['koppelen','Koppelen en inloggen','Elk toestel wordt één keer gekoppeld met de winkel-login of de beheerders-login. Daarna logt iedereen in met naam en pincode. Na 60 minuten niets doen wordt er automatisch uitgelogd. Bovenaan zie je of de app online is; offline wijzigingen worden later verzonden.']
@@ -1046,6 +1089,8 @@ function instellingenHtml(){const p=prof();
    <div class="hulp" style="margin:14px 0 6px">Accentkleur</div><div class="emojis">${ACCENTEN.map(([k,l,c])=>`<button class="kleurknop ${p.accent===k?'aan':''}" data-a="prof" data-k="accent" data-v="${k}"><i style="background:${c}"></i>${l}</button>`).join('')}</div>
    <div class="hulp" style="margin-top:14px">Startpagina na inloggen</div>${seg('start',[['lijst','Klaarzetten'],['derving','Derving'],['plan','Invullen']])}
    ${S.momenten.length>1?`<div class="hulp" style="margin-top:14px">Standaard bakmoment</div>${seg('moment',[['','Geen'],...S.momenten.map(m=>[m.id,esc(m.naam)])])}`:''}</div>
+   <div class="kaartje"><h3>Pincode</h3>${ik()?.rol==='admin'&&!kanBeheren()?'<p class="hulp">Je eigen pincode wijzig je op je eigen telefoon.</p>':'<div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:6px"><button class="knop rand klein" data-a="pinwijzig">Pincode wijzigen</button></div>'}</div>
+   <div class="kaartje"><h3>Eenvoud</h3>${sw('eenvoudig','Eenvoudige modus (minder informatie, grotere knoppen)')}</div>
    <div class="kaartje"><h3>Meldingen</h3>${sw('feest','"Alles klaargezet!"-melding')}${sw('groet','Begroeting en voortgangsring')}</div>`}
 
 function programmasHtml(){
@@ -1076,6 +1121,38 @@ function renderProgLijst(){
   const n=Object.keys(k).length;document.getElementById('progVoet').innerHTML=`<b>${n} ${n===1?'product':'producten'} gekoppeld</b>`;
 }
 let managerOpen=false;
+function appUrl(){return location.href.split('#')[0].split('?')[0].replace(/index\.html$/,'')}
+function laadQr(){return window.qrcode?Promise.resolve():new Promise((ok,nee)=>{const x=document.createElement('script');x.src='https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js';x.onload=ok;x.onerror=nee;document.head.appendChild(x)})}
+function qrSvg(tekst,cel=5){const q=qrcode(0,'M');q.addData(tekst);q.make();return q.createSvgTag({cellSize:cel,margin:2,scalable:true})}
+function qrInPdf(doc,tekst,x,y,maat){const q=qrcode(0,'M');q.addData(tekst);q.make();const n=q.getModuleCount(),c=maat/n;doc.setFillColor(0,0,0);for(let r=0;r<n;r++)for(let k=0;k<n;k++)if(q.isDark(r,k))doc.rect(x+k*c,y+r*c,c+0.01,c+0.01,'F')}
+const INSTALLATIE=['Open de link (of scan de QR-code) met Safari.','Tik onderaan op de deelknop (vierkantje met pijl omhoog).','Kies "Zet op beginscherm" en tik op "Voeg toe".','Open Brood Opzet vanaf je beginscherm, kies je naam, vul de tijdelijke pincode in en kies daarna je eigen pincode.'];
+let welkomst=null;
+function openWelkomst(u,pin){welkomst={naam:u.naam,pin};
+  toonSheet(`<div class="pkop"><span style="width:70px"></span><b>Welkomstkaart</b><button data-a="sluit" style="font-weight:700">Klaar</button></div><div class="pinhoud">
+   <p class="hulp">Geef deze kaart aan <b>${esc(u.naam)}</b>. De tijdelijke pincode staat erop; bij de eerste keer inloggen kiest ${esc(u.naam)} een eigen pincode.</p>
+   <div class="welkomkaart"><div class="welkomtitel">Welkom bij Brood Opzet, ${esc(u.naam)}!</div><div class="welkompin">Tijdelijke pincode: <b>${esc(pin)}</b></div><div id="welkomQr" class="welkomqr"></div>
+    <ol>${INSTALLATIE.map(t=>`<li>${esc(t)}</li>`).join('')}</ol><div class="sub">${esc(appUrl())}</div></div>
+   <div class="knoppen"><button class="knop" data-a="welkomdeel">Delen (WhatsApp)</button><button class="knop rand" data-a="welkompdf">PDF / printen</button></div></div>`);
+  laadQr().then(()=>{const el=document.getElementById('welkomQr');if(el)el.innerHTML=qrSvg(appUrl())}).catch(()=>{})}
+async function welkomDeel(){const w=welkomst;if(!w)return;const t=`Welkom bij Brood Opzet, ${w.naam}!\n\nJe tijdelijke pincode: ${w.pin}\n\n${INSTALLATIE.map((x,i)=>`${i+1}. ${x}`).join('\n')}\n\n${appUrl()}`;
+  try{if(navigator.share){await navigator.share({text:t});return}}catch(e){if(e&&e.name==='AbortError')return}
+  try{await navigator.clipboard.writeText(t);toast('Tekst gekopieerd')}catch(e){toast('Delen lukt hier niet')}}
+async function maakQrPdf(soort){
+  try{await laadPdf();await laadQr()}catch(e){toast('PDF maken lukt niet zonder internet');return}
+  const doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'}),O=[241,125,4];doc.setFillColor(...O);doc.rect(0,0,210,28,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(22);doc.text('Brood Opzet',105,18,{align:'center'});doc.setTextColor(20,20,20);
+  if(soort==='winkel'){doc.setFontSize(26);doc.text('Scan om Brood Opzet te openen',105,52,{align:'center'});qrInPdf(doc,appUrl(),45,64,120);doc.setFont('helvetica','normal');doc.setFontSize(13);
+    INSTALLATIE.slice(0,3).forEach((t,i)=>doc.text(`${i+1}. ${t}`,22,204+i*9));doc.text('4. Open Brood Opzet vanaf je beginscherm en log in met je naam en pincode.',22,231);doc.setFontSize(10);doc.text(appUrl(),105,285,{align:'center'})}
+  else{const w=welkomst;doc.setFontSize(22);doc.text(`Welkom, ${w.naam}!`,105,48,{align:'center'});doc.setFont('helvetica','normal');doc.setFontSize(15);doc.text('Je tijdelijke pincode:',105,62,{align:'center'});doc.setFont('helvetica','bold');doc.setFontSize(34);doc.text(w.pin,105,78,{align:'center'});
+    qrInPdf(doc,appUrl(),65,90,80);doc.setFont('helvetica','normal');doc.setFontSize(12);let y=184;INSTALLATIE.forEach((t,i)=>{const r=doc.splitTextToSize(`${i+1}. ${t}`,166);doc.text(r,22,y);y+=r.length*6+3});doc.setFontSize(10);doc.text(appUrl(),105,285,{align:'center'})}
+  const f=new File([doc.output('blob')],soort==='winkel'?'brood-opzet-qr-winkel.pdf':`welkom-${(welkomst?.naam||'').toLowerCase().replace(/[^a-z0-9]+/g,'-')}.pdf`,{type:'application/pdf'});
+  try{if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:f.name});return}}catch(e){if(e&&e.name==='AbortError')return;if(e&&e.name==='NotAllowedError'){toast('Tik nog een keer');return}}
+  toast('Delen wordt op dit toestel niet ondersteund')}
+function klaarHtml(){
+  const sn=S.soorten.filter(s=>s.naam.trim()),zonderFoto=sn.filter(s=>!S.fotos[s.id]),zonderPlu=sn.filter(s=>!s.plu),zonderHalf=sn.filter(s=>s.type==='vers'&&s.gesneden==='on'&&!s.pluHalf),zonderProg=sn.filter(s=>s.type==='afbakken'&&!s.programma),
+    tijd=S.gebruikers.filter(g=>g.rol!=='admin'&&g.actief!==false&&pinTijdelijk(g)),geenRecht=S.gebruikers.filter(g=>g.rol!=='admin'&&g.actief!==false&&!Object.values(g.rechten||{}).some(Boolean));
+  const blok=(titel,l,soort)=>l.length?`<div class="sectie"><div class="karkop"><b>${titel}</b><span>${l.length}</span></div>${l.slice(0,40).map(x=>`<div class="rij"><button class="regel" data-a="${soort==='g'?'gebruiker':'open'}" data-v="${x.id}"><div class="groei"><div class="naam">${esc(x.naam)}</div></div><span class="pijl">›</span></button></div>`).join('')}</div>`:'';
+  const h=blok('Broodsoorten zonder foto',zonderFoto)+blok('Broodsoorten zonder PLU',zonderPlu)+blok('Ongesneden zonder PLU half',zonderHalf)+blok('Afbakken zonder bakprogramma',zonderProg)+(kanBeheren()?blok('Medewerkers met tijdelijke pincode',tijd,'g')+blok('Medewerkers zonder rechten',geenRecht,'g'):'');
+  return`<div class="kop"><div class="koprij"><h1>Klaar voor gebruik?</h1></div><p>Wat nog ontbreekt en het werk lastiger maakt.</p></div>${h||'<div class="kaartje"><h3>✓ Alles is klaar</h3><div class="sub">Alle broodsoorten hebben een foto, PLU en programma, en iedereen heeft een eigen pincode.</div></div>'}`}
 /* ---------- cadeaubonnen (alleen beheerder) ---------- */
 let cbTab='uit',cbZoek='',cbSelect=false,cbSel=new Set();
 const euro=c=>'€ '+((c||0)/100).toFixed(2).replace('.',',');
@@ -1174,7 +1251,7 @@ function pluLijstHtml(){
   return groepen.map(([t,l])=>`<div class="sectie"><div class="karkop"><b>${esc(t)}</b></div>${sorteer(l).map(rij).join('')}</div>`).join('');
 }
 function uitlegHtml(){
-  return`<div class="kop"><h1>Uitleg</h1><p>Tik op een onderdeel om de uitleg te openen.</p></div><div class="knoppen" style="margin:0 0 6px"><button class="knop rand klein" data-a="tourstart">Rondleiding opnieuw bekijken</button></div><div class="sectie">${UITLEG.map(([k,t,x])=>`<div class="rij" id="u-${k}"><button class="regel" data-a="uitlegopen" data-v="${k}"><div class="groei"><div class="naam">${t}</div></div><span class="pijl">${uitlegOpen===k?'▴':'▾'}</span></button>${uitlegOpen===k?`<div class="uitlegtekst">${esc(x)}</div>`:''}</div>`).join('')}</div>`;
+  return`<div class="kop"><h1>Uitleg</h1><p>Tik op een onderdeel om de uitleg te openen.</p></div><div class="knoppen" style="margin:0 0 6px;flex-wrap:wrap"><button class="knop rand klein" data-a="tourstart">Rondleiding opnieuw bekijken</button><button class="knop klein" data-a="oefenstart">🎓 Oefenen</button></div><div class="sectie">${UITLEG.map(([k,t,x])=>`<div class="rij" id="u-${k}"><button class="regel" data-a="uitlegopen" data-v="${k}"><div class="groei"><div class="naam">${t}</div></div><span class="pijl">${uitlegOpen===k?'▴':'▾'}</span></button>${uitlegOpen===k?`<div class="uitlegtekst">${esc(x)}</div>`:''}</div>`).join('')}</div>`;
 }
 function toast(t){let el=document.getElementById('toast');if(!el){el=document.createElement('div');el.id='toast';document.body.appendChild(el)}el.textContent=t;el.classList.add('zichtbaar');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('zichtbaar'),2600)}
 
@@ -1187,6 +1264,8 @@ const wieTijd=x=>x&&x.t?`${initialen(x.wie)} ${tijdTekst(x.t)}`:'';
 let undoSnap=null,undoTimer=null;
 function undoStart(label){undoSnap={d:datum,label,v:kloon(S.vinkjes[datum]),st:kloon(S.status[datum]),a:kloon(S.aanpas[datum]),b:kloon(S.bijbak[datum]),sn:kloon(S.snij[datum]),h:kloon(S.historie[datum])}}
 function undoToon(){if(!undoSnap)return;const el=document.getElementById('undo');el.innerHTML=`<span>${esc(undoSnap.label)}</span><button data-a="undo">Ongedaan</button>`;el.classList.add('zichtbaar');clearTimeout(undoTimer);undoTimer=setTimeout(()=>{el.classList.remove('zichtbaar')},4000)}
+let bevTimer=null;
+function bevestig(t){const el=document.getElementById('bevestig');if(!el)return;el.textContent=t;el.classList.add('zichtbaar');clearTimeout(bevTimer);bevTimer=setTimeout(()=>el.classList.remove('zichtbaar'),1800)}
 function undoVerberg(){const el=document.getElementById('undo');if(el)el.classList.remove('zichtbaar')}
 
 function undoDoe(){const u=undoSnap;if(!u)return;const zet=(k,v)=>{if(v===undefined)delete S[k][u.d];else S[k][u.d]=v};
@@ -1264,17 +1343,29 @@ function toonOverdracht(){const l=overdrachtRegels();if(!l.length)return;
    <p class="hulp">Dit staat er nog open:</p><div class="sectie" style="margin:0">${l.map(t=>`<div class="rij inv"><div class="groei"><div class="naam" style="font-size:16px;font-weight:500">${esc(t)}</div></div></div>`).join('')}</div></div>`)}
 
 /* ---------- rondleiding ---------- */
-const TOUR=[
- ['Klaarzetten','Hier zie je per kar wat er klaargezet moet worden, met het plaatnummer links. Tik op een regel om hem af te vinken. Een verkeerde tik? Onderaan verschijnt "Ongedaan maken".'],
- ['✎ en extra','Met ✎ pas je het aantal voor vandaag aan. Met "+ Extra klaarzetten" zet je iets bij dat niet gepland stond. Met ⓘ zie je foto, werkinstructie en allergenen.'],
- ['Oven en bijbakken','Tik op "Oven vullen", kies wat de oven in gaat en tik op "Afgebakken" als het klaar is. Is iets op tijdens de dag? Gebruik "Bijbakken".'],
- ['Derving','Aan het eind van de dag vul je bij Derving in wat er over is en waar het heen gaat. Daarmee wordt het advies steeds beter.'],
- ['Meer','Onder Meer vind je de PLU-lijst, Ontdooien zoet, Dag afsluiten, een vraag aan de beheerder, je eigen instellingen en de uitleg van alles.']];
+const TOUR_PLAATJE={
+ klaar:`<svg viewBox="0 0 280 120" class="tourplaatje" aria-hidden="true"><rect x="0" y="0" width="280" height="120" rx="12" fill="#fff"/><rect x="0" y="0" width="280" height="26" rx="12" fill="#f17d04"/><rect x="0" y="14" width="280" height="12" fill="#f17d04"/><text x="12" y="18" font-size="12" font-weight="800" fill="#fff">KAR 1 – DEEG</text>
+  <rect x="12" y="38" width="34" height="30" rx="6" fill="none" stroke="#f17d04" stroke-width="2"/><text x="29" y="58" font-size="13" font-weight="800" fill="#f17d04" text-anchor="middle">1–2</text><text x="56" y="52" font-size="13" font-weight="700" fill="#222">Croissant</text><text x="56" y="65" font-size="10" fill="#888">24 stuks</text><circle cx="250" cy="53" r="12" fill="#f17d04"/><text x="250" y="58" font-size="14" font-weight="800" fill="#fff" text-anchor="middle">✓</text>
+  <rect x="12" y="78" width="34" height="30" rx="6" fill="none" stroke="#f17d04" stroke-width="2"/><text x="29" y="98" font-size="13" font-weight="800" fill="#f17d04" text-anchor="middle">3</text><text x="56" y="92" font-size="13" font-weight="700" fill="#222">Kaasstengels</text><text x="56" y="105" font-size="10" fill="#888">12 stuks</text><circle cx="250" cy="93" r="12" fill="none" stroke="#ccc" stroke-width="2"/><path d="M215 40 l14 10 -6 2 4 8 -4 2 -4 -8 -5 4z" fill="#222"/></svg>`,
+ pot:`<svg viewBox="0 0 280 120" class="tourplaatje" aria-hidden="true"><rect width="280" height="120" rx="12" fill="#fff"/><text x="14" y="34" font-size="13" font-weight="700" fill="#222">Witte pistolet</text><text x="14" y="50" font-size="10" fill="#888">16 stuks</text><rect x="190" y="18" width="36" height="36" rx="8" fill="#fff1e2"/><text x="208" y="42" font-size="16" fill="#f17d04" text-anchor="middle">ⓘ</text><rect x="232" y="18" width="36" height="36" rx="8" fill="#fff1e2"/><text x="250" y="42" font-size="16" fill="#f17d04" text-anchor="middle">✎</text>
+  <rect x="14" y="74" width="252" height="34" rx="10" fill="none" stroke="#f17d04" stroke-width="2"/><text x="140" y="96" font-size="13" font-weight="800" fill="#f17d04" text-anchor="middle">+ Extra klaarzetten</text></svg>`,
+ oven:`<svg viewBox="0 0 280 120" class="tourplaatje" aria-hidden="true"><rect width="280" height="120" rx="12" fill="#fff"/><rect x="14" y="16" width="120" height="36" rx="10" fill="#f17d04"/><text x="74" y="39" font-size="13" font-weight="800" fill="#fff" text-anchor="middle">Oven vullen</text><rect x="146" y="16" width="120" height="36" rx="10" fill="none" stroke="#f17d04" stroke-width="2"/><text x="206" y="39" font-size="13" font-weight="800" fill="#f17d04" text-anchor="middle">Bijbakken</text>
+  <rect x="14" y="66" width="252" height="40" rx="10" fill="#fff1e2"/><text x="26" y="91" font-size="12" fill="#222">3 platen in de oven</text><rect x="180" y="72" width="78" height="28" rx="8" fill="#f17d04"/><text x="219" y="91" font-size="11" font-weight="800" fill="#fff" text-anchor="middle">Afgebakken</text></svg>`,
+ derving:`<svg viewBox="0 0 280 120" class="tourplaatje" aria-hidden="true"><rect width="280" height="120" rx="12" fill="#fff"/><text x="14" y="32" font-size="13" font-weight="700" fill="#222">Croissant kaas</text><text x="14" y="48" font-size="10" fill="#888">24 opgezet</text><circle cx="186" cy="36" r="14" fill="none" stroke="#f17d04" stroke-width="2"/><text x="186" y="41" font-size="16" fill="#f17d04" text-anchor="middle">−</text><text x="216" y="41" font-size="15" font-weight="800" fill="#222" text-anchor="middle">3</text><circle cx="246" cy="36" r="14" fill="none" stroke="#f17d04" stroke-width="2"/><text x="246" y="41" font-size="16" fill="#f17d04" text-anchor="middle">+</text>
+  <rect x="14" y="70" width="252" height="38" rx="10" fill="#f17d04"/><text x="140" y="94" font-size="13" font-weight="800" fill="#fff" text-anchor="middle">Lijst opslaan</text></svg>`,
+ meer:`<svg viewBox="0 0 280 120" class="tourplaatje" aria-hidden="true"><rect width="280" height="120" rx="12" fill="#fff"/>${['Notities','PLU-lijst','App-instellingen','Uitleg'].map((t,i)=>`<text x="16" y="${26+i*26}" font-size="13" font-weight="700" fill="#222">${t}</text><text x="262" y="${26+i*26}" font-size="14" fill="#bbb" text-anchor="end">›</text>`).join('')}</svg>`};
+const TOUR_ALLE=[
+ ['Klaarzetten','Hier zie je per kar wat er klaargezet moet worden, met het plaatnummer links. Tik op een regel om hem af te vinken. Een verkeerde tik? Onderaan verschijnt "Ongedaan".','klaar',null],
+ ['✎, ⓘ en extra','Met ✎ pas je het aantal voor vandaag aan. Met ⓘ zie je foto, werkinstructie en allergenen. Met "+ Extra klaarzetten" zet je iets bij dat niet gepland stond.','pot','vinken'],
+ ['Oven en bijbakken','Tik op "Oven vullen", kies wat de oven in gaat en tik op "Afgebakken" als het klaar is. Is iets op tijdens de dag? Gebruik "Bijbakken".','oven','vinken'],
+ ['Derving','Vul bij Derving in wat er weg moet en tik op "Lijst opslaan". De lijst neem je over in de kassa.','derving','derving'],
+ ['Meer','Onder Meer vind je de PLU-lijst, notities, je eigen instellingen (zoals je pincode wijzigen) en de uitleg van alles. Wil je oefenen? Ga naar Uitleg → Oefenen.','meer',null]];
+const tourLijst=()=>TOUR_ALLE.filter(x=>!x[3]||mag(x[3]));
 let tourStap=0;
-function toonTour(){const el=document.getElementById('tour'),[t,x]=TOUR[tourStap];
-  el.innerHTML=`<div class="tourkaart"><div class="toursub">${tourStap+1} van ${TOUR.length}</div><div class="tourtitel">${t}</div><p>${esc(x)}</p>
-   <div class="tourpunten">${TOUR.map((_,i)=>`<i class="${i===tourStap?'aan':''}"></i>`).join('')}</div>
-   <div class="tourknoppen"><button class="merklink" data-a="tourklaar">Overslaan</button><button class="merkknop" data-a="tourvolgende">${tourStap<TOUR.length-1?'Volgende':'Aan de slag'}</button></div></div>`;el.classList.add('open')}
+function toonTour(){const T=tourLijst(),el=document.getElementById('tour'),[t,x,pl]=T[Math.min(tourStap,T.length-1)];
+  el.innerHTML=`<div class="tourkaart"><div class="toursub">${tourStap+1} van ${T.length}</div><div class="tourtitel">${t}</div>${TOUR_PLAATJE[pl]||''}<p>${esc(x)}</p>
+   <div class="tourpunten">${T.map((_,i)=>`<i class="${i===tourStap?'aan':''}"></i>`).join('')}</div>
+   <div class="tourknoppen"><button class="merklink" data-a="tourklaar">Overslaan</button><button class="merkknop" data-a="tourvolgende">${tourStap<T.length-1?'Volgende':'Aan de slag'}</button></div></div>`;el.classList.add('open')}
 
 /* ---------- vandaag gedaan ---------- */
 let gedaanDatum=iso();
@@ -1592,6 +1683,7 @@ function meerHtml(){
   if(sub==='export'&&mag('rapport'))return terug+exportHtml();
   if(sub==='notities')return terug+notOverzichtHtml();
   if(sub==='cadeau'&&isAdmin()&&kanBeheren())return terug+cadeauHtml();
+  if(sub==='klaar'&&isAdmin()&&kanBeheren())return terug+klaarHtml();
   if(sub==='dervlijsten'&&mag('derving'))return terug+dervLijstenHtml();
   if(sub==='uitleg')return terug+uitlegHtml();
   if(sub==='instellingen')return terug+instellingenHtml();
@@ -1615,9 +1707,9 @@ function meerHtml(){
   return`<div class="kop"><div class="koprij"><h1>Meer</h1>${info('meer')}</div><p>Ingelogd als <b>${esc(g.naam)}</b> (${g.rol==='admin'?'beheerder':'medewerker'})</p></div>
     <div class="sectie menu">${(()=>{const rij=([k,t,s,ok,slotTekst],mg)=>`<div class="rij"><button class="regel ${mg?'':'op-slot'}" data-a="${mg?'sub':'slot'}" data-v="${k}" ${!mg&&slotTekst?`data-m="${esc(slotTekst)}"`:''}><div class="groei"><div class="naam">${mg?'':SLOT+' '}${t}</div><div class="sub">${!mg&&slotTekst?esc(slotTekst):s}</div></div><span class="pijl">${mg?'›':''}</span></button></div>`;
       const wel=items.filter(x=>x[3]()),niet=items.filter(x=>!x[3]());
-      return wel.map(x=>rij(x,true)).join('')+(niet.length?`<div class="rij"><button class="regel managerkop" data-a="managertoggle"><div class="groei"><div class="naam">${SLOT} Manager <span class="telbol grijs">${niet.length}</span></div><div class="sub">${isAdmin()?'Alleen op je eigen telefoon':'Onderdelen waar je (nog) geen rechten voor hebt'}</div></div><span class="pijl">${managerOpen?'▴':'▾'}</span></button></div>${managerOpen?niet.map(x=>rij(x,false)).join(''):''}`:'');})()}
+      return wel.map(x=>rij(x,true)).join('')+(false&&niet.length?`<div class="rij"><button class="regel managerkop" data-a="managertoggle"><div class="groei"><div class="naam">${SLOT} Manager <span class="telbol grijs">${niet.length}</span></div><div class="sub">${isAdmin()?'Alleen op je eigen telefoon':'Onderdelen waar je (nog) geen rechten voor hebt'}</div></div><span class="pijl">${managerOpen?'▴':'▾'}</span></button></div>${managerOpen?niet.map(x=>rij(x,false)).join(''):''}`:'');})()}
     ${kanBeheren()?`<div class="rij"><button class="regel" data-a="gebruiker" data-v="${g.id}"><div class="groei"><div class="naam">Mijn pincode wijzigen</div></div><span class="pijl">›</span></button></div>`:''}</div>
-    ${isAdmin()&&kanBeheren()?`<div class="sectie menu"><div class="karkop"><b>Beheer</b><span>alleen voor jou</span></div><div class="rij"><button class="regel" data-a="sub" data-v="cadeau"><div class="groei"><div class="naam">🎁 Cadeaubonnen</div><div class="sub">${cadeauTellers().uit} uitgegeven · ${euro(cadeauTellers().open)} openstaand</div></div><span class="pijl">›</span></button></div></div>`:''}
+    ${isAdmin()&&kanBeheren()?`<div class="sectie menu"><div class="karkop"><b>Beheer</b><span>alleen voor jou</span></div><div class="rij"><button class="regel" data-a="sub" data-v="klaar"><div class="groei"><div class="naam">✅ Klaar voor gebruik</div><div class="sub">Wat nog ontbreekt: foto's, PLU, programma's, pincodes</div></div><span class="pijl">›</span></button></div><div class="rij"><button class="regel" data-a="qrwinkel"><div class="groei"><div class="naam">📱 QR-code voor de winkel</div><div class="sub">A4 om op te hangen bij de broodafdeling</div></div><span class="pijl">›</span></button></div><div class="rij"><button class="regel" data-a="sub" data-v="cadeau"><div class="groei"><div class="naam">🎁 Cadeaubonnen</div><div class="sub">${cadeauTellers().uit} uitgegeven · ${euro(cadeauTellers().open)} openstaand</div></div><span class="pijl">›</span></button></div></div>`:''}
     <div class="kaartje"><h3>Dit toestel</h3>${statusHtml()}<div class="sub">${L.modus==='lokaal'?'Gegevens staan alleen op dit toestel.':`Gekoppeld met de ${L.beheerder?'beheerders':'winkel'}-login.`}</div>
     <div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:10px">${L.modus==='lokaal'?`<button class="knop rand" data-a="naarkoppel">Toestel koppelen</button>`:isAdmin()?`<button class="knop rand" data-a="ontkoppel">${afwStap==='ontkoppel'?'Zeker? Tik nogmaals':'Toestel ontkoppelen'}</button>`:''}</div></div>
     <div class="knoppen"><button class="knop rand" data-a="uitloggen">Uitloggen</button></div>`;
@@ -1718,7 +1810,8 @@ function soortenHtml(){
    <div class="kaartje"><h3>Oven</h3><div style="display:flex;align-items:center;gap:10px">Maximaal <input class="veld" style="width:80px;text-align:center" inputmode="numeric" maxlength="2" id="ovenMaxIn" value="${S.ovenMax}"> platen per lading</div></div>`;
   for(const nr of karNrs()){
     const lijst=S.soorten.filter(s=>s.kar===nr),kar=S.karren.find(k=>k.nr===nr);
-    h+=`<div class="sectie"><div class="karkop"><input data-kar="${nr}" value="${esc(kar?kar.naam:'')}" placeholder="Kar ${nr}">${lijst.length?'':`<button class="link" data-a="karweg" data-v="${nr}">Verwijder</button>`}</div>`;
+    h+=`<div class="sectie"><div class="karkop" style="background:${karKleur(nr)}"><input data-kar="${nr}" value="${esc(kar?kar.naam:'')}" placeholder="Kar ${nr}">${lijst.length?'':`<button class="link" data-a="karweg" data-v="${nr}">Verwijder</button>`}</div>`;
+    h+=`<div class="karkleuren">${KARKLEUREN.map(c=>`<button class="kleurbol ${(kar?.kleur||KARKLEUREN[0])===c?'aan':''}" style="background:${c}" data-a="karkleur" data-v="${nr}" data-k="${c}" aria-label="Kleur"></button>`).join('')}<span class="hulp" style="margin:0">kleur van de kar</span></div>`;
     for(const s of lijst)h+=`<div class="rij"><button class="regel" data-a="open" data-v="${s.id}">${S.fotos[s.id]?`<img class="duim" src="${S.fotos[s.id]}" alt="">`:''}<div class="groei"><div class="naam">${esc(s.naam)}${s.groep?`<span class="groep">samen: ${esc(s.groep.toUpperCase())}</span>`:''}</div>
       <div class="sub">${s.type==='vers'&&s.gesneden==='on'?`${s.plu?`PLU heel ${esc(s.plu)}`:'<span class="let">PLU heel: nog invullen</span>'} · ${s.pluHalf?`half ${esc(s.pluHalf)}`:'<span class="let">half: nog invullen</span>'} · `:s.plu?`PLU ${esc(s.plu)} · `:''}${s.type==='ontdooien'?'Ontdooien, in stuks':s.type==='vers'?(s.gesneden==='on'?'Vers, ongesneden':'Vers, voorgesneden'):`Plaat ${s.min||0}–${s.max||'?'}`}${s.programma?`, prog. ${esc(s.programma)}`:''}${s.temp||s.baktijd?`, ${[s.temp?s.temp+'°C':'',s.baktijd?s.baktijd+' min':''].filter(Boolean).join(' ')}`:''}${s.perDoos?`, ${s.perDoos} per doos`:''}</div></div><span class="pijl">›</span></button></div>`;
     h+=`<button class="toevoegen" data-a="nieuw" data-v="${nr}">+ Broodsoort toevoegen</button></div>`;
@@ -1737,7 +1830,7 @@ function teamHtml(){
   const ms=S.gebruikers.filter(x=>x.rol!=='admin');
   if(!kanBeheren())return`<div class="kop"><h1>Medewerkers</h1></div><p class="leeg">Medewerkers en rechten beheren kan alleen op een toestel dat met de beheerders-login is gekoppeld.</p>`;
   return`<div class="kop"><div class="koprij"><h1>Medewerkers</h1>${info('team')}</div><p>Geef of ontneem rechten per medewerker.</p></div><div class="sectie">${ms.map(m=>{const r=RECHTEN.filter(([k])=>(m.rechten||{})[k]).length;
-    return`<div class="rij"><button class="regel" data-a="gebruiker" data-v="${m.id}"><div class="groei"><div class="naam">${esc(m.naam)}</div><div class="sub">${m.actief===false?'<span class="let">Geen toegang</span>':`${r} van ${RECHTEN.length} rechten`}</div></div><span class="pijl">›</span></button></div>`}).join('')}
+    return`<div class="rij"><button class="regel" data-a="gebruiker" data-v="${m.id}"><div class="groei"><div class="naam">${esc(m.naam)}${pinTijdelijk(m)?' <span class="st aangepast">tijdelijke pincode</span>':''}${prof(m.id).eenvoudig?' <span class="st ontd">eenvoudig</span>':''}</div><div class="sub">${m.actief===false?'<span class="let">Geen toegang</span>':`${r} van ${RECHTEN.length} rechten`}</div></div><span class="pijl">›</span></button></div>`}).join('')}
     <button class="toevoegen" data-a="nieuwegebruiker">+ Medewerker toevoegen</button></div>`;
 }
 
@@ -1750,10 +1843,41 @@ function setupHtml(){
   <label>Herhaal pincode</label><input class="veld pinveld" id="sPin2" inputmode="numeric" type="password" maxlength="4">
   <div class="fout" id="fout"></div><button class="merkknop" data-a="setup">Account aanmaken</button></div>`}
 
-let pinInvoer='',pinMelding='';
+let pinInvoer='',pinMelding='',geenVoorkeur=false;
+function pinVan(g){const p=S.pins[g.id];return g.rol!=='admin'&&p&&p.t>(g.pinT||0)?p.pin:g.pin}
+function pinTijdelijk(g){if(!g||g.rol==='admin'||!g.pinTijdelijk)return false;const p=S.pins[g.id];return!(p&&p.t>(g.pinT||0))}
+function pinTeMakkelijk(p){if(/^(\d)\1{3}$/.test(p))return true;const d=[...p].map(Number);const op=d.every((x,i)=>!i||x===d[i-1]+1),af=d.every((x,i)=>!i||x===d[i-1]-1);return op||af}
+let pinKies={stap:1,eerste:'',invoer:'',melding:''};
+function pinKiesHtml(){const g=ik();
+  return`<div class="merkscherm compact"><div class="merkkop klein"><img src="${LOGO_SRC}" alt="Coop Vogelenzang" class="merklogo"><div class="merkregel"><span class="merktitel">Welkom, ${esc(g.naam)}</span></div></div>
+   <p class="merktekst" style="text-align:center">${pinKies.stap===1?'Je bent ingelogd met een tijdelijke pincode.<br><b>Kies nu je eigen pincode</b> van 4 cijfers.':'Vul je nieuwe pincode <b>nog een keer</b> in.'}</p>
+   <div class="pinbolletjes ${pinKies.melding?'fout':''}">${[0,1,2,3].map(i=>`<i class="${i<pinKies.invoer.length?'vol':''}"></i>`).join('')}</div>
+   <div class="fout" id="fout">${esc(pinKies.melding)}</div>${cijferblokHtml('pk')}
+   <p class="merkhint">Kies geen makkelijke code zoals 0000 of 1234.</p></div>`}
+function cijferblokHtml(pre){return`<div class="cijferblok">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-a="${pre}" data-v="${n}">${n}</button>`).join('')}<span></span><button data-a="${pre}" data-v="0">0</button><button class="wis" data-a="${pre}" data-v="wis" aria-label="Wissen">⌫</button></div>`}
+function pinKiesToets(v){const g=ik();if(!g)return;if(v==='wis'){pinKies.invoer=pinKies.invoer.slice(0,-1);pinKies.melding='';render();return}
+  if(pinKies.invoer.length>=4)return;pinKies.invoer+=v;pinKies.melding='';render();if(pinKies.invoer.length<4)return;
+  setTimeout(()=>{const p=pinKies.invoer;pinKies.invoer='';
+    if(pinKies.stap===1){if(hashPin(p,g.id)===pinVan(g)){pinKies.melding='Kies een andere pincode dan de tijdelijke.';render();return}if(pinTeMakkelijk(p)){pinKies.melding='Te makkelijk. Kies een andere pincode.';render();return}pinKies.eerste=p;pinKies.stap=2;render();return}
+    if(p!==pinKies.eerste){pinKies={stap:1,eerste:'',invoer:'',melding:'De pincodes waren niet gelijk. Begin opnieuw.'};render();return}
+    S.pins[g.id]={pin:hashPin(p,g.id),t:Date.now()};pinKies={stap:1,eerste:'',invoer:'',melding:''};log('Eigen pincode gekozen');bewaar();render();bevestig('✓ Je eigen pincode is opgeslagen');naLogin()},150)}
+let pinWijzig=null;
+function openPinWijzig(){pinWijzig={stap:0,huidig:'',nieuw:'',invoer:'',melding:''};toonPinWijzig()}
+function toonPinWijzig(){const t=['Vul je huidige pincode in','Kies je nieuwe pincode','Vul je nieuwe pincode nog een keer in'][pinWijzig.stap];
+  toonSheet(`<div class="pkop"><button data-a="sluit">Annuleren</button><b>Pincode wijzigen</b><span style="width:70px"></span></div><div class="pinhoud pinwijzig">
+   <p class="hulp" style="text-align:center;font-size:16px;color:var(--tekst)">${t}</p><div class="pinbolletjes donker ${pinWijzig.melding?'fout':''}">${[0,1,2,3].map(i=>`<i class="${i<pinWijzig.invoer.length?'vol':''}"></i>`).join('')}</div>
+   <div class="fout" style="text-align:center">${esc(pinWijzig.melding)}</div><div class="cijferblok licht">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-a="pw" data-v="${n}">${n}</button>`).join('')}<span></span><button data-a="pw" data-v="0">0</button><button class="wis" data-a="pw" data-v="wis" aria-label="Wissen">⌫</button></div></div>`)}
+function pinWijzigToets(v){const g=ik(),w=pinWijzig;if(!g||!w)return;if(v==='wis'){w.invoer=w.invoer.slice(0,-1);w.melding='';toonPinWijzig();return}
+  if(w.invoer.length>=4)return;w.invoer+=v;w.melding='';toonPinWijzig();if(w.invoer.length<4)return;
+  setTimeout(()=>{const p=w.invoer;w.invoer='';
+    if(w.stap===0){if(hashPin(p,g.id)!==pinVan(g)){w.melding='Huidige pincode klopt niet.';toonPinWijzig();return}w.huidig=p;w.stap=1;toonPinWijzig();return}
+    if(w.stap===1){if(p===w.huidig){w.melding='Kies een andere pincode dan je huidige.';toonPinWijzig();return}if(pinTeMakkelijk(p)){w.melding='Te makkelijk. Kies een andere pincode.';toonPinWijzig();return}w.nieuw=p;w.stap=2;toonPinWijzig();return}
+    if(p!==w.nieuw){w.stap=1;w.nieuw='';w.melding='Niet gelijk. Kies je nieuwe pincode opnieuw.';toonPinWijzig();return}
+    if(g.rol==='admin'){const i=S.gebruikers.findIndex(x=>x.id===g.id);S.gebruikers[i]={...S.gebruikers[i],pin:hashPin(p,g.id)}}else S.pins[g.id]={pin:hashPin(p,g.id),t:Date.now()};
+    log('Pincode gewijzigd');bewaar();sluit();pinWijzig=null;bevestig('✓ Nieuwe pincode opgeslagen')},150)}
 function loginHtml(){
   const lijst=S.gebruikers.filter(g=>g.rol==='admin'||g.actief!==false).sort((a,b)=>a.naam.localeCompare(b.naam,'nl'));
-  if(!loginKeuze&&L.laatsteGebruiker&&lijst.some(g=>g.id===L.laatsteGebruiker))loginKeuze=L.laatsteGebruiker;
+  if(!loginKeuze&&!geenVoorkeur&&L.laatsteGebruiker&&lijst.some(g=>g.id===L.laatsteGebruiker))loginKeuze=L.laatsteGebruiker;
   const g=lijst.find(x=>x.id===loginKeuze),P=g?prof(g.id):null;
   return`<div class="merkscherm compact"><div class="merkkop klein"><img src="${LOGO_SRC}" alt="Coop Vogelenzang" class="merklogo"><div class="merkregel"><svg class="merkcroissant" viewBox="0 0 300 200" aria-hidden="true">${CROISSANT('#fff','#f17d04')}</svg><span class="merktitel">Brood Opzet</span></div></div>
    <label>Naam</label>
@@ -1762,10 +1886,11 @@ function loginHtml(){
    <div class="fout" id="fout">${esc(pinMelding)}</div>
    <div class="cijferblok">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-a="pin" data-v="${n}">${n}</button>`).join('')}<span></span><button data-a="pin" data-v="0">0</button><button class="wis" data-a="pinwis" aria-label="Wissen">⌫</button></div>
    <p class="merkhint">Na het 4e cijfer log je automatisch in</p>`:'<p class="merkhint" style="margin-top:18px">Kies eerst je naam.</p>'}</div>`}
+function naLogin(){if(!prof().rondleiding){tourStap=0;toonTour()}else if(!toonNieuws())toonOverdracht()}
 function probeerLogin(){
   const g=S.gebruikers.find(x=>x.id===loginKeuze),p=pinInvoer;pinInvoer='';
   if(Date.now()<geblokkeerdTot){pinMelding=`Te vaak fout. Probeer het over ${Math.ceil((geblokkeerdTot-Date.now())/1000)} seconden opnieuw.`;render();return}
-  if(g&&g.pin===hashPin(p,g.id)){fouteLogins=0;pinMelding='';L.sessie=g.id;L.laatsteGebruiker=g.id;loginKeuze=null;const P=prof(g.id);tab=P.start||'lijst';if(P.moment&&S.momenten.some(x=>x.id===P.moment))moment=P.moment;sub=null;datum=iso();volgVandaag=true;log('Ingelogd');bewaar();render();if(!prof().rondleiding){tourStap=0;toonTour()}else toonOverdracht();return}
+  if(g&&pinVan(g)===hashPin(p,g.id)){fouteLogins=0;geenVoorkeur=false;pinMelding='';L.sessie=g.id;L.laatsteGebruiker=g.id;loginKeuze=null;const P=prof(g.id);tab=P.start||'lijst';if(P.moment&&S.momenten.some(x=>x.id===P.moment))moment=P.moment;sub=null;datum=iso();volgVandaag=true;log('Ingelogd');bewaar();render();if(!pinTijdelijk(g))naLogin();return}
   fouteLogins++;if(fouteLogins>=5){geblokkeerdTot=Date.now()+30000;fouteLogins=0;pinMelding='5 keer fout. Wacht 30 seconden.'}else pinMelding=`Pincode klopt niet (${fouteLogins} van 5).`;render();
 }
 
@@ -1774,9 +1899,11 @@ function openGebruiker(u){
   bewerk={...u,soort:'gebruiker'};verwStap=false;const admin=u.rol==='admin',rechtenTonen=isAdmin()&&!admin,zelf=u.id===L.sessie;
   toonSheet(`<div class="pkop"><button data-a="sluit">Annuleren</button><b>${u.nieuw?'Nieuwe medewerker':zelf?'Mijn account':'Medewerker'}</b><button data-a="gopslaan" style="font-weight:700">Opslaan</button></div>
   <div class="pinhoud"><label>Naam</label><input class="veld" id="gNaam" value="${esc(u.naam||'')}" ${isAdmin()?'':'disabled'}>
-   <label>${u.nieuw?'Pincode (4 cijfers)':'Nieuwe pincode (leeg = niet wijzigen)'}</label><input class="veld pinveld" id="gPin" inputmode="numeric" type="password" maxlength="4"><div class="fout" id="fout"></div>
+   <label>${admin?(u.nieuw?'Pincode (4 cijfers)':'Nieuwe pincode (leeg = niet wijzigen)'):u.nieuw?'Tijdelijke pincode (4 cijfers)':'Pincode resetten: nieuwe tijdelijke pincode (leeg = niet wijzigen)'}</label><input class="veld pinveld" id="gPin" inputmode="numeric" maxlength="4" ${admin?'type="password"':''}><div class="fout" id="fout"></div>
+   ${!admin?`<p class="hulp">${u.nieuw?'De medewerker kiest bij de eerste keer inloggen zelf een eigen pincode.':pinTijdelijk(u)?'<b>Heeft nog een tijdelijke pincode.</b> ':'Vergeten? Vul hierboven een nieuwe tijdelijke pincode in.'}</p>`:''}
    ${rechtenTonen?`<label>Rechten</label>${RECHTEN.map(([k,l])=>`<label class="schakel" style="margin:0;color:var(--tekst);font-weight:400">${l}<input type="checkbox" id="r-${k}" ${(u.rechten||{})[k]?'checked':''}></label>`).join('')}
    <label class="schakel" style="margin:0;color:var(--tekst);font-weight:400">Toegang tot de app<input type="checkbox" id="gActief" ${u.actief!==false?'checked':''}></label>
+   <label class="schakel" style="margin:0;color:var(--tekst);font-weight:400">Eenvoudige modus<input type="checkbox" id="gEenvoudig" ${prof(u.id).eenvoudig?'checked':''}></label>
    <p class="hulp">Klaarzetten bekijken en dagnotities plaatsen kan iedereen met toegang.</p>${u.nieuw?'':`<button class="verwijder" data-a="gweg">Medewerker verwijderen</button>`}`:''}</div>`);
 }
 function gebruikerOpslaan(){
@@ -1785,12 +1912,15 @@ function gebruikerOpslaan(){
   if(!naam)return fout('Vul een naam in.');
   if(S.gebruikers.some(x=>x.id!==bewerk.id&&x.naam.toLowerCase()===naam.toLowerCase()))return fout('Deze naam bestaat al.');
   if((bewerk.nieuw||pin)&&!/^[0-9]{4}$/.test(pin))return fout('Pincode moet 4 cijfers zijn.');
+  if(pin&&bewerk.rol!=='admin'&&pinTeMakkelijk(pin)&&!confirm(`Pincode ${pin} is erg makkelijk. Toch gebruiken als tijdelijke pincode?`))return;
   const oud=S.gebruikers.find(x=>x.id===bewerk.id)||{},u={...oud,id:bewerk.id,naam,rol:bewerk.rol,pin:pin?hashPin(pin,bewerk.id):bewerk.pin};
+  if(pin&&bewerk.rol!=='admin'){u.pinTijdelijk=true;u.pinT=Date.now()}
   delete u.nieuw;delete u.soort;
-  if(isAdmin()&&bewerk.rol!=='admin'){u.rechten={};for(const[k]of RECHTEN)u.rechten[k]=document.getElementById('r-'+k).checked;u.actief=document.getElementById('gActief').checked}
+  if(isAdmin()&&bewerk.rol!=='admin'){u.rechten={};for(const[k]of RECHTEN)u.rechten[k]=document.getElementById('r-'+k).checked;u.actief=document.getElementById('gActief').checked;const ev=document.getElementById('gEenvoudig').checked;if(!!prof(u.id).eenvoudig!==ev)S.profielen[u.id]={...(S.profielen[u.id]||{}),eenvoudig:ev}}
   const i=S.gebruikers.findIndex(x=>x.id===u.id);if(i>=0)S.gebruikers[i]=u;else S.gebruikers.push(u);
-  log(bewerk.nieuw?`Medewerker ${naam} toegevoegd`:`Account ${naam} gewijzigd${pin?' (nieuwe pincode)':''}`);
-  bewaar();sluit();render();
+  log(bewerk.nieuw?`Medewerker ${naam} toegevoegd`:`Account ${naam} gewijzigd${pin?' (pincode gereset)':''}`);
+  const welkom=pin&&bewerk.rol!=='admin';bewaar();sluit();render();
+  if(welkom)openWelkomst(u,pin);
 }
 
 /* ---------- sheets ---------- */
@@ -1860,7 +1990,7 @@ document.addEventListener('click',async e=>{
     aanpas:'vinken',aanpasopslaan:'vinken',levering:'vinken',levstap:'vinken',levopslaan:'vinken',snij:'vinken',snijderf:'vinken',extrakies:'vinken',extrastap:'vinken',bijnieuw:'vinken',bijkies:'vinken',bijstap:'vinken',bijopslaan:'vinken',bijklaar:'vinken',bijweg:'vinken',aanpasterug:'vinken',extra:'vinken',extraopslaan:'vinken',hele:'vinken',ontvink:'vinken',ontweg:'vinken',ontnieuw:'vinken',ontopslaan:'vinken',
     gebruik:'invullen',karwissel:'invullen',allesadvies:'invullen',adviestoepassen:'invullen',afwtoevoegen:'invullen',afwweg:'invullen',afwbewerk:'invullen',afwnul:'invullen',kopieer:'invullen',kopieerdoe:'invullen',
     step:'derving',stepH:'derving',cstep:'derving',cstepH:'derving',dannuleer:'derving',dnul:'derving',dopslaan:'derving',kvink:'derving',kassaok:'derving',kassaweg:'derving',tel:'bestellen',telopslaan:'bestellen',leverdag:'bestellen',deelrapport:'rapport',fotoweg:'soorten',typekies:'soorten',snijkies:'soorten',
-    open:'soorten',nieuw:'soorten',allerg:'soorten',nieuwstop:'soorten',feestkopie:'invullen',feestnul:'invullen',feestnee:'invullen',kartaak:'invullen',kartaakzet:'invullen',dagafsluiten:'derving',expsoort:'rapport',expper:'rapport',exportvoorbeeld:'rapport',exportdeel:'rapport',progopen:'soorten',prognieuw:'soorten',progopslaan:'soorten',progweg:'soorten',progsoort:'soorten',progkies:'soorten',karerbij:'soorten',karweg:'soorten',opslaan:'soorten',omhoog:'soorten',omlaag:'soorten',weg:'soorten',momenterbij:'soorten',momentweg:'soorten'};
+    open:'soorten',nieuw:'soorten',karkleur:'soorten',allerg:'soorten',nieuwstop:'soorten',feestkopie:'invullen',feestnul:'invullen',feestnee:'invullen',kartaak:'invullen',kartaakzet:'invullen',dagafsluiten:'derving',expsoort:'rapport',expper:'rapport',exportvoorbeeld:'rapport',exportdeel:'rapport',progopen:'soorten',prognieuw:'soorten',progopslaan:'soorten',progweg:'soorten',progsoort:'soorten',progkies:'soorten',karerbij:'soorten',karweg:'soorten',opslaan:'soorten',omhoog:'soorten',omlaag:'soorten',weg:'soorten',momenterbij:'soorten',momentweg:'soorten'};
   if(NODIG[a]&&!mag(NODIG[a]))return;
   if(['nieuwegebruiker','gweg','ontkoppel'].includes(a)&&!isAdmin())return;
   if(a==='gebruiker'&&!isAdmin()&&v!==L.sessie)return;
@@ -1894,24 +2024,27 @@ document.addEventListener('click',async e=>{
   case'datum':datum=plusDagen(datum,+v);volgVandaag=datum===iso();ovenKeuze={};render();return;
   case'vandaag':datum=iso();volgVandaag=true;render();return;
   case'vink':{const s=S.soorten.find(x=>x.id===v);if(!s)return;const wasKlaar=allesKlaar(datum,moment),aan=!S.vinkjes[datum]?.[moment]?.[v];undoStart(`${aan?'✓':'○'} ${s.naam}`);zetVink(v,werkelijk(datum,moment,s),aan);
-    log(`${aan?'Afgevinkt':'Vinkje weg'}: ${s.naam} (${werkelijk(datum,moment,s)})`);bewaar();render();undoToon();if(aan&&!wasKlaar&&allesKlaar(datum,moment))toonFeest();return}
+    log(`${aan?'Afgevinkt':'Vinkje weg'}: ${s.naam} (${werkelijk(datum,moment,s)})`);bewaar();render();undoToon();if(aan)bevestig(`✓ ${s.naam} klaargezet`);if(aan&&!wasKlaar&&allesKlaar(datum,moment))toonFeest();return}
   case'wis':if(afwStap!=='wis'){afwStap='wis';render();return}afwStap=null;undoStart('Vinkjes gewist');if(S.vinkjes[datum])S.vinkjes[datum][moment]={};log(`Vinkjes gewist (${momentNaam(moment)})`);bewaar();render();undoToon();return;
   case'hist':open[v]=!open[v];render();return;
   case'aanpas':openAanpas(v);return;
   case'aanpasstap':{const i=document.getElementById('aanpasIn');i.value=Math.max(0,(getal(i.value)||0)+ +b.dataset.n);return}
-  case'aanpasopslaan':{undoStart('Aantal aangepast');const n=getal(document.getElementById('aanpasIn').value)??0,s=S.soorten.find(x=>x.id===bewerk.id),gepland=stuksIn(planKeyVoor(datum),moment,s);
+  case'aanpasopslaan':{const n=getal(document.getElementById('aanpasIn').value)??0,s=S.soorten.find(x=>x.id===bewerk.id),gepland=stuksIn(planKeyVoor(datum),moment,s);
+    if(n-gepland>=20&&n>gepland*3&&!confirm(`Klopt dit?\n\n${s.naam}: ${n} in plaats van ${gepland} gepland.\n\nToch opslaan?`))return;undoStart('Aantal aangepast');
     S.aanpas[datum]=S.aanpas[datum]||{};S.aanpas[datum][moment]=S.aanpas[datum][moment]||{};
     if(n===gepland)delete S.aanpas[datum][moment][s.id];else S.aanpas[datum][moment][s.id]=n;
     const vk=S.vinkjes[datum]?.[moment]?.[s.id];if(vk){if(n>0)vk.n=n;else delete S.vinkjes[datum][moment][s.id]}
-    log(`Aantal ${s.naam} ${datumTekst(datum)}: ${n} (gepland ${gepland})`);bewaar();sluit();render();undoToon();return}
+    log(`Aantal ${s.naam} ${datumTekst(datum)}: ${n} (gepland ${gepland})`);bewaar();sluit();render();undoToon();bevestig(`✓ ${s.naam}: ${n}`);return}
   case'aanpasterug':{undoStart('Terug naar planning');const s=S.soorten.find(x=>x.id===bewerk.id);delete S.aanpas[datum]?.[moment]?.[s.id];const vk=S.vinkjes[datum]?.[moment]?.[s.id];if(vk)vk.n=werkelijk(datum,moment,s);
     log(`Aantal ${s.naam} ${datumTekst(datum)} terug naar planning`);bewaar();sluit();render();undoToon();return}
   case'extra':openExtra();return;
   case'extrakies':{const k=bewerk.keuze,sx=S.soorten.find(x=>x.id===v);if(k[v])delete k[v];else k[v]=extraStart(sx);renderExtraSheet();return}
   case'extrastap':{const k=bewerk.keuze;if(!k[v])return;k[v]=Math.max(1,Math.min(9999,k[v]+ +b.dataset.n));renderExtraSheet();return}
-  case'extraopslaan':{undoStart('Extra klaarzetten');const k=bewerk.keuze,ids=Object.keys(k);if(!ids.length){const f=document.getElementById('fout');if(f)f.textContent='Tik minimaal één soort aan.';return}
+  case'extraopslaan':{const k=bewerk.keuze,ids=Object.keys(k);if(!ids.length){const f=document.getElementById('fout');if(f)f.textContent='Tik minimaal één soort aan.';return}
+    {const groot=ids.filter(id=>k[id]>100).map(id=>`${S.soorten.find(x=>x.id===id)?.naam}: ${k[id]}`);if(groot.length&&!confirm('Klopt dit? Dit zijn grote aantallen:\n\n'+groot.join('\n')+'\n\nToch toevoegen?'))return}
+    undoStart('Extra klaarzetten');
     S.aanpas[datum]=S.aanpas[datum]||{};S.aanpas[datum][moment]=S.aanpas[datum][moment]||{};for(const id of ids)S.aanpas[datum][moment][id]=k[id];
-    log(`Extra klaarzetten ${datumTekst(datum)}: ${ids.map(id=>`${S.soorten.find(x=>x.id===id)?.naam} ${k[id]}`).join(', ')}`);bewaar();sluit();render();undoToon();return}
+    log(`Extra klaarzetten ${datumTekst(datum)}: ${ids.map(id=>`${S.soorten.find(x=>x.id===id)?.naam} ${k[id]}`).join(', ')}`);bewaar();sluit();render();undoToon();bevestig(`✓ ${ids.length} ${ids.length===1?'soort':'soorten'} extra klaargezet`);return}
   case'notitie':{const i=document.getElementById('notitieIn'),t=i.value.trim();if(!t&&!notFoto)return;const d=tab==='derving'?dervDatum:datum,id=nieuwId();
     S.notities[d]=S.notities[d]||{};let fotoId=null;if(notFoto){fotoId='nf'+id;S.notfotos[fotoId]=notFoto}S.notities[d][id]={id,tekst:t||'📷',wie:ik().naam,t:Date.now(),...(fotoId?{fotoId}:{})};notFoto=null;log(`Notitie ${datumTekst(d)}: ${t}`);bewaar();render();return}
   case'notweg':{if(sub==='notities'&&afwStap!=='nt:'+v){afwStap='nt:'+v;render();return}afwStap=null;for(const d in S.notities){const n=S.notities[d][v];if(n&&(isAdmin()||n.wie===ik().naam)){if(n.fotoId)S.notfotos[n.fotoId]=null;delete S.notities[d][v]}}bewaar();render();return}
@@ -1928,6 +2061,18 @@ document.addEventListener('click',async e=>{
   case'uitleg':tab='meer';sub='uitleg';uitlegOpen=v;ovenModus=false;render();setTimeout(()=>document.getElementById('u-'+v)?.scrollIntoView({block:'start'}),30);return;
   case'uitlegopen':uitlegOpen=uitlegOpen===v?null:v;render();return;
   case'undo':undoDoe();return;
+  case'oefenstart':if(!confirm('Oefenmodus starten?\n\nDe app werkt dan met een kopie. Niets wordt echt opgeslagen. Met Stoppen ga je terug.'))return;OEFEN=true;S=kloon(S);document.body.classList.add('oefen');document.getElementById('oefenbalk').innerHTML='🎓 Oefenmodus – niets wordt opgeslagen <button data-a="oefenstop">Stoppen</button>';tab='lijst';sub=null;render();return;
+  case'oefenstop':location.reload();return;
+  case'nieuwsklaar':S.profielen[L.sessie]={...(S.profielen[L.sessie]||{}),versieGezien:APP_VERSIE};bewaar();sluit();toonOverdracht();return;
+  case'karkleur':{const k=S.karren.find(x=>x.nr===+v);if(k)k.kleur=b.dataset.k;else S.karren.push({nr:+v,naam:'',kleur:b.dataset.k});bewaar();render();return}
+  case'wissel':log('Gewisseld van persoon');L.sessie=null;loginKeuze=null;geenVoorkeur=true;ovenModus=false;sub=null;bewaar();render();return;
+  case'welkomdeel':welkomDeel();return;
+  case'welkompdf':maakQrPdf('welkom');return;
+  case'qrwinkel':if(!isAdmin())return;toonSheet(`<div class="pkop"><span style="width:70px"></span><b>QR-code voor de winkel</b><button data-a="sluit" style="font-weight:700">Klaar</button></div><div class="pinhoud"><p class="hulp">Hang deze A4 op bij de broodafdeling. Collega's scannen hem met de camera en zetten de app op hun beginscherm.</p><div id="winkelQr" class="welkomqr groot"></div><div class="knoppen"><button class="knop" data-a="qrwinkelpdf">PDF maken / printen</button></div><p class="hulp" style="text-align:center">${esc(appUrl())}</p></div>`);laadQr().then(()=>{const el=document.getElementById('winkelQr');if(el)el.innerHTML=qrSvg(appUrl(),6)}).catch(()=>{});return;
+  case'qrwinkelpdf':maakQrPdf('winkel');return;
+  case'pk':pinKiesToets(v);return;
+  case'pw':pinWijzigToets(v);return;
+  case'pinwijzig':openPinWijzig();return;
   case'cbtab':case'cbopen':case'cbtoevoegen':case'cbnieuw':case'cbtoeopslaan':case'cbuitgeven':case'cbinwisselen':case'cbuitterug':case'cbgebruiktterug':case'cbweg':case'cbexport':case'bdk':case'cbselmodus':case'cbsel':case'cbselalles':case'cbselreeks':case'cbreeksok':case'cbselwaarde':case'cbwaardeopslaan':case'cbseluitgeven':case'cbwaardezet':case'cbwaardewijzig':{
     if(!isAdmin()||!kanBeheren())return;const nu={wie:ik().naam,t:Date.now()};
     if(a==='bdk'){let t=bewerk.bedragTekst||'';if(v==='wis')t=t.slice(0,-1);else if(v===','){if(!t.includes(','))t=(t||'0')+','}else{const[g,d]=t.split(',');if(d!==undefined?d.length<2:(g||'').length<5)t=(t==='0'?'':t)+v}bewerk.bedragTekst=t;bedragVernieuw();return}
@@ -1970,9 +2115,10 @@ document.addEventListener('click',async e=>{
   case'levfoto':{const lv=S.levering[datum];if(lv?.fotoId&&S.notfotos[lv.fotoId])toonFoto(S.notfotos[lv.fotoId]);return}
   case'levstap':{const i=document.getElementById('lev-'+v);const cur=getal(i.value);i.value=Math.max(0,(cur??(+b.dataset.n>0?0:0))+ +b.dataset.n);return}
   case'levopslaan':{const d=datum,items={},l=S.soorten.filter(x=>x.type==='vers'&&x.naam.trim());for(const x of l){const n=getal(document.getElementById('lev-'+x.id)?.value);items[x.id]=n??0}
+    {const af=l.filter(x=>{const bes=dagTotaal(planKeyVoor(d),x),n=items[x.id];return Math.abs(n-bes)>=Math.max(5,Math.ceil(bes*0.5))}).map(x=>`${x.naam}: besteld ${dagTotaal(planKeyVoor(d),x)}, geleverd ${items[x.id]}`);if(af.length&&!confirm('Klopt dit? Deze aantallen wijken veel af van de bestelling:\n\n'+af.join('\n')+'\n\nToch opslaan?'))return}
     const oud=S.levering[d];let fotoId=oud?.fotoId||null;if(bewerk.foto){fotoId='lv'+d;S.notfotos[fotoId]=bewerk.foto}
     undoStart('Levering ingevuld');S.levering[d]={items,wie:ik().naam,t:Date.now(),fotoId};
-    log(`Levering ${datumTekst(d)}: ${l.map(x=>`${x.naam} ${items[x.id]}`).join(', ')}`);bewaar();sluit();render();undoToon();return}
+    log(`Levering ${datumTekst(d)}: ${l.map(x=>`${x.naam} ${items[x.id]}`).join(', ')}`);bewaar();sluit();render();undoToon();bevestig('✓ Levering opgeslagen');return}
   case'snij':{const s=S.soorten.find(x=>x.id===v),n=werkelijk(datum,moment,s),sn=snijVan(datum,moment,v,n),f=b.dataset.f,st=+b.dataset.n;
     const nw={hele:sn.hele,halve:sn.halve,derf:sn.derf};nw[f]=Math.max(0,nw[f]+st);if(nw.hele+nw.halve/2+nw.derf>n+1e-9){toast('Meer kan niet: dan kom je boven het geleverde aantal');return}
     S.snij[datum]=S.snij[datum]||{};S.snij[datum][moment]=S.snij[datum][moment]||{};S.snij[datum][moment][v]=nw;
@@ -1985,10 +2131,12 @@ document.addEventListener('click',async e=>{
   case'cstepH':{const c=conceptVan(dervDatum),x=c[v]=c[v]||{};x.hh=x.hh||{};const hh=x.hh[best]=x.hh[best]||{hele:0,halve:0};hh[b.dataset.deel]=Math.max(0,hh[b.dataset.deel]+ +b.dataset.n);x[best]=hh.hele+hh.halve/2;bewaarL();render();return}
   case'dannuleer':L.dervConcept[dervDatum]={};bewaarL();render();return;
   case'dnul':{const c=conceptVan(dervDatum),d=dervDatum,hist=S.historie[d];let n=0;for(const s of S.soorten){const g=hist?.gezet?.[s.id]??(hist?0:opgezetTotaal(d,s));if(g>0&&S.derving[d]?.[s.id]==null&&!c[s.id]){c[s.id]={[best]:0};n++}}bewaarL();render();toast(n?`${n} ${n===1?'soort':'soorten'} op 0 gezet – tik op Derving opslaan`:'Alle soorten zijn al ingevuld');return}
-  case'dopslaan':{const d=dervDatum,c=conceptVan(d),ids=Object.keys(c);if(!ids.length)return;zorgReg(d);const id='r'+Date.now().toString(36),items={};
+  case'dopslaan':{const d=dervDatum,c=conceptVan(d),ids=Object.keys(c);if(!ids.length)return;
+    {const hist=S.historie[d],te=ids.map(sid=>{const s2=S.soorten.find(x=>x.id===sid),g=hist?.gezet?.[sid]??(hist?0:opgezetTotaal(d,s2)),al=S.derving[d]?.[sid]||0,nu2=conceptTot(c[sid]);return s2&&nu2+al>g&&nu2>0?`${s2.naam}: ${fmt(nu2+al)} derving, maar ${fmt(g)} opgezet`:null}).filter(Boolean);
+     if(te.length&&!confirm('Klopt dit?\n\n'+te.join('\n')+'\n\nToch opslaan?'))return}zorgReg(d);const id='r'+Date.now().toString(36),items={};
     for(const sid of ids){const x=c[sid];items[sid]={weg:x.weg||0,vb:x.vb||0,tg:x.tg||0,...(x.hh?{hh:kloon(x.hh)}:{})}}
     S.dervReg[d][id]={id,t:Date.now(),wie:ik().naam,items,kassa:null,kassaVink:{}};herbereken(d);L.dervConcept[d]={};bewaarL();
-    log(`Dervinglijst opgeslagen (${datumTekst(d)}): ${ids.map(sid=>`${S.soorten.find(x=>x.id===sid)?.naam} ${fmt(conceptTot(items[sid]))}`).join(', ')}`);bewaar();render();toast('Lijst opgeslagen – zie Opgeslagen lijsten');return}
+    log(`Dervinglijst opgeslagen (${datumTekst(d)}): ${ids.map(sid=>`${S.soorten.find(x=>x.id===sid)?.naam} ${fmt(conceptTot(items[sid]))}`).join(', ')}`);bewaar();render();bevestig('✓ Dervinglijst opgeslagen');return}
   case'kassa':openKassa(v,b.dataset.d||dervDatum);return;
   case'dlijsten':openDagLijsten(v);return;
   case'kvink':{const r=S.dervReg[bewerk.d]?.[bewerk.id];if(!r)return;r.kassaVink=r.kassaVink||{};if(r.kassaVink[v])delete r.kassaVink[v];else r.kassaVink[v]=true;bewaar();openKassa(bewerk.id,bewerk.d);return}
@@ -2009,8 +2157,8 @@ document.addEventListener('click',async e=>{
     const id=nieuwId();S.berichten[id]={id,van:ik().naam,tekst:t,t:Date.now(),gelezen:false};log('Bericht aan beheerder verstuurd');bewaar();sluit();toast('Verstuurd naar de beheerder');return}
   case'berichtgelezen':if(!isAdmin())return;if(S.berichten[v])S.berichten[v].gelezen=true;bewaar();render();return;
   case'berichtweg':if(!isAdmin())return;if(afwStap!=='br:'+v){afwStap='br:'+v;render();return}afwStap=null;delete S.berichten[v];bewaar();render();return;
-  case'tourvolgende':if(tourStap<TOUR.length-1){tourStap++;toonTour();return}
-  case'tourklaar':document.getElementById('tour').classList.remove('open');if(L.sessie&&!prof().rondleiding){S.profielen[L.sessie]={...(S.profielen[L.sessie]||{}),rondleiding:true};bewaar()}toonOverdracht();return;
+  case'tourvolgende':if(tourStap<tourLijst().length-1){tourStap++;toonTour();return}
+  case'tourklaar':document.getElementById('tour').classList.remove('open');if(L.sessie&&!prof().rondleiding){S.profielen[L.sessie]={...(S.profielen[L.sessie]||{}),rondleiding:true,versieGezien:APP_VERSIE};bewaar()}if(!toonNieuws())toonOverdracht();return;
   case'tourstart':tourStap=0;toonTour();return;
   case'gedaandag':gedaanDatum=+v===0?iso():plusDagen(gedaanDatum,+v);if(gedaanDatum>iso())gedaanDatum=iso();render();return;
   case'naarderving':tab='derving';dervDatum=iso();render();m.scrollTop=0;return;
