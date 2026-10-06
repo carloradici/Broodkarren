@@ -441,6 +441,10 @@ body.oefen #statusplek{padding-top:40px}
 .dagbalk{margin:6px 16px 8px;padding:10px 14px;border-radius:12px;font-size:15px;text-align:center;color:#fff}
 .dagbalk.morgen{background:#1f6fb2}.dagbalk.vandaag{background:var(--oranje)}.dagbalk.anders{background:#6b6b6b}
 .kaartje.waarschuw{border:2px solid #1f6fb2}
+
+.knop.oplichten{animation:oplicht 1.2s ease-in-out infinite;box-shadow:0 0 0 0 rgba(241,125,4,.6)}
+@keyframes oplicht{50%{box-shadow:0 0 0 10px rgba(241,125,4,0)}}
+.regel.verwerkt{opacity:.55}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script></head>
 <body><div id="app"><div id="statusplek"></div><div id="opslagmelding">Opslaan mislukt: het geheugen is vol. Verwijder een paar foto's bij Broodsoorten.</div><main id="scherm"></main><nav id="nav"></nav></div>
@@ -1752,7 +1756,7 @@ function dervingHtml(){
   return h;
 }
 function lijstSamenvatting(r){const n=Object.keys(r.items).length,st=Object.values(r.items).reduce((t,x)=>t+conceptTot(x),0);return`${n} ${n===1?'product':'producten'}, ${fmt(st)} stuks`}
-function lijstRij(d,r){return`<div class="rij"><button class="regel" data-a="kassa" data-v="${esc(r.id)}" data-d="${d}"><div class="groei"><div class="naam">${r.t?tijdTekst(r.t):'Eerder ingevuld'}</div><div class="sub">${esc(r.wie)} · ${lijstSamenvatting(r)}</div></div>${r.kassa?`<span class="st schap">✓ kassa</span>`:`<span class="st aangepast">open</span>`}<span class="pijl">›</span></button></div>`}
+function lijstRij(d,r){return`<div class="rij"><button class="regel ${r.kassa?'verwerkt':''}" data-a="kassa" data-v="${esc(r.id)}" data-d="${d}"><div class="groei"><div class="naam">${r.t?tijdTekst(r.t):'Eerder ingevuld'}</div><div class="sub">${esc(r.wie)} · ${lijstSamenvatting(r)}</div></div>${r.kassa?`<span class="st schap">✓ kassa</span>`:`<span class="st aangepast">open</span>`}<span class="pijl">›</span></button></div>`}
 function openDagLijsten(d){const l=regLijst(d);
   toonSheet(`<div class="pkop"><span style="width:60px"></span><b>Lijsten ${esc(datumTekst(d))}</b><button data-a="sluit" style="font-weight:700">Sluiten</button></div><div class="pinhoud">
    ${l.length?`<div class="sectie" style="margin:10px 0 0">${l.map(r=>lijstRij(d,r)).join('')}</div>`:'<p class="leeg">Nog geen lijsten op deze dag.</p>'}</div>`)}
@@ -1771,7 +1775,7 @@ function openKassa(id,d=dervDatum){
    <div class="sectie" style="margin:0">${regels.map(g=>{const ok=!!r.kassaVink?.[g.key];
      return`<div class="rij"><button class="regel ${ok?'klaar':''}" data-a="kvink" data-v="${esc(g.key)}"><div class="groei"><div class="naam">${esc(g.naam)}</div><div class="sub">${g.delen}</div></div><div class="kassaplu">${g.plu?esc(g.plu):'<span class="let" style="font-size:12px">geen PLU</span>'}</div><div class="kassaaantal">${fmt(g.tot)}</div><div class="vinkvak">${ok?'✓':''}</div></button></div>`}).join('')}</div>
    ${r.kassa?`<p class="hulp" style="text-align:center">✓ Verwerkt in kassa door ${esc(r.kassa.wie)} om ${tijdTekst(r.kassa.t)}</p>`:''}
-   <div class="knoppen"><button class="knop ${r.kassa?'rand':''}" data-a="kassaok">${r.kassa?'Toch niet verwerkt':'Verwerkt in kassa'}</button></div>
+   <div class="knoppen"><button class="knop ${r.kassa?'rand':''} ${!r.kassa&&regels.length&&regels.every(g=>r.kassaVink?.[g.key])?'oplichten':''}" data-a="kassaok">${r.kassa?'Toch niet verwerkt':'Verwerkt in kassa'}</button></div>
    ${mag('derving')?`<button class="verwijder" data-a="kassaweg">Lijst verwijderen</button>`:''}</div>`);
 }
 
@@ -2280,8 +2284,11 @@ document.addEventListener('click',async e=>{
     log(`Dervinglijst opgeslagen (${datumTekst(d)}): ${ids.map(sid=>`${S.soorten.find(x=>x.id===sid)?.naam} ${fmt(conceptTot(items[sid]))}`).join(', ')}`);bewaar();render();bevestig('✓ Dervinglijst opgeslagen');return}
   case'kassa':openKassa(v,b.dataset.d||dervDatum);return;
   case'dlijsten':openDagLijsten(v);return;
-  case'kvink':{const r=S.dervReg[bewerk.d]?.[bewerk.id];if(!r)return;r.kassaVink=r.kassaVink||{};if(r.kassaVink[v])delete r.kassaVink[v];else r.kassaVink[v]=true;bewaar();openKassa(bewerk.id,bewerk.d);return}
-  case'kassaok':{const r=S.dervReg[bewerk.d]?.[bewerk.id];if(!r)return;r.kassa=r.kassa?null:{wie:ik().naam,t:Date.now()};log(`Dervinglijst ${r.kassa?'verwerkt in kassa':'kassa ongedaan'} (${datumTekst(bewerk.d)})`);bewaar();render();openKassa(bewerk.id,bewerk.d);return}
+  case'kvink':{const r=S.dervReg[bewerk.d]?.[bewerk.id];if(!r)return;r.kassaVink=r.kassaVink||{};const aan=!r.kassaVink[v];if(aan)r.kassaVink[v]=true;else delete r.kassaVink[v];bewaar();
+    b.classList.toggle('klaar',aan);const vv=b.querySelector('.vinkvak');if(vv)vv.textContent=aan?'✓':'';
+    const alle=[...document.querySelectorAll('#paneel [data-a=kvink]')].every(x=>x.classList.contains('klaar')),ok2=document.querySelector('#paneel [data-a=kassaok]');if(ok2&&!r.kassa)ok2.classList.toggle('oplichten',alle);return}
+  case'kassaok':{const r=S.dervReg[bewerk.d]?.[bewerk.id];if(!r)return;r.kassa=r.kassa?null:{wie:ik().naam,t:Date.now()};log(`Dervinglijst ${r.kassa?'verwerkt in kassa':'kassa ongedaan'} (${datumTekst(bewerk.d)})`);bewaar();
+    if(r.kassa){sluit();render();if(prof().bevestig===false)toast('✓ Dervinglijst verwerkt in kassa');else bevestig('✓ Dervinglijst verwerkt in kassa')}else{render();openKassa(bewerk.id,bewerk.d)}return}
   case'kassaweg':{if(!verwStap){verwStap=true;b.textContent='Tik nogmaals om te verwijderen';return}const d=bewerk.d;delete S.dervReg[d][bewerk.id];herbereken(d);log(`Dervinglijst verwijderd (${datumTekst(d)})`);bewaar();sluit();render();return}
   case'bekijkdag':tab='lijst';datum=v;volgVandaag=v===iso();sub=null;render();m.scrollTop=0;return;
   case'zoek':zoekOpen=!zoekOpen;if(!zoekOpen)zoekTerm='';render();if(zoekOpen)setTimeout(()=>document.getElementById('kzZoek')?.focus(),30);return;
