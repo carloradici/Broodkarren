@@ -445,6 +445,13 @@ body.oefen #statusplek{padding-top:40px}
 .knop.oplichten{animation:oplicht 1.2s ease-in-out infinite;box-shadow:0 0 0 0 rgba(241,125,4,.6)}
 @keyframes oplicht{50%{box-shadow:0 0 0 10px rgba(241,125,4,0)}}
 .regel.verwerkt{opacity:.55}
+
+.vinkvak,.kiesvak{position:relative}
+.vinkvak::after,.kiesvak::after{content:"";position:absolute;inset:-14px}
+.regel .vinkvak{width:36px;height:36px}
+.rij.flits,.regel.flits{animation:flits .7s ease-out}
+@keyframes flits{0%{background:color-mix(in srgb,var(--oranje) 35%,transparent)}100%{background:transparent}}
+.facebtn{margin-top:14px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script></head>
 <body><div id="app"><div id="statusplek"></div><div id="opslagmelding">Opslaan mislukt: het geheugen is vol. Verwijder een paar foto's bij Broodsoorten.</div><main id="scherm"></main><nav id="nav"></nav></div>
@@ -1133,6 +1140,7 @@ function instellingenHtml(){const p=prof();
    <div class="hulp" style="margin:14px 0 6px">Accentkleur</div><div class="emojis">${ACCENTEN.map(([k,l,c])=>`<button class="kleurknop ${p.accent===k?'aan':''}" data-a="prof" data-k="accent" data-v="${k}"><i style="background:${c}"></i>${l}</button>`).join('')}</div>
    <div class="hulp" style="margin-top:14px">Startpagina na inloggen</div>${seg('start',[['lijst','Klaarzetten'],['derving','Derving'],['plan','Invullen']])}
    ${S.momenten.length>1?`<div class="hulp" style="margin-top:14px">Standaard bakmoment</div>${seg('moment',[['','Geen'],...S.momenten.map(m=>[m.id,esc(m.naam)])])}`:''}</div>
+   ${isAdmin()&&kanBeheren()?`<div class="kaartje"><h3>Face ID</h3>${!faceKan()?'<p class="hulp">Face ID wordt hier niet ondersteund. Open Brood Opzet vanaf je beginscherm op je iPhone.</p>':L.faceid&&L.faceid.uid===L.sessie?'<div class="sub">✓ Aan op dit toestel. Op het inlogscherm staat de knop Inloggen met Face ID.</div><div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:8px"><button class="knop rand klein" data-a="faceuit">Face ID uitzetten</button></div>':'<div class="sub">Log op dit toestel in met Face ID in plaats van je pincode. Alleen voor jou, alleen op deze telefoon.</div><div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:8px"><button class="knop klein" data-a="faceaan">Face ID aanzetten</button></div>'}</div>`:''}
    <div class="kaartje"><h3>Pincode</h3>${ik()?.rol==='admin'&&!kanBeheren()?'<p class="hulp">Je eigen pincode wijzig je op je eigen telefoon.</p>':'<div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:6px"><button class="knop rand klein" data-a="pinwijzig">Pincode wijzigen</button></div>'}</div>
    <div class="kaartje"><h3>Eenvoud</h3>${sw('eenvoudig','Eenvoudige modus (minder informatie, grotere knoppen)')}${isAdmin()?sw('werkvloer','Werkvloer-weergave (beheerdersdingen op Klaarzetten verbergen)'):''}</div>
    <div class="kaartje"><h3>Meldingen</h3>${sw('bevestig','Groene bevestiging na een actie')}${sw('feest','"Alles klaargezet!"-melding')}${sw('groet','Begroeting en voortgangsring')}</div>`}
@@ -1998,15 +2006,31 @@ function loginHtml(){
   return`<div class="merkscherm compact"><div class="merkkop klein"><img src="${LOGO_SRC}" alt="Coop Vogelenzang" class="merklogo"><div class="merkregel"><svg class="merkcroissant" viewBox="0 0 300 200" aria-hidden="true">${CROISSANT('#fff','#f17d04')}</svg><span class="merktitel">Brood Opzet</span></div></div>
    <label>Naam</label>
    <div class="naamkeuze">${P?.emoji?`<span class="naamemoji">${P.emoji}</span>`:''}<select id="loginNaam" aria-label="Kies je naam"><option value="" ${g?'':'selected'} disabled>Kies je naam</option>${lijst.map(x=>`<option value="${x.id}" ${x.id===loginKeuze?'selected':''}>${esc(x.naam)}</option>`).join('')}</select>${g?.rol==='admin'?'<span class="rol">Beheerder</span>':''}<span class="pijlneer">▾</span></div>
-   ${g?`<label>Pincode</label><div class="pinbolletjes ${pinMelding?'fout':''}">${[0,1,2,3].map(i=>`<i class="${i<pinInvoer.length?'vol':''}"></i>`).join('')}</div>
+   ${g&&faceVoor(g)?`<button class="merkknop facebtn" data-a="facelogin">Inloggen met Face ID</button><p class="merkhint" style="margin-top:8px">of met je pincode:</p>`:''}${g?`<label>Pincode</label><div class="pinbolletjes ${pinMelding?'fout':''}">${[0,1,2,3].map(i=>`<i class="${i<pinInvoer.length?'vol':''}"></i>`).join('')}</div>
    <div class="fout" id="fout">${esc(pinMelding)}</div>
    <div class="cijferblok">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-a="pin" data-v="${n}">${n}</button>`).join('')}<span></span><button data-a="pin" data-v="0">0</button><button class="wis" data-a="pinwis" aria-label="Wissen">⌫</button></div>
    <p class="merkhint">Na het 4e cijfer log je automatisch in</p>`:'<p class="merkhint" style="margin-top:18px">Kies eerst je naam.</p>'}</div>`}
 function naLogin(){if(!prof().rondleiding){tourStap=0;toonTour()}else if(!toonNieuws())toonOverdracht()}
+function loginAls(g){fouteLogins=0;geenVoorkeur=false;pinMelding='';L.sessie=g.id;L.laatsteGebruiker=g.id;loginKeuze=null;const P=prof(g.id);tab=P.start||'lijst';if(P.moment&&S.momenten.some(x=>x.id===P.moment))moment=P.moment;sub=null;datum=standaardDatum();volgVandaag=true;log('Ingelogd');bewaar();render();if(!pinTijdelijk(g))naLogin()}
+const b64u=buf=>btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const unb64u=t=>{t=t.replace(/-/g,'+').replace(/_/g,'/');t+='='.repeat((4-t.length%4)%4);return Uint8Array.from(atob(t),c=>c.charCodeAt(0))};
+function faceKan(){return!!(window.PublicKeyCredential&&navigator.credentials&&window.isSecureContext!==false)}
+function faceVoor(g){return!!(g&&g.rol==='admin'&&kanBeheren()&&L.faceid&&L.faceid.uid===g.id&&faceKan())}
+async function faceAan(){const g=ik();if(!g||g.rol!=='admin'||!kanBeheren())return;
+  if(!faceKan()){toast('Face ID wordt op dit toestel niet ondersteund');return}
+  try{const c=await navigator.credentials.create({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),rp:{name:'Brood Opzet'},
+      user:{id:new TextEncoder().encode(g.id),name:g.naam,displayName:g.naam},pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+      authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',residentKey:'preferred'},timeout:60000}});
+    L.faceid={uid:g.id,cred:b64u(c.rawId),t:Date.now()};bewaarL();log('Face ID aangezet op dit toestel');render();bevestig('✓ Face ID staat aan')}
+  catch(e){if(e&&e.name==='NotAllowedError'){toast('Face ID is geannuleerd');return}toast('Face ID aanzetten lukte niet: '+(e.message||e))}}
+async function faceLogin(){const g=S.gebruikers.find(x=>x.id===loginKeuze);if(!faceVoor(g))return;
+  if(Date.now()<geblokkeerdTot){pinMelding='Even wachten na te veel foute pogingen.';render();return}
+  try{await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),allowCredentials:[{type:'public-key',id:unb64u(L.faceid.cred)}],userVerification:'required',timeout:60000}});loginAls(g)}
+  catch(e){pinMelding=e&&e.name==='NotAllowedError'?'Face ID geannuleerd. Gebruik je pincode.':'Face ID lukte niet. Gebruik je pincode.';render()}}
 function probeerLogin(){
   const g=S.gebruikers.find(x=>x.id===loginKeuze),p=pinInvoer;pinInvoer='';
   if(Date.now()<geblokkeerdTot){pinMelding=`Te vaak fout. Probeer het over ${Math.ceil((geblokkeerdTot-Date.now())/1000)} seconden opnieuw.`;render();return}
-  if(g&&pinVan(g)===hashPin(p,g.id)){fouteLogins=0;geenVoorkeur=false;pinMelding='';L.sessie=g.id;L.laatsteGebruiker=g.id;loginKeuze=null;const P=prof(g.id);tab=P.start||'lijst';if(P.moment&&S.momenten.some(x=>x.id===P.moment))moment=P.moment;sub=null;datum=standaardDatum();volgVandaag=true;log('Ingelogd');bewaar();render();if(!pinTijdelijk(g))naLogin();return}
+  if(g&&pinVan(g)===hashPin(p,g.id)){loginAls(g);return}
   fouteLogins++;if(fouteLogins>=5){geblokkeerdTot=Date.now()+30000;fouteLogins=0;pinMelding='5 keer fout. Wacht 30 seconden.'}else pinMelding=`Pincode klopt niet (${fouteLogins} van 5).`;render();
 }
 
@@ -2099,8 +2123,14 @@ function verschuif(r){const a=S.soorten,i=a.findIndex(x=>x.id===bewerk.id);if(i<
   while(j>=0&&j<a.length&&a[j].kar!==a[i].kar)j+=r;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];bewaar();render()}
 
 /* ================= events ================= */
+let laatsteScroll=0,laatsteVeeg=0;document.addEventListener('touchmove',()=>{laatsteVeeg=Date.now()},{passive:true,capture:true});document.addEventListener('scroll',()=>{if(Date.now()-laatsteVeeg<2500)laatsteScroll=Date.now()},true);
+const VINKACTIE={vink:'.vinkvak',kvink:'.vinkvak',extrakies:'.kiesvak'};
 document.addEventListener('click',async e=>{
   L.laatsteActie=Date.now();
+  {const b0=e.target.closest('[data-a]'),sel=b0&&VINKACTIE[b0.dataset.a];
+   if(sel){if(Date.now()-laatsteScroll<400)return;
+     if(!e.target.closest(sel)){if(!window._rondjeTip){window._rondjeTip=1;toast('Tik op het rondje rechts om af te vinken')}return}
+     const a0=b0.dataset.a,v0=b0.dataset.v;setTimeout(()=>{const x=document.querySelector(`[data-a="${a0}"][data-v="${CSS.escape(v0)}"]`);const r=x&&(x.closest('.rij')||x);if(r){r.classList.remove('flits');void r.offsetWidth;r.classList.add('flits')}},0)}}
   const b=e.target.closest('[data-a]');if(!b||b.dataset.a!=='undo')undoVerberg();if(!b){if(e.target.id==='sheet')sluit();return}
   const a=b.dataset.a,v=b.dataset.v,m=document.getElementById('scherm');
   const NODIG={vink:'vinken',wis:'vinken',werkmodus:'vinken',werkklaar:'vinken',ovenmodus:'vinken',ovenkies:'vinken',ovenaantal:'vinken',ovenklaar:'vinken',afbak:'vinken',afbakopslaan:'vinken',
@@ -2213,6 +2243,9 @@ document.addEventListener('click',async e=>{
   case'qrwinkel':if(!isAdmin())return;toonSheet(`<div class="pkop"><span style="width:70px"></span><b>QR-code voor de winkel</b><button data-a="sluit" style="font-weight:700">Klaar</button></div><div class="pinhoud"><p class="hulp">Hang deze A4 op bij de broodafdeling. Collega's scannen hem met de camera en zetten de app op hun beginscherm.</p><div id="winkelQr" class="welkomqr groot"></div><div class="knoppen"><button class="knop" data-a="qrwinkelpdf">PDF maken / printen</button></div><p class="hulp" style="text-align:center">${esc(appUrl())}</p></div>`);laadQr().then(()=>{const el=document.getElementById('winkelQr');if(el)el.innerHTML=qrSvg(appUrl(),6)}).catch(()=>{});return;
   case'qrwinkelpdf':maakQrPdf('winkel');return;
   case'pk':pinKiesToets(v);return;
+  case'facelogin':faceLogin();return;
+  case'faceaan':faceAan();return;
+  case'faceuit':delete L.faceid;bewaarL();log('Face ID uitgezet op dit toestel');render();return;
   case'pw':pinWijzigToets(v);return;
   case'pinwijzig':openPinWijzig();return;
   case'cbtab':case'cbopen':case'cbtoevoegen':case'cbnieuw':case'cbtoeopslaan':case'cbuitgeven':case'cbinwisselen':case'cbuitterug':case'cbgebruiktterug':case'cbweg':case'cbexport':case'bdk':case'cbselmodus':case'cbsel':case'cbselalles':case'cbselreeks':case'cbreeksok':case'cbselwaarde':case'cbwaardeopslaan':case'cbseluitgeven':case'cbwaardezet':case'cbwaardewijzig':{
