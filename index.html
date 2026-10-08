@@ -452,6 +452,16 @@ body.oefen #statusplek{padding-top:40px}
 .rij.flits,.regel.flits{animation:flits .7s ease-out}
 @keyframes flits{0%{background:color-mix(in srgb,var(--oranje) 35%,transparent)}100%{background:transparent}}
 .facebtn{margin-top:14px}
+
+.scanknop{display:block;text-align:center;margin:12px 0 4px}
+.scanlader{display:flex;flex-direction:column;align-items:center;gap:14px;padding:50px 10px;text-align:center}
+.spinner{width:44px;height:44px;border-radius:50%;border:4px solid var(--oranjeLicht);border-top-color:var(--oranje);animation:draai 1s linear infinite}
+@keyframes draai{to{transform:rotate(360deg)}}
+.scanrij .scankeuze{margin-top:6px;font-size:14px;padding:8px 10px;height:auto}
+.rij.aandacht{background:color-mix(in srgb,var(--oranje) 14%,var(--kaart))}
+.scanrij.genegeerd{opacity:.5}
+.oranjetekst{color:var(--oranje);font-weight:700}
+.kaartje.waarschuw.rood{border-color:var(--rood)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script></head>
 <body><div id="app"><div id="statusplek"></div><div id="opslagmelding">Opslaan mislukt: het geheugen is vol. Verwijder een paar foto's bij Broodsoorten.</div><main id="scherm"></main><nav id="nav"></nav></div>
@@ -718,7 +728,7 @@ function maakDb(){
   };
 }
 function splitsen(){
-  const o={'beheer:gebruikers':{lijst:S.gebruikers},instellingen:{soorten:S.soorten,karren:S.karren,momenten:S.momenten,ovenMax:S.ovenMax,leverdagen:S.leverdagen,programmas:S.programmas,omschakel:S.omschakel??null,versDagen:S.versDagen,versUitz:S.versUitz},
+  const o={'beheer:gebruikers':{lijst:S.gebruikers},instellingen:{soorten:S.soorten,karren:S.karren,momenten:S.momenten,ovenMax:S.ovenMax,leverdagen:S.leverdagen,programmas:S.programmas,omschakel:S.omschakel??null,versDagen:S.versDagen,versUitz:S.versUitz,pakbonNegeer:S.pakbonNegeer||[],pakbonNamen:S.pakbonNamen||{}},
     plan:{plan:S.plan,karOverride:S.karOverride,feestNee:S.feestNee},afwijkend:S.afwijkend,voorraad:S.voorraad,profielen:S.profielen,berichten:S.berichten,pins:S.pins,materiaal:S.materiaal};
   const dagen=new Set();for(const k of DAGVELDEN)for(const d of Object.keys(S[k]))dagen.add(d);
   for(const d of dagen){const x={};for(const k of DAGVELDEN)if(S[k][d]!==undefined)x[k]=S[k][d];o['dag:'+d]=x}
@@ -732,7 +742,7 @@ function splitsen(){
 function pasToe(k,v){
   if(!isObj(v))return;v=zonderRev(v);
   if(k==='beheer:gebruikers')S.gebruikers=Array.isArray(v.lijst)?v.lijst:[];
-  else if(k==='instellingen'){for(const f of['soorten','karren','momenten','ovenMax','leverdagen','programmas','omschakel','versDagen','versUitz'])if(v[f]!==undefined)S[f]=v[f]}
+  else if(k==='instellingen'){for(const f of['soorten','karren','momenten','ovenMax','leverdagen','programmas','omschakel','versDagen','versUitz','pakbonNegeer','pakbonNamen'])if(v[f]!==undefined)S[f]=v[f]}
   else if(k==='plan'){S.plan=v.plan||{};S.karOverride=v.karOverride||{};S.feestNee=v.feestNee||{}}
   else if(k==='afwijkend')S.afwijkend=v;
   else if(k==='voorraad')S.voorraad=v;
@@ -1007,13 +1017,129 @@ function renderBijSheet(){
   document.getElementById('bijVoet').innerHTML=ids.length?`<b>${ids.length} ${ids.length===1?'soort':'soorten'}, ${pl} van max. ${S.ovenMax} platen</b>${w.length?`<div class="let">Let op: ${w.join(', ')}!</div>`:''}<div class="fout" id="fout"></div>`:'<span class="sub">Nog niets aangetikt.</span><div class="fout" id="fout"></div>';
 }
 
-function openLevering(){
-  const d=datum,lv=S.levering[d],l=S.soorten.filter(x=>x.type==='vers'&&x.naam.trim());bewerk={soort:'levering',foto:null};
+/* ================= pakbon scannen (foto / PDF) ================= */
+const TESS_JS='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+const PDF_JS='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
+const PDF_WORKER='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+const MAANDEN=['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+function laadScript(src,klaar){return klaar()?Promise.resolve():new Promise((ok,nee)=>{const x=document.createElement('script');x.src=src;x.onload=ok;x.onerror=()=>nee(new Error('laden mislukt'));document.head.appendChild(x)})}
+const normArt=t=>String(t||'').trim().replace(/,/g,'.').replace(/[^0-9.]/g,'').replace(/^\.+|\.+$/g,'');
+function artnrsVan(s){return String(s.artnr||'').split(/[\s;,/]+/).map(x=>normArt(x.replace(/(\d)\.(\d)/,'$1.$2'))).filter(Boolean)}
+function lev(a,b){const m=a.length,n=b.length,d=Array.from({length:m+1},(_,i)=>[i,...Array(n).fill(0)]);for(let j=1;j<=n;j++)d[0][j]=j;
+  for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[m][n]}
+/* tekst van de pakbon → regels {aantal, naam, artnr} + datum */
+function leesPakbonTekst(tekst){
+  const regels=[];let datumGevonden=null;
+  const re=new RegExp('(\\d{1,2})\\s+('+MAANDEN.join('|')+')\\s+(20\\d\\d)','gi');let m;
+  while((m=re.exec(tekst))){const voor=tekst.slice(Math.max(0,m.index-18),m.index).toLowerCase();if(/druk/.test(voor))continue;
+    datumGevonden=`${m[3]}-${String(MAANDEN.indexOf(m[2].toLowerCase())+1).padStart(2,'0')}-${String(+m[1]).padStart(2,'0')}`;break}
+  for(let r of tekst.split(/\n/)){
+    r=r.replace(/[“”‘’"]/g,' ');
+    const am=r.match(/(?:^|[\s|—–\-_])(\d{4}(?:\s?[.,]\s?\d{1,3})?)[\s|\]\)\.;:!iIl]*(?:\s+[^\s\d]{1,3}|\s+\d)?[\s|\]\)\.;:!iIl]*$/);if(!am)continue;
+    const artnr=normArt(am[1]);if(/^20\d\d$/.test(artnr))continue;
+    let rest=r.slice(0,am.index);
+    const qm=rest.match(/(?:^|[^\d])(\d{1,2})\s*[\[\{\(|][^A-Za-z]*(?=[A-Za-z])/)||rest.match(/(?:^|\s)(\d{1,2})\s+(?=[A-Z]{2})/);
+    if(!qm)continue;
+    const aantal=+qm[1];let naam=rest.slice(qm.index+qm[0].length).replace(/[_|\[\]{}()~]/g,' ').replace(/\s+/g,' ').trim().toUpperCase();
+    naam=naam.replace(/^[^A-Z]+/,'');if(naam.length<3)continue;
+    regels.push({aantal,naam,artnr})}
+  return{datum:datumGevonden,regels};
+}
+/* PDF: tekstlaag → regels; geen tekst (scan) → afbeelding */
+async function pdfNaarTekst(file){
+  await laadScript(PDF_JS,()=>window.pdfjsLib);pdfjsLib.GlobalWorkerOptions.workerSrc=window.__PDF_WORKER__||PDF_WORKER;
+  const pdf=await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;let alle='';
+  for(let p=1;p<=Math.min(pdf.numPages,3);p++){const pg=await pdf.getPage(p),tc=await pg.getTextContent(),rij={};
+    for(const it of tc.items){if(!it.str.trim())continue;const y=Math.round(it.transform[5]/3)*3;(rij[y]=rij[y]||[]).push(it)}
+    alle+=Object.keys(rij).map(Number).sort((a,b)=>b-a).map(y=>rij[y].sort((a,b)=>a.transform[4]-b.transform[4]).map(i=>i.str).join(' ')).join('\n')+'\n'}
+  const pg=await pdf.getPage(1),vp=pg.getViewport({scale:2}),c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;
+  await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
+  return{tekst:alle,canvas:c};
+}
+function afbNaarCanvas(file){return new Promise((ok,nee)=>{const r=new FileReader();r.onerror=nee;r.onload=()=>{const img=new Image();img.onerror=()=>nee(new Error('afbeelding'));img.onload=()=>{
+  const sc=Math.min(1,2200/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);
+  const x=c.getContext('2d');x.drawImage(img,0,0,c.width,c.height);ok(c)};img.src=r.result};r.readAsDataURL(file)})}
+function grijsContrast(c){const x=c.getContext('2d'),d=x.getImageData(0,0,c.width,c.height),p=d.data;
+  for(let i=0;i<p.length;i+=4){let g=.299*p[i]+.587*p[i+1]+.114*p[i+2];g=Math.max(0,Math.min(255,(g-128)*1.4+150));p[i]=p[i+1]=p[i+2]=g}x.putImageData(d,0,0);return c}
+let tessWorker=null;
+async function ocrCanvas(c,voortgang){
+  await laadScript(TESS_JS,()=>window.Tesseract);
+  if(!tessWorker){tessWorker=await Tesseract.createWorker('eng',1,{logger:m=>{if(m.status&&voortgang)voortgang(m)}});await tessWorker.setParameters({tessedit_pageseg_mode:'6'})}
+  const r=await tessWorker.recognize(c);return r.data.text;
+}
+function canvasNaarFoto(c){const sc=Math.min(1,1600/Math.max(c.width,c.height)),o=document.createElement('canvas');o.width=Math.round(c.width*sc);o.height=Math.round(c.height*sc);o.getContext('2d').drawImage(c,0,0,o.width,o.height);return o.toDataURL('image/jpeg',.8)}
+/* koppelen: artnr → broodsoort */
+function bekendeArt(){const k={};for(const s of S.soorten)if(s.type==='vers'&&s.naam.trim())for(const a of artnrsVan(s))k[a]=s.id;for(const a of S.pakbonNegeer||[])k[normArt(a)]='negeer';return k}
+const kaleNaam=t=>t.toUpperCase().replace(/\b(HEEL|HALF|GESN\.?|GESNEDEN|CP|X|\d+|ST|STUKS|VGB|DECO|800)\b/g,' ').replace(/[^A-Z ]/g,' ').replace(/\s+/g,' ').trim();
+function naamVoorstel(r){const kn=kaleNaam(r.naam).toLowerCase(),half=/^HALF/.test(r.naam)||/GESN/.test(r.naam),w1=kn.split(' ').filter(w=>w.length>2);let best=null,bs=0;
+  const lijkt=(a,b)=>a===b||(a.length>3&&b.length>3&&Math.abs(a.length-b.length)<=2&&(a.slice(0,4)===b.slice(0,4)||lev(a,b)<=2));
+  for(const s of S.soorten){if(s.type!=='vers'||!s.naam.trim()||artnrsVan(s).length)continue;if(half!==(s.gesneden!=='on'))continue;
+    const w2=s.naam.toLowerCase().replace(/[^a-z ]/g,' ').split(' ').filter(w=>w.length>2&&!['half','gesneden','heel'].includes(w));if(!w2.length)continue;
+    if(!w2.every(b=>w1.some(a=>lijkt(a,b))))continue;const sc=w2.length;if(sc>bs){bs=sc;best=s}}return best}
+function naamLijkt(a,b){a=kaleNaam(a);b=kaleNaam(b);if(!a||!b)return false;return lev(a,b)<=Math.max(2,Math.round(Math.max(a.length,b.length)*.3))}
+function koppelRegels(regels){const bek=bekendeArt(),keys=Object.keys(bek),namen=S.pakbonNamen||{};
+  return regels.map(r=>{let k=bek[r.artnr],zeker=!!k;
+    if(!k){let best=null,bd=9;for(const a of keys){const d=lev(r.artnr,a);if(d<bd&&namen[a]&&naamLijkt(r.naam,namen[a])){bd=d;best=a}}
+      if(best&&bd<=2)k=bek[best]}
+    const voorstel=k?null:naamVoorstel(r);return{...r,doel:k||(voorstel?voorstel.id:''),zeker,voorstel:!!voorstel,bekend:!!k}})}
+/* scherm */
+let scan=null;
+async function startScan(file){
+  const d=datum;scan={d,stap:'lezen',melding:'Pakbon lezen…'};toonScan();
+  try{let tekst='',canvas=null;
+    if(file.type==='application/pdf'||/\.pdf$/i.test(file.name)){const r=await pdfNaarTekst(file);canvas=r.canvas;tekst=r.tekst;
+      if(leesPakbonTekst(tekst).regels.length<2){scan.melding='Gescande PDF – tekst herkennen…';toonScan();tekst=await ocrCanvas(grijsContrast(r.canvas),m=>{scan.melding=ocrMelding(m);zetScanMelding()})}}
+    else{canvas=await afbNaarCanvas(file);scan.foto=canvasNaarFoto(canvas);tekst=await ocrCanvas(grijsContrast(canvas),m=>{scan.melding=ocrMelding(m);zetScanMelding()})}
+    if(!scan.foto&&canvas)scan.foto=canvasNaarFoto(canvas);
+    const p=leesPakbonTekst(tekst);scan={...scan,stap:'controle',datumBon:p.datum,regels:koppelRegels(p.regels),tekst};
+    if(!scan.regels.length){scan.stap='fout';scan.melding='Er zijn geen regels herkend. Maak een rechte, scherpe foto zonder schaduw en probeer het opnieuw.'}
+    toonScan()}
+  catch(e){scan={d,stap:'fout',melding:/laden/.test(e.message||'')?'Het leesprogramma kon niet laden. De eerste keer is internet nodig.':'Lezen is mislukt: '+(e.message||e)};toonScan()}
+}
+function ocrMelding(m){const pct=m.progress?Math.round(m.progress*100)+'%':'';return/recogniz/.test(m.status)?`Tekst herkennen… ${pct}`:/load|initializ/.test(m.status)?'Leesprogramma laden… (de eerste keer duurt dit even)':'Pakbon lezen…'}
+function zetScanMelding(){const el=document.getElementById('scanMelding');if(el)el.textContent=scan.melding}
+function versOpties(sel){const l=S.soorten.filter(x=>x.type==='vers'&&x.naam.trim());
+  return`<option value="" ${!sel?'selected':''}>– kies –</option>${l.map(x=>`<option value="${x.id}" ${sel===x.id?'selected':''}>${esc(x.naam)}${x.gesneden==='on'?' (heel)':' (gesneden)'}</option>`).join('')}<option value="negeer" ${sel==='negeer'?'selected':''}>Negeren (niet in de app)</option><option value="nieuw">+ Nieuwe broodsoort</option>`}
+function scanTotalen(){const t={};for(const r of scan.regels)if(r.doel&&r.doel!=='negeer')t[r.doel]=(t[r.doel]||0)+r.aantal;return t}
+function scanRang(r){return!r.doel?0:r.doel==='negeer'?3:!r.zeker?1:2}
+function toonScan(){
+  if(scan.stap==='lezen'){toonSheet(`<div class="pkop"><button data-a="scanstop">Annuleren</button><b>Pakbon lezen</b><span style="width:70px"></span></div><div class="pinhoud"><div class="scanlader"><div class="spinner"></div><p id="scanMelding">${esc(scan.melding)}</p></div></div>`);return}
+  if(scan.stap==='fout'){toonSheet(`<div class="pkop"><button data-a="scanstop">Terug</button><b>Pakbon lezen</b><span style="width:70px"></span></div><div class="pinhoud"><div class="kaartje"><b>Dat lukte niet</b><div class="sub">${esc(scan.melding)}</div></div><div class="knoppen"><label class="knop" style="margin:0">📷 Opnieuw proberen<input type="file" accept="image/*,application/pdf" id="scanIn" style="display:none"></label></div></div>`);return}
+  const d=scan.d,datumAnders=scan.datumBon&&scan.datumBon!==d,bes=x=>dagTotaal(planKeyVoor(d),x),tot=scanTotalen(),open=scan.regels.filter(r=>!r.doel).length;
+  const niet=S.soorten.filter(x=>x.type==='vers'&&x.naam.trim()&&!(x.id in tot)&&bes(x)>0);
+  toonSheet(`<div class="pkop"><button data-a="scanstop">Annuleren</button><b>Pakbon controleren</b><button data-a="scanok" style="font-weight:700">Overnemen</button></div><div class="pinhoud">
+   ${datumAnders?`<div class="kaartje waarschuw rood"><b>Let op: andere datum</b><div class="sub">De pakbon is van ${esc(datumTekst(scan.datumBon))}, je vult de levering in voor ${esc(datumTekst(d))}.</div></div>`:scan.datumBon?`<p class="hulp">✓ Pakbon van ${esc(datumTekst(scan.datumBon))}</p>`:''}
+   <p class="hulp">Controleer de aantallen. <span class="oranjetekst">Oranje</span> = niet zeker of wijkt af van de bestelling. ${open?`<b>${open} ${open===1?'regel':'regels'} nog koppelen.</b>`:''}</p>
+   <div class="sectie" style="margin:0">${scan.regels.map((r,i)=>[r,i]).sort((x,y)=>scanRang(x[0])-scanRang(y[0])).map(([r,i])=>{const s=S.soorten.find(x=>x.id===r.doel),b=s?bes(s):null,afw=s&&Math.abs(tot[s.id]-b)>=Math.max(3,Math.ceil(b*0.5)),let_=!r.doel||(!r.zeker&&r.doel!=='negeer')||afw;
+     return`<div class="rij inv scanrij ${let_?'aandacht':''} ${r.doel==='negeer'?'genegeerd':''}" style="flex-wrap:wrap"><div class="groei"><div class="naam" style="font-size:15px">${esc(r.naam)}</div><div class="sub">art. ${esc(r.artnr)}${r.voorstel?' · <b>voorstel</b>':''}${!r.zeker&&r.bekend?' · nummer niet zeker gelezen':''}${s&&b!=null?` · besteld ${b}`:''}</div>
+      <select class="veld scankeuze" data-scan="${i}">${versOpties(r.doel)}</select></div>
+      <div class="stepper"><button data-a="scanstap" data-v="${i}" data-n="-1">−</button><input readonly value="${r.aantal}"><button data-a="scanstap" data-v="${i}" data-n="1">+</button></div></div>`}).join('')}</div>
+   ${niet.length?`<div class="kaartje waarschuw"><b>Niet op de pakbon gevonden</b><div class="sub">${niet.map(x=>`${esc(x.naam)} (besteld ${bes(x)})`).join(', ')}. Deze komen op 0 te staan. Controleer of een regel is overgeslagen.</div></div>`:''}
+   <p class="hulp">Gekozen koppelingen worden onthouden, dus de volgende keer gaat het vanzelf.</p></div>`);
+}
+function scanNieuweSoort(i){const r=scan.regels[i],half=/^HALF/.test(r.naam)||/GESN/.test(r.naam),kn=kaleNaam(r.naam).toLowerCase(),naam=(half?'Half ':'')+kn.replace(/\b\w/g,c=>c.toUpperCase())+(half?' gesneden':'');
+  const voorbeeld=S.soorten.find(x=>x.type==='vers'),id=nieuwId();
+  S.soorten.push({id,naam:naam.trim()||r.naam,kar:voorbeeld?.kar??karNrs()[0]??1,type:'vers',gesneden:half?'voor':'on',groep:'',min:0,max:null,temp:null,baktijd:null,perDoos:null,programma:'',programmaId:null,instructie:'',plu:'',pluHalf:'',allergenen:[],ingredienten:'',nieuwSinds:null,artnr:r.artnr,snijStandaard:half?undefined:'half'});
+  r.doel=id;r.zeker=true;log(`Broodsoort ${naam} aangemaakt vanuit pakbon`);bewaar();toast(`${naam} aangemaakt – vul later de PLU in bij Broodsoorten`)}
+function scanOvernemen(){
+  const open=scan.regels.filter(r=>!r.doel);if(open.length&&!confirm(`${open.length} ${open.length===1?'regel is':'regels zijn'} nog niet gekoppeld en ${open.length===1?'wordt':'worden'} overgeslagen. Doorgaan?`))return;
+  S.pakbonNamen=S.pakbonNamen||{};for(const r of scan.regels){if(!r.doel)continue;if(r.zeker||!r.bekend)S.pakbonNamen[r.artnr]=r.naam;
+    if(r.doel==='negeer'){S.pakbonNegeer=[...new Set([...(S.pakbonNegeer||[]),r.artnr])];continue}
+    const s=S.soorten.find(x=>x.id===r.doel);if(s&&!artnrsVan(s).includes(r.artnr)&&(r.zeker===false?!r.bekend:true)){s.artnr=[...artnrsVan(s),r.artnr].join(', ')}
+    if(s)S.pakbonNegeer=(S.pakbonNegeer||[]).filter(a=>a!==r.artnr)}
+  const tot=scanTotalen(),voor={};for(const x of S.soorten.filter(x=>x.type==='vers'&&x.naam.trim()))voor[x.id]=tot[x.id]||0;
+  const let_=new Set(scan.regels.filter(r=>r.doel&&r.doel!=='negeer'&&!r.zeker).map(r=>r.doel));
+  log(`Pakbon gescand (${datumTekst(scan.d)})`);bewaar();const foto=scan.foto;scan=null;openLevering({voor,foto,let:let_});
+}
+
+function openLevering(opt={}){
+  const d=datum,lv=S.levering[d],l=S.soorten.filter(x=>x.type==='vers'&&x.naam.trim());bewerk={soort:'levering',foto:opt.foto||null};
   toonSheet(`<div class="pkop"><button data-a="sluit">Annuleren</button><b>Levering ${esc(datumTekst(d))}</b><button data-a="levopslaan" style="font-weight:700">Opslaan</button></div><div class="pinhoud">
-   <p class="hulp">Neem de aantallen over van de pakbon. Leeg = niets geleverd. Grijs = besteld.</p>
-   <div class="sectie" style="margin:0">${l.map(x=>{const bes=dagTotaal(planKeyVoor(d),x),w=lv?.items?.[x.id];return`<div class="rij inv"><div class="groei"><div class="naam">${esc(x.naam)}</div><div class="sub">besteld ${bes}${x.gesneden==='on'?' · ongesneden':''}</div></div>
+   <label class="knop scanknop">📷 Pakbon scannen (foto of PDF)<input type="file" accept="image/*,application/pdf" id="scanIn" style="display:none"></label>
+   <p class="hulp">${opt.voor?'✓ Ingevuld vanaf de pakbon. Controleer en tik op Opslaan.':'Scan de pakbon, of neem de aantallen zelf over. Leeg = niets geleverd. Grijs = besteld.'}</p>
+   <div class="sectie" style="margin:0">${l.map(x=>{const bes=dagTotaal(planKeyVoor(d),x),w=opt.voor?opt.voor[x.id]:lv?.items?.[x.id];return`<div class="rij inv ${opt.let?.has(x.id)?'aandacht':''}"><div class="groei"><div class="naam">${esc(x.naam)}</div><div class="sub">besteld ${bes}${x.gesneden==='on'?' · ongesneden':''}</div></div>
      <div class="stepper"><button data-a="levstap" data-v="${x.id}" data-n="-1">−</button><input inputmode="numeric" maxlength="3" id="lev-${x.id}" value="${w??''}" placeholder="${bes}"><button data-a="levstap" data-v="${x.id}" data-n="1">+</button></div></div>`}).join('')}</div>
-   <label>Foto van de pakbon (optioneel)</label><div class="notitieform" style="margin:0"><label class="fotoknop ${lv?.fotoId?'aan':''}" id="levFotoKnop">${lv?.fotoId?'✓':'📷'}<input type="file" accept="image/*" id="levFotoIn" style="display:none"></label><span class="hulp" style="margin:auto 0">${lv?.fotoId?'Er is al een foto. Kies een nieuwe om te vervangen.':'Maak een foto van de pakbon.'}</span></div>
+   <label>Foto van de pakbon (optioneel)</label><div class="notitieform" style="margin:0"><label class="fotoknop ${lv?.fotoId||opt.foto?'aan':''}" id="levFotoKnop">${lv?.fotoId||opt.foto?'✓':'📷'}<input type="file" accept="image/*" id="levFotoIn" style="display:none"></label><span class="hulp" style="margin:auto 0">${opt.foto?'De gescande pakbon wordt als foto bewaard.':lv?.fotoId?'Er is al een foto. Kies een nieuwe om te vervangen.':'Maak een foto van de pakbon.'}</span></div>
    <div class="fout" id="fout"></div></div>`);
 }
 function histTabel(hs){const b=hs.some(x=>x.bij);return`<div class="histtab"><table><tr><th>Datum</th><th>Opgezet</th>${b?'<th>Bij</th>':''}<th>Over</th><th>Verkocht</th></tr>${hs.map(x=>`<tr><td>${datumTekst(x.d)}</td><td>${fmt(x.gezet)}</td>${b?`<td>${x.bij?fmt(x.bij):''}</td>`:''}<td>${fmt(x.der)}</td><td>${fmt(x.verkocht)}</td></tr>`).join('')}</table>${b?'<div class="hulp" style="margin:4px 0 0">Opgezet is inclusief bijgebakken. Bijbakken verhoogt het advies niet.</div>':''}</div>`}
@@ -1121,6 +1247,7 @@ const UITLEG=[
  ['export','Exporteren naar Excel','Onder Meer → Exporteren kies je derving, weekrapport of planning en een periode. Het Excel-bestand deel je via het deelmenu: opslaan, mailen of versturen.'],
  ['begeleid','Winkel-iPhone: alleen Brood Opzet (Begeleide toegang)','Zo zorg je dat op de winkel-iPhone alleen Brood Opzet open kan. 1) Open Instellingen → Toegankelijkheid → Begeleide toegang en zet het aan. 2) Tik op Toegangscode-instellingen → Stel toegangscode in en kies een code die alleen jij kent. 3) Open Brood Opzet vanaf het beginscherm. 4) Druk 3 keer snel op de zijknop en tik rechtsboven op Start. Nu kan niemand de app verlaten. Stoppen: druk weer 3 keer op de zijknop, vul je code in en tik linksboven op Stop. Tip: zet bij Begeleide toegang ook Automatische vergrendeling op Nooit als de telefoon aan de lader in de winkel ligt.'],
  ['oefenen','Oefenen','Via Meer → Uitleg → Oefenen werkt de app tijdelijk met een kopie van de gegevens. Je kunt alles uitproberen: afvinken, derving, bijbakken. Er wordt niets echt opgeslagen. Met Stoppen in de oranje balk ga je terug naar de echte app.'],
+ ['pakbon','Pakbon scannen','Bij Levering invullen tik je op Pakbon scannen. Maak een foto, kies er een uit je fotobibliotheek of kies een PDF. De app leest de regels en koppelt ze op artikelnummer aan jullie broodsoorten. De eerste keer kies je bij elke regel de juiste broodsoort, Negeren of + Nieuwe broodsoort; dat wordt onthouden. Oranje regels zijn niet zeker of wijken af van de bestelling: controleer die. Met Overnemen komen de aantallen in de levering, daarna tik je op Opslaan. Tip: een rechte foto zonder schaduw leest het best.'],
  ['leverdagen','Leverdagen vers brood','Bij Broodsoorten en instellingen stel je in op welke dagen de bakker vers brood levert. Met Uitzonderingen zet je een datum op Geen levering (bijv. een feestdag) of Extra levering. Bij Afwijkende dagen en de feestdagmelding kun je ook kiezen of er vers brood wordt geleverd. Op een dag zonder levering staat er geen vers brood op Klaarzetten, krijg je geen melding om de levering in te vullen en telt het vers brood niet mee.'],
  ['morgen','Klaarzetten voor morgen','De lijst op Klaarzetten hoort bij de bakdag. Vanaf de omschakeltijd (in te stellen bij Broodsoorten en instellingen, standaard 14:00) opent Klaarzetten op morgen, met een blauwe balk "Je zet klaar voor: … (morgen)". Bekijk je na die tijd de lijst van vandaag, dan krijg je een waarschuwing met de knop Naar morgen. Bijbakken en Oven vullen horen altijd bij vandaag; de levering vul je in op de dag zelf.'],
  ['materiaal','Materiaal','Onder Meer → Materiaal meld je dat verpakkingsmateriaal bijna op is: tik op Bijna op, en als het echt op is op Op!. Je naam en de tijd komen erbij, zodat niemand het dubbel meldt. Staat het er niet tussen? Tik op + Iets anders. De beheerder krijgt een melding en zet het op Besteld en later op Aangevuld.'],
@@ -2073,7 +2200,8 @@ function openSoort(s){
   <div class="pinhoud"><label>Naam</label><input class="veld" id="fNaam" value="${esc(s.naam)}" placeholder="Bijv. Croissant roomboter"><div class="fout" id="fout"></div>
    <label id="pluLabel">PLU-nummer</label><input class="veld" id="fPlu" inputmode="numeric" maxlength="8" style="width:150px" value="${esc(s.plu||'')}" placeholder="bijv. 4312">
    <label>Soort product</label><div class="chips" id="typeChips">${[['afbakken','Afbakken'],['ontdooien','Ontdooien'],['vers','Vers geleverd']].map(([k,l])=>`<button class="chip ${bewerk.type===k?'aan':''}" data-a="typekies" data-v="${k}">${l}</button>`).join('')}</div>
-   <div id="secSnij"><label>PLU half brood (alleen bij ongesneden)</label><input class="veld" id="fPluHalf" inputmode="numeric" maxlength="8" style="width:150px" value="${esc(s.pluHalf||'')}" placeholder="bijv. 8014">
+   <div id="secSnij"><label>Artikelnummer(s) bakker</label><input class="veld" id="fArtnr" inputmode="decimal" value="${esc(s.artnr||'')}" placeholder="bijv. 1013 (meerdere met komma)"><p class="hulp" style="margin-top:4px">Zoals op de pakbon. Wordt ook vanzelf ingevuld bij het scannen.</p>
+   <label>PLU half brood (alleen bij ongesneden)</label><input class="veld" id="fPluHalf" inputmode="numeric" maxlength="8" style="width:150px" value="${esc(s.pluHalf||'')}" placeholder="bijv. 8014">
    <label>Standaard verdeling (ongesneden)</label><div class="chips" id="stdChips">${[['half','Half om half'],['heel','Alles heel'],['halve','Alles half']].map(([k,l])=>`<button class="chip ${(bewerk.snijStandaard||'half')===k?'aan':''}" data-a="snijstd" data-v="${k}">${l}</button>`).join('')}</div>
    <label>Brood</label><div class="chips" id="snijChips">${[['voor','Voorgesneden'],['on','Ongesneden (zelf snijden)']].map(([k,l])=>`<button class="chip ${bewerk.gesneden===k?'aan':''}" data-a="snijkies" data-v="${k}">${l}</button>`).join('')}</div><p class="hulp">Vers brood staat op Klaarzetten in een eigen blok, zonder platen.</p></div>
    <label>Foto</label><div class="fotorij"><div id="fotoVoorbeeld">${bewerk.foto?`<img src="${bewerk.foto}" alt="">`:'<span>Geen foto</span>'}</div><div style="display:flex;flex-direction:column;gap:8px">
@@ -2107,7 +2235,7 @@ function soortOpslaan(){
   const fout=x=>document.getElementById('fout').textContent=x;
   if(!naam)return fout('Vul de naam in.');if(afb&&!max)return fout('Vul het maximum per plaat in.');if(afb&&min!=null&&min>max)return fout('Minimum is groter dan maximum.');
   const nw={id:bewerk.id,naam,kar:bewerk.kar,type:t,gesneden:bewerk.gesneden||'voor',groep:afb?tekst('fGroep').toUpperCase():'',min:min||0,max,
-    temp:afb?w('fTemp'):null,baktijd:afb?w('fTijd'):null,perDoos:vers?null:w('fDoos'),programma:'',programmaId:afb?(bewerk.programmaId||null):null,instructie:tekst('fInstr'),plu:tekst('fPlu'),pluHalf:vers&&bewerk.gesneden==='on'?tekst('fPluHalf'):'',snijStandaard:vers&&bewerk.gesneden==='on'?(bewerk.snijStandaard||'half'):undefined,allergenen:[...(bewerk.allergenen||[])],ingredienten:tekst('fIngr'),nieuwSinds:document.getElementById('fNieuw')?.checked?(bewerk.nieuwSinds||iso()):null};
+    temp:afb?w('fTemp'):null,baktijd:afb?w('fTijd'):null,perDoos:vers?null:w('fDoos'),programma:'',programmaId:afb?(bewerk.programmaId||null):null,instructie:tekst('fInstr'),plu:tekst('fPlu'),pluHalf:vers&&bewerk.gesneden==='on'?tekst('fPluHalf'):'',artnr:vers?tekst('fArtnr'):'',snijStandaard:vers&&bewerk.gesneden==='on'?(bewerk.snijStandaard||'half'):undefined,allergenen:[...(bewerk.allergenen||[])],ingredienten:tekst('fIngr'),nieuwSinds:document.getElementById('fNieuw')?.checked?(bewerk.nieuwSinds||iso()):null};
   if(nw.programmaId){const p=S.programmas[nw.programmaId];if(p){nw.programma=p.naam;nw.temp=p.temp;nw.baktijd=p.baktijd}}
   if(bewerk.foto)S.fotos[nw.id]=bewerk.foto;else if(S.fotos[nw.id])S.fotos[nw.id]=null;
   const i=S.soorten.findIndex(x=>x.id===nw.id);
@@ -2134,7 +2262,7 @@ document.addEventListener('click',async e=>{
   const b=e.target.closest('[data-a]');if(!b||b.dataset.a!=='undo')undoVerberg();if(!b){if(e.target.id==='sheet')sluit();return}
   const a=b.dataset.a,v=b.dataset.v,m=document.getElementById('scherm');
   const NODIG={vink:'vinken',wis:'vinken',werkmodus:'vinken',werkklaar:'vinken',ovenmodus:'vinken',ovenkies:'vinken',ovenaantal:'vinken',ovenklaar:'vinken',afbak:'vinken',afbakopslaan:'vinken',
-    aanpas:'vinken',aanpasopslaan:'vinken',levering:'vinken',levstap:'vinken',levopslaan:'vinken',snij:'vinken',snijderf:'vinken',snijreset:'vinken',extrakies:'vinken',extrastap:'vinken',bijnieuw:'vinken',bijkies:'vinken',bijstap:'vinken',bijopslaan:'vinken',bijklaar:'vinken',bijweg:'vinken',aanpasterug:'vinken',extra:'vinken',extraopslaan:'vinken',hele:'vinken',ontvink:'vinken',ontweg:'vinken',ontnieuw:'vinken',ontopslaan:'vinken',
+    aanpas:'vinken',aanpasopslaan:'vinken',levering:'vinken',levstap:'vinken',levopslaan:'vinken',scanstop:'vinken',scanok:'vinken',scanstap:'vinken',snij:'vinken',snijderf:'vinken',snijreset:'vinken',extrakies:'vinken',extrastap:'vinken',bijnieuw:'vinken',bijkies:'vinken',bijstap:'vinken',bijopslaan:'vinken',bijklaar:'vinken',bijweg:'vinken',aanpasterug:'vinken',extra:'vinken',extraopslaan:'vinken',hele:'vinken',ontvink:'vinken',ontweg:'vinken',ontnieuw:'vinken',ontopslaan:'vinken',
     gebruik:'invullen',karwissel:'invullen',allesadvies:'invullen',adviestoepassen:'invullen',afwtoevoegen:'invullen',afwweg:'invullen',afwbewerk:'invullen',afwnul:'invullen',kopieer:'invullen',kopieerdoe:'invullen',
     step:'derving',stepH:'derving',cstep:'derving',cstepH:'derving',dannuleer:'derving',dnul:'derving',dopslaan:'derving',kvink:'derving',kassaok:'derving',kassaweg:'derving',tel:'bestellen',telopslaan:'bestellen',leverdag:'bestellen',deelrapport:'rapport',fotoweg:'soorten',typekies:'soorten',snijkies:'soorten',snijstd:'soorten',
     open:'soorten',nieuw:'soorten',versdag:'soorten',versuitznieuw:'soorten',versuitzweg:'soorten',versuitz:'invullen',karkleur:'soorten',allerg:'soorten',nieuwstop:'soorten',feestkopie:'invullen',feestnul:'invullen',feestnee:'invullen',kartaak:'invullen',kartaakzet:'invullen',dagafsluiten:'derving',expsoort:'rapport',expper:'rapport',exportvoorbeeld:'rapport',exportdeel:'rapport',progopen:'soorten',prognieuw:'soorten',progopslaan:'soorten',progweg:'soorten',progsoort:'soorten',progkies:'soorten',karerbij:'soorten',karweg:'soorten',opslaan:'soorten',omhoog:'soorten',omlaag:'soorten',weg:'soorten',momenterbij:'soorten',momentweg:'soorten'};
@@ -2287,6 +2415,9 @@ document.addEventListener('click',async e=>{
     return}
   case'managertoggle':managerOpen=!managerOpen;render();return;
   case'levering':openLevering();return;
+  case'scanstop':scan=null;openLevering();return;
+  case'scanok':if(scan)scanOvernemen();return;
+  case'scanstap':{const r=scan?.regels[+v];if(!r)return;r.aantal=Math.max(0,r.aantal+ +b.dataset.n);r.zeker=r.doel?true:r.zeker;toonScan();return}
   case'levfoto':{const lv=S.levering[datum];if(lv?.fotoId&&S.notfotos[lv.fotoId])toonFoto(S.notfotos[lv.fotoId]);return}
   case'levstap':{const i=document.getElementById('lev-'+v);const cur=getal(i.value);i.value=Math.max(0,(cur??(+b.dataset.n>0?0:0))+ +b.dataset.n);return}
   case'levopslaan':{const d=datum,items={},l=S.soorten.filter(x=>x.type==='vers'&&x.naam.trim());for(const x of l){const n=getal(document.getElementById('lev-'+x.id)?.value);items[x.id]=n??0}
@@ -2490,6 +2621,8 @@ document.addEventListener('change',e=>{
   else if(ds.derv&&ds.oud!==t.value){log(`Derving ${datumTekst(dervDatum)}: ${naam(ds.derv)} ${BESTEMMING.find(y=>y[0]===best)[1].toLowerCase()} = ${t.value||'leeg'}`,'d:'+dervDatum+ds.derv+best);bewaar();ds.oud=t.value;
     const el=document.getElementById('ds-'+ds.derv);if(el)el.innerHTML=dervSub(dervDatum,ds.derv,S.historie[dervDatum]?.gezet?.[ds.derv]??0)}
   else if(t.id==='fFoto'&&t.files&&t.files[0])verkleinFoto(t.files[0]);
+  else if(t.id==='scanIn'&&t.files&&t.files[0]){if(!mag('vinken'))return;startScan(t.files[0])}
+  else if(t.dataset&&t.dataset.scan!=null&&scan){const i=+t.dataset.scan,r=scan.regels[i];if(t.value==='nieuw'){if(!mag('soorten')){toast('Geen rechten om een broodsoort aan te maken');t.value=r.doel;return}scanNieuweSoort(i)}else{r.doel=t.value;r.zeker=true;r.voorstel=false}toonScan()}
   else if(t.id==='levFotoIn'&&t.files&&t.files[0])verkleinNaar(t.files[0],1600,src=>{if(bewerk)bewerk.foto=src;const k=document.getElementById('levFotoKnop');if(k){k.classList.add('aan');k.firstChild.textContent='✓'}toast('Foto van de pakbon klaar')});
   else if(t.id==='notFotoIn'&&t.files&&t.files[0])verkleinNaar(t.files[0],1600,src=>{notFoto=src;const l=t.closest('.fotoknop');if(l){l.classList.add('aan');l.firstChild.textContent='✓'}toast('Foto klaar – typ eventueel tekst en tik op +')});
   else if(t.id==='notMetFoto'){notMetFoto=t.checked;const el=document.getElementById('notLijst');if(el)el.innerHTML=notLijstHtml()}
