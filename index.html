@@ -662,6 +662,7 @@ function snapshot(){
    for(const d of Object.keys(S.dervReg))if(d<dgrens){const l=Object.values(S.dervReg[d]||{});if(l.length&&l.every(r=>r.kassa))delete S.dervReg[d]}}
   const nodig=new Set();for(const d of Object.keys(S.notities))for(const n of Object.values(S.notities[d]||{}))if(n.fotoId)nodig.add(n.fotoId);for(const lv of Object.values(S.levering))if(lv?.fotoId)nodig.add(lv.fotoId);
   for(const id of Object.keys(S.notfotos))if(!nodig.has(id)&&S.notfotos[id]===null)delete S.notfotos[id];
+  for(const id of Object.keys(S.notfotos))if(oudePakbonFoto(id)&&S.notfotos[id]!==null){delete S.notfotos[id];delete basis['notfoto:'+id]}
   const lg=Date.now()-60*864e5;for(const[id,l]of Object.entries(S.log))if(l.t<lg)delete S.log[id];
 }
 function historie(s,groep){
@@ -721,12 +722,43 @@ function toonNieuws(){const p=prof();if(!L.sessie||p.versieGezien===APP_VERSIE)r
    <div class="sectie" style="margin:10px 0 0">${NIEUWS.map(([i,t,x])=>`<div class="rij inv"><div class="nieuwsicoon">${i}</div><div class="groei"><div class="naam">${t}</div><div class="sub">${x}</div></div></div>`).join('')}</div>
    <div class="knoppen"><button class="knop" data-a="nieuwsklaar">Begrepen</button></div></div>`);return true}
 function bewaarL(){if(OEFEN)return;try{localStorage.setItem(OPSLAG_LOKAAL,JSON.stringify(L))}catch(e){}}
-function bewaarNu(){clearTimeout(bewaarTimer);bewaarTimer=null;if(OEFEN)return;snapshot();const t=JSON.stringify(S);let ok=true;
-  try{localStorage.setItem(OPSLAG,t);bewaarSync()}catch(e){ok=!!window.ReactNativeWebView}
-  bewaarL();if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(t);
-  if(ok!==!opslagFout){opslagFout=!ok;const el=document.getElementById('opslagmelding');if(el)el.style.display=opslagFout?'block':'none'}
+
+/* ---- opslag op het toestel (9.14): gewone gegevens in localStorage, foto's en serverkopie in IndexedDB (veel meer ruimte) ---- */
+let idb=null,idbOk=false,idbTimer=null,idbRij=new Map();const idbBekend=new Map();
+function idbOpen(){return new Promise(ok=>{try{if(!window.indexedDB)return ok(null);const r=indexedDB.open('broodopzet',1);r.onupgradeneeded=()=>{try{r.result.createObjectStore('kv')}catch(e){}};r.onsuccess=()=>ok(r.result);r.onerror=()=>ok(null);r.onblocked=()=>ok(null);setTimeout(()=>ok(null),4000)}catch(e){ok(null)}})}
+function idbAlles(){return new Promise(ok=>{try{const uit={},c=idb.transaction('kv','readonly').objectStore('kv').openCursor();c.onsuccess=()=>{const x=c.result;if(x){uit[x.key]=x.value;x.continue()}else ok(uit)};c.onerror=()=>ok(null)}catch(e){ok(null)}})}
+function idbZet(k,v){if(v===undefined&&!idbBekend.has(k)){idbRij.delete(k);return}if(v!==undefined&&idbBekend.get(k)===v&&!idbRij.has(k))return;idbRij.set(k,v);if(!idbTimer)idbTimer=setTimeout(idbSchrijf,300)}
+function idbSchrijf(){idbTimer=null;if(!idb||!idbRij.size)return;const rij=idbRij;idbRij=new Map();
+  try{const t=idb.transaction('kv','readwrite'),st=t.objectStore('kv');for(const[k,v]of rij){if(v===undefined)st.delete(k);else st.put(v,k)}
+    t.oncomplete=()=>{for(const[k,v]of rij){if(v===undefined)idbBekend.delete(k);else idbBekend.set(k,v)}if(opslagFout)opslagFoutZet(false)};
+    t.onerror=t.onabort=()=>{for(const[k,v]of rij)if(!idbRij.has(k))idbRij.set(k,v);opslagFoutZet(true)}}catch(e){opslagFoutZet(true)}}
+function idbGroep(pre,obj){const nu=new Set();for(const[id,v]of Object.entries(obj||{}))if(typeof v==='string'&&v){nu.add(pre+id);idbZet(pre+id,v)}
+  for(const k of new Set([...idbBekend.keys(),...idbRij.keys()]))if(k.startsWith(pre)&&!nu.has(k))idbZet(k,undefined)}
+function wisIdb(){return new Promise(ok=>{idbRij=new Map();idbBekend.clear();if(!idb)return ok();try{const t=idb.transaction('kv','readwrite');t.objectStore('kv').clear();t.oncomplete=t.onerror=t.onabort=()=>ok()}catch(e){ok()}})}
+function lichteS(){const o={...S,fotos:{},notfotos:{}};for(const[id,v]of Object.entries(S.notfotos))if(v===null)o.notfotos[id]=null;return o}
+function bewaarS(){try{localStorage.setItem(OPSLAG,JSON.stringify(idbOk?lichteS():S));if(idbOk){idbGroep('f:',S.fotos);idbGroep('n:',S.notfotos)}return true}catch(e){return false}}
+function opslagFoutZet(f){opslagFout=f;const el=document.getElementById('opslagmelding');if(!el)return;
+  el.textContent=L.gekoppeld&&L.modus!=='lokaal'?'Dit toestel kon niet alles bewaren. Je werk staat wel veilig op de server.':'Opslaan op dit toestel is mislukt: het geheugen is vol.';el.style.display=f?'block':'none'}
+/* pakbonfoto's ouder dan 60 dagen blijven alleen op de server (ophalen bij openen) */
+function oudePakbonFoto(id){const m=/^lv(\d{4}-\d{2}-\d{2})$/.exec(id||'');return!!m&&m[1]<plusDagen(iso(),-60)}
+const opslagKlaar=(async()=>{if(window.ReactNativeWebView||window.__BEGINSTAAT__!==undefined)return;idb=await idbOpen();if(!idb)return;const a=await idbAlles();if(!a)return;
+  const lsBasis=(()=>{try{return localStorage.getItem(OPSLAG_BASIS)}catch(e){return null}})();
+  const idbHeeftBasis=Object.keys(a).some(k=>k.startsWith('b:'));if(idbHeeftBasis)basis={};
+  for(const[k,v]of Object.entries(a)){idbBekend.set(k,v);const id=k.slice(2);
+    if(k.startsWith('f:')){if(!S.fotos[id])S.fotos[id]=v}
+    else if(k.startsWith('n:')){if(S.notfotos[id]!==null&&!S.notfotos[id]&&!oudePakbonFoto(id))S.notfotos[id]=v}
+    else if(k.startsWith('b:'))basis[id]=v}
+  idbOk=true;
+  /* overstap van de oude opslag: serverkopie naar IndexedDB, daarna de grote kopieën uit localStorage weg */
+  idbGroep('b:',basis);idbGroep('f:',S.fotos);idbGroep('n:',S.notfotos);idbSchrijf();
+  if(lsBasis!==null&&idbHeeftBasis)try{localStorage.removeItem(OPSLAG_BASIS)}catch(e){}  /* pas weg als de kopie in IndexedDB zeker staat */
+  try{localStorage.setItem(OPSLAG,JSON.stringify(lichteS()))}catch(e){}
+  render()})();
+function bewaarNu(){clearTimeout(bewaarTimer);bewaarTimer=null;if(OEFEN)return;snapshot();let ok=bewaarS()||!!window.ReactNativeWebView;bewaarSync();
+  bewaarL();if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(JSON.stringify(S));
+  if(ok!==!opslagFout)opslagFoutZet(!ok);
   planSync();}
-function bewaarSync(){try{localStorage.setItem(OPSLAG_BASIS,JSON.stringify(basis));localStorage.setItem('broodkarren-revs',JSON.stringify(revs))}catch(e){}}
+function bewaarSync(){try{if(idbOk)idbGroep('b:',basis);else localStorage.setItem(OPSLAG_BASIS,JSON.stringify(basis));localStorage.setItem('broodkarren-revs',JSON.stringify(revs))}catch(e){}}
 function bewaar(){L.laatsteActie=Date.now();if(!bewaarTimer)bewaarTimer=setTimeout(bewaarNu,250)}
 window.addEventListener('pagehide',()=>{bewaarNu()});
 
@@ -742,7 +774,9 @@ function maakDb(){
     async login(e,p){return chk(await c.auth.signInWithPassword({email:e,password:p})).session},
     async logout(){await c.auth.signOut()},
     async isBeheerder(uid){return !!chk(await c.from('beheerders').select('user_id').eq('user_id',uid).maybeSingle())},
-    async alles(){return chk(await c.from('app_data').select('sleutel,waarde'))},
+    async alles(){try{const a=chk(await c.from('app_data').select('sleutel,waarde').not('sleutel','like','notfoto:lv%'));
+      const b=chk(await c.from('app_data').select('sleutel,waarde').like('sleutel','notfoto:lv%').gte('sleutel','notfoto:lv'+plusDagen(iso(),-60)));return a.concat(b)}
+      catch(e){console.warn('gefilterd ophalen mislukt, alles ophalen',e);return chk(await c.from('app_data').select('sleutel,waarde'))}},
     async haal(k){const d=chk(await c.from('app_data').select('waarde').eq('sleutel',k).maybeSingle());return d?d.waarde:null},
     async schrijf(k,v,opt={}){const nu=new Date().toISOString();
       try{
@@ -806,13 +840,14 @@ function pasOpsToe(obj,ops){
 }
 function ontvang(k,v){
   if(OEFEN||!isObj(v))return;const rev=v._rev||0;if(revs[k]!=null&&rev<=revs[k])return;revs[k]=rev;v=zonderRev(v);
+  if(k.startsWith('notfoto:')&&oudePakbonFoto(k.slice(8))){delete basis[k];delete S.notfotos[k.slice(8)];return}
   const lokaal=splitsen()[k],lj=stabiel(lokaal);
   if(basis[k]===undefined||lokaal===undefined||lj===basis[k]){basis[k]=stabiel(v);pasToe(k,v)}
   else{const ops=diff(JSON.parse(basis[k]),lokaal);basis[k]=stabiel(v);pasToe(k,pasOpsToe(kloon(v),ops));planSync()}
 }
 function planSync(){if(L.modus==='lokaal'||!db||!L.gekoppeld)return;clearTimeout(syncTimer);syncTimer=setTimeout(sync,250)}
 async function sync(){
-  if(OEFEN||!db||!L.gekoppeld||L.modus==='lokaal')return;
+  if(OEFEN||!db||!L.gekoppeld||L.modus==='lokaal')return;await opslagKlaar;
   if(syncBezig){syncOpnieuw=true;return}
   syncBezig=true;let veranderd=false,fout=false;
   try{
@@ -839,7 +874,7 @@ async function sync(){
     }
     zetStatus('online');
   }catch(e){fout=true;zetStatus('offline');console.warn('sync',e);clearTimeout(retryTimer);retryTimer=setTimeout(sync,15000)}
-  finally{syncBezig=false;bewaarSync();try{localStorage.setItem(OPSLAG,JSON.stringify(S))}catch(e){}
+  finally{syncBezig=false;bewaarSync();bewaarS();
     if(veranderd)renderZacht();if(syncOpnieuw&&!fout){syncOpnieuw=false;sync()}}
 }
 function zetStatus(s){if(syncStatus===s)return;syncStatus=s;document.querySelectorAll('.status').forEach(el=>el.outerHTML=statusHtml())}
@@ -867,7 +902,7 @@ function statusHtml(){
 function renderZacht(){const a=document.activeElement;if(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.tagName==='SELECT')){uitgesteldRender=true;return}render()}
 document.addEventListener('focusout',()=>setTimeout(()=>{if(uitgesteldRender){const a=document.activeElement;if(!a||!['INPUT','TEXTAREA','SELECT'].includes(a.tagName)){uitgesteldRender=false;render()}}},250));
 async function koppelStart(){
-  syncStatus='start';render();
+  syncStatus='start';render();await opslagKlaar;
   try{
     const rows=await db.alles();
     if(!L.gekoppeld){
@@ -875,7 +910,7 @@ async function koppelStart(){
       L.gekoppeld=true;bewaarL();
     }
     for(const r of rows)ontvang(r.sleutel,r.waarde);
-    db.abonneer((k,v)=>{ontvang(k,v);bewaarSync();try{localStorage.setItem(OPSLAG,JSON.stringify(S))}catch(e){}renderZacht()},
+    db.abonneer((k,v)=>{ontvang(k,v);bewaarSync();bewaarS();renderZacht()},
       s=>{if(s==='SUBSCRIBED'&&syncStatus==='offline')sync()});
     zetStatus('online');bewaarNu();await sync();
   }catch(e){console.warn(e);zetStatus('offline');clearTimeout(retryTimer);retryTimer=setTimeout(()=>{if(syncStatus==='offline')koppelStart()},15000)}
@@ -1209,7 +1244,7 @@ async function leesPagina(canvas,melding){
 function zonderVakjes(tA,tB){const a=leesPakbonTekst(tA).regels,b=leesPakbonTekst(tB).regels,uit=[];
   for(const r of a){const o=b.find(x=>x.artnr===r.artnr);uit.push({...r,twijfel:!o||o.aantal!==r.aantal})}
   for(const r of b)if(!a.some(x=>x.artnr===r.artnr))uit.push({...r,twijfel:true});return uit}
-function canvasNaarFoto(c){const sc=Math.min(1,1600/Math.max(c.width,c.height)),o=document.createElement('canvas');o.width=Math.round(c.width*sc);o.height=Math.round(c.height*sc);o.getContext('2d').drawImage(c,0,0,o.width,o.height);return o.toDataURL('image/jpeg',.8)}
+function canvasNaarFoto(c){const sc=Math.min(1,1400/Math.max(c.width,c.height)),o=document.createElement('canvas');o.width=Math.round(c.width*sc);o.height=Math.round(c.height*sc);o.getContext('2d').drawImage(c,0,0,o.width,o.height);return o.toDataURL('image/jpeg',.72)}
 /* koppelen: artnr → broodsoort */
 function bekendeArt(){const k={};for(const s of S.soorten)if(s.type==='vers'&&s.naam.trim())for(const a of artnrsVan(s))k[a]=s.id;for(const a of S.pakbonNegeer||[])k[normArt(a)]='negeer';return k}
 const kaleNaam=t=>t.toUpperCase().replace(/\b(HEEL|HALF|GESN\.?|GESNEDEN|CP|X|\d+|ST|STUKS|VGB|DECO|800)\b/g,' ').replace(/[^A-Z ]/g,' ').replace(/\s+/g,' ').trim();
@@ -1579,11 +1614,11 @@ function pakbonnenHtml(){const ds=Object.keys(S.levering).filter(d=>S.levering[d
   if(pat.length)h+=`<div class="kaartje waarschuw"><b>Bakker levert vaker te weinig</b>${pat.map(x=>`<div class="sub">${esc(x.s.naam)}: ${x.keer} van de laatste ${x.mee} leveringen te weinig (${x.stuks} in totaal)</div>`).join('')}</div>`;
   if(!ds.length)return h+'<p class="leeg">Nog geen leveringen ingevuld.</p>';
   return h+`<div class="sectie">${ds.map(d=>{const lv=S.levering[d],v=levVerschil(lv),tot=Object.values(lv.items||{}).reduce((a,b)=>a+(+b||0),0);
-    return`<div class="rij"><button class="regel" data-a="pakbonopen" data-v="${d}"><div class="groei"><div class="naam">${esc(dagNaamLang(d))}</div><div class="sub">${fmt(tot)} broden · ${esc(lv.wie||'')}${lv.pakbon?' · pakbon gescand':''}${lv.fotoId&&S.notfotos[lv.fotoId]?' · 📷':''}</div></div>${v.length?`<span class="st aangepast">${v.length} ${v.length===1?'verschil':'verschillen'}</span>`:lv.pakbon?'<span class="goed">✓</span>':''}<span class="pijl">›</span></button></div>`}).join('')}</div>`}
+    return`<div class="rij"><button class="regel" data-a="pakbonopen" data-v="${d}"><div class="groei"><div class="naam">${esc(dagNaamLang(d))}</div><div class="sub">${fmt(tot)} broden · ${esc(lv.wie||'')}${lv.pakbon?' · pakbon gescand':''}${lv.fotoId?' · 📷':''}</div></div>${v.length?`<span class="st aangepast">${v.length} ${v.length===1?'verschil':'verschillen'}</span>`:lv.pakbon?'<span class="goed">✓</span>':''}<span class="pijl">›</span></button></div>`}).join('')}</div>`}
 function openPakbon(d){const lv=S.levering[d];if(!lv)return;const ids=S.soorten.filter(s=>s.type==='vers'&&(lv.items?.[s.id]||lv.pakbon?.[s.id])).map(s=>s.id),v=levVerschil(lv),foto=lv.fotoId&&S.notfotos[lv.fotoId],pb=!!lv.pakbon;
   toonSheet(`<div class="pkop"><span style="width:70px"></span><b>${esc(datumTekst(d))}</b><button data-a="sluit" style="font-weight:700">Sluiten</button></div><div class="pinhoud">
    <p class="hulp">Ingevuld door ${esc(lv.wie||'?')} om ${tijdTekst(lv.t)}.${pb?'':' Geen pakbon gescand.'}</p>
-   ${foto?`<img class="pakbonduim" src="${foto}" alt="Pakbon" data-a="pakbonfoto" data-v="${d}"><p class="hulp" style="text-align:center;margin-top:0">Tik op de pakbon om te vergroten</p>`:''}
+   ${foto?`<img class="pakbonduim" src="${foto}" alt="Pakbon" data-a="pakbonfoto" data-v="${d}"><p class="hulp" style="text-align:center;margin-top:0">Tik op de pakbon om te vergroten</p>`:lv.fotoId&&L.gekoppeld&&L.modus!=='lokaal'?`<div class="knoppen"><button class="knop rand klein" data-a="pakbonophalen" data-v="${d}">📷 Foto van de pakbon ophalen</button></div><p class="hulp" style="text-align:center;margin-top:0">Oudere pakbonfoto's staan alleen op de server.</p>`:''}
    <div class="tabelwrap"><table class="tabel"><tr><th>Broodsoort</th>${pb?'<th>Pakbon</th>':''}<th>Geteld</th>${pb?'<th>Verschil</th>':''}</tr>${ids.map(id=>{const s=S.soorten.find(x=>x.id===id),p=lv.pakbon?.[id]??0,n=lv.items?.[id]??0;
      return`<tr><td>${esc(s.naam)}</td>${pb?`<td>${p}</td>`:''}<td>${n}</td>${pb?`<td class="${n<p?'hoog':''}">${n===p?'':(n>p?'+':'')+(n-p)}</td>`:''}</tr>`}).join('')}</table></div>
    ${v.length?`<div class="knoppen"><button class="knop rand" data-a="verschildeel" data-v="${d}">Verschil delen met de bakker</button></div>`:''}</div>`)}
@@ -2612,7 +2647,7 @@ document.addEventListener('click',async e=>{
   case'lokaalmodus':L.modus='lokaal';bewaarL();syncStatus='lokaal';render();return;
   case'naarkoppel':L.modus='online';L.gekoppeld=false;bewaarL();render();return;
   case'ontkoppel':if(afwStap!=='ontkoppel'){afwStap='ontkoppel';render();return}afwStap=null;try{await db?.logout()}catch(e){}
-    L={modus:'online'};basis={};revs={};bewaarL();try{localStorage.removeItem(OPSLAG_BASIS);localStorage.removeItem('broodkarren-revs')}catch(e){}render();return;
+    L={modus:'online'};basis={};revs={};bewaarL();try{localStorage.removeItem(OPSLAG_BASIS);localStorage.removeItem('broodkarren-revs')}catch(e){}await wisIdb();bewaarS();render();return;
   case'setup':{const n=document.getElementById('sNaam').value.trim(),p=document.getElementById('sPin').value,p2=document.getElementById('sPin2').value,f=t=>document.getElementById('fout').textContent=t;
     if(!n)return f('Vul je naam in.');if(!/^[0-9]{4}$/.test(p))return f('Pincode moet 4 cijfers zijn.');if(p!==p2)return f('De pincodes zijn niet gelijk.');
     const id=nieuwId();S.gebruikers.push({id,naam:n,rol:'admin',pin:hashPin(p,id)});L.sessie=id;L.laatsteGebruiker=id;log('Beheerdersaccount aangemaakt');bewaar();render();return}
@@ -2697,7 +2732,7 @@ document.addEventListener('click',async e=>{
   case'pushteamuit':pushTeamUit();return;
   case'woweek':woWeek=+v===0?plusDagen(maandag(iso()),-7):plusDagen(woWeek,+v);if(woWeek>maandag(iso()))woWeek=maandag(iso());render();return;
   case'bkterug':{if(!isAdmin()||!kanBeheren())return;if(!confirm(`Alle gegevens terugzetten naar de back-up van ${dagNaamLang(v)}?\n\nWat daarna is ingevuld, gaat verloren.`))return;if(!confirm('Weet je het zeker? Dit kan niet ongedaan worden gemaakt.'))return;
-    try{toast('Terugzetten…');await db.herstel(v);log(`Back-up van ${datumTekst(v)} teruggezet`);try{localStorage.removeItem(OPSLAG);localStorage.removeItem(OPSLAG_BASIS);localStorage.removeItem('broodkarren-revs')}catch(e){}alert('De back-up is teruggezet. De app start opnieuw. Sluit de app op andere telefoons en open hem opnieuw.');location.reload()}catch(e){toast('Terugzetten mislukt: '+(e?.message||e))}return}
+    try{toast('Terugzetten…');await db.herstel(v);log(`Back-up van ${datumTekst(v)} teruggezet`);try{localStorage.removeItem(OPSLAG);localStorage.removeItem(OPSLAG_BASIS);localStorage.removeItem('broodkarren-revs')}catch(e){}await wisIdb();alert('De back-up is teruggezet. De app start opnieuw. Sluit de app op andere telefoons en open hem opnieuw.');location.reload()}catch(e){toast('Terugzetten mislukt: '+(e?.message||e))}return}
   case'pushtest':toast('Testmelding versturen…');stuurPush({test:true}).then(r=>{let t;
     if(r.netwerk)t='✗ Geen verbinding met Supabase';else if(r.status===401)t='✗ Supabase weigert: zet bij stuur-push "Verify JWT" uit';else if(r.status===404)t='✗ De functie stuur-push bestaat nog niet in Supabase';
     else if(r.ok)t=r.verstuurd?`✓ Verstuurd naar ${r.verstuurd} ${r.verstuurd===1?'toestel':'toestellen'}`:`✗ Niet verstuurd: ${r.reden||'onbekend'}`;else t='✗ '+(r.fout||('fout '+r.status));
@@ -2762,6 +2797,7 @@ document.addEventListener('click',async e=>{
   case'scanstap':{const r=scan?.regels[+v];if(!r)return;r.aantal=Math.max(0,r.aantal+ +b.dataset.n);r.zeker=r.doel?true:r.zeker;r.twijfel=false;toonScan();return}
   case'pbfout':meldLeesfout();return;
   case'pakbonopen':openPakbon(v);return;
+  case'pakbonophalen':{const lv=S.levering[v];if(!lv?.fotoId||!db?.haal)return;b.disabled=true;b.textContent='Ophalen…';try{const r=await db.haal('notfoto:'+lv.fotoId);if(r?.data)toonFoto(r.data);else{toast('Foto niet gevonden op de server');b.remove()}}catch(e){toast('Ophalen lukt nu niet (geen internet?)');b.disabled=false;b.textContent='📷 Foto van de pakbon ophalen'}return}
   case'pakbonfoto':{const lv=S.levering[v];if(lv?.fotoId&&S.notfotos[lv.fotoId])toonFoto(S.notfotos[lv.fotoId]);return}
   case'verschildeel':{const lv=S.levering[v];if(lv)deelTekst(verschilTekst(v,lv),'Verschil levering');return}
   case'pffoto':if(isAdmin()&&S.notfotos[v])toonFoto(S.notfotos[v]);return;
