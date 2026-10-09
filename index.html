@@ -487,6 +487,8 @@ html.android,html.android body{overscroll-behavior-y:none}
 body.toetsenbord #nav{display:none}
 .installkaart{border:2px solid var(--oranje)}
 .welkomkolom{display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:left;margin-top:8px}.welkomkolom ol{margin:4px 0 0;padding-left:18px;font-size:13px}
+/* 9.17 */
+.updatebalk{display:block;width:100%;border:0;background:#2e7d32;color:#fff;font-weight:700;font-size:14px;padding:10px 14px;text-align:center;cursor:pointer}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script></head>
 <body><div id="app"><div id="statusplek"></div><div id="opslagmelding">Opslaan mislukt: het geheugen is vol. Verwijder een paar foto's bij Broodsoorten.</div><main id="scherm"></main><nav id="nav"></nav></div>
@@ -710,8 +712,9 @@ function bestelBerekening(){
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const APP_VERSIE='9.16';
-const NIEUWS=[['🔒','Automatisch uitloggen','Heb je de app een paar minuten niet gebruikt (weggeveegd of afgesloten), dan log je opnieuw in met je pincode.'],
+const APP_VERSIE='9.17',APP_BOUW='9.17';
+const NIEUWS=[['🔄','Versie en bijwerken','Onderaan Meer zie je op welke versie de app draait. Met Controleren op update haal je meteen de nieuwste versie op. Staat er een nieuwe klaar, dan zie je bovenin een balkje.'],
+ ['🔒','Automatisch uitloggen','Heb je de app een paar minuten niet gebruikt (weggeveegd of afgesloten), dan log je opnieuw in met je pincode.'],
  ['💾','Geen "geheugen vol" meer','Foto\'s worden op een andere plek op de telefoon bewaard. Oudere pakbonfoto\'s staan op de server en haal je op als je ze opent.'],
  ['🤖','Ook op Android','Brood Opzet werkt nu ook goed op Android-telefoons, met de terugknop, meldingen en een eigen icoon.'],
  ['🔢','Groot cijferblok','Tik op een aantal bij Levering of Derving. Met Volgende tel je de hele lijst achter elkaar af.'],
@@ -2301,8 +2304,8 @@ function meerHtml(){
     ${meerLijstHtml(items)}
     ${kanBeheren()?`<div class="rij"><button class="regel" data-a="gebruiker" data-v="${g.id}"><div class="groei"><div class="naam">Mijn pincode wijzigen</div></div><span class="pijl">›</span></button></div>`:''}</div>
 
-    <div class="kaartje"><h3>Dit toestel</h3>${statusHtml()}<div class="sub">${L.modus==='lokaal'?'Gegevens staan alleen op dit toestel.':`Gekoppeld met de ${L.beheerder?'beheerders':'winkel'}-login.`}</div>
-    <div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:10px">${L.modus==='lokaal'?`<button class="knop rand" data-a="naarkoppel">Toestel koppelen</button>`:isAdmin()?`<button class="knop rand" data-a="ontkoppel">${afwStap==='ontkoppel'?'Zeker? Tik nogmaals':'Toestel ontkoppelen'}</button>`:''}</div></div>
+    <div class="kaartje"><h3>Dit toestel</h3>${statusHtml()}<div class="sub" style="margin-top:6px"><b>Versie ${APP_BOUW}</b>${nieuweBouw?` · <span class="oranjetekst">versie ${esc(nieuweBouw)} staat klaar</span>`:''}</div><div class="sub">${L.modus==='lokaal'?'Gegevens staan alleen op dit toestel.':`Gekoppeld met de ${L.beheerder?'beheerders':'winkel'}-login.`}</div>
+    <div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:10px;flex-wrap:wrap"><button class="knop rand" data-a="updatecheck">Controleren op update</button>${L.modus==='lokaal'?`<button class="knop rand" data-a="naarkoppel">Toestel koppelen</button>`:isAdmin()?`<button class="knop rand" data-a="ontkoppel">${afwStap==='ontkoppel'?'Zeker? Tik nogmaals':'Toestel ontkoppelen'}</button>`:''}</div></div>
     <div class="knoppen"><button class="knop rand" data-a="uitloggen">Uitloggen</button></div>`;
 }
 
@@ -2671,6 +2674,24 @@ window.addEventListener('popstate',()=>{if(!IS_ANDROID)return;const was=terugWac
 document.addEventListener('focusin',e=>{if(IS_ANDROID&&e.target.matches('input:not([readonly]):not([type=checkbox]):not([type=radio]):not([type=file]),textarea'))document.body.classList.add('toetsenbord')});
 document.addEventListener('focusout',()=>{if(IS_ANDROID)setTimeout(()=>{const a=document.activeElement;if(!a||!a.matches('input:not([readonly]),textarea'))document.body.classList.remove('toetsenbord')},120)});
 
+/* ================= 9.17: versie en bijwerken ================= */
+let nieuweBouw=null,updateBezig=false;
+const kanUpdaten=()=>location.protocol.startsWith('http')&&'serviceWorker'in navigator&&!!navigator.serviceWorker.controller;
+async function zoekUpdate(stil){if(!kanUpdaten()||!navigator.onLine)return null;
+  try{const t=await (await fetch('index.html?v='+Date.now(),{cache:'no-store'})).text(),m=t.match(/APP_BOUW='([^']+)'/);const b=m?m[1]:null;
+    nieuweBouw=b&&b!==APP_BOUW?b:null;toonUpdateBalk();return nieuweBouw}catch(e){return null}}
+function toonUpdateBalk(){let el=document.getElementById('updatebalk');if(!nieuweBouw){if(el)el.remove();return}
+  if(!el){el=document.createElement('button');el.id='updatebalk';el.className='updatebalk';el.dataset.a='bijwerken';document.getElementById('app')?.prepend(el)}
+  el.textContent=`🔄 Nieuwe versie ${nieuweBouw} beschikbaar – tik om bij te werken`}
+async function werkBij(){if(updateBezig)return;updateBezig=true;toast('Bijwerken…');bewaarNu();
+  try{const reg=await navigator.serviceWorker.getRegistration();if(reg){await reg.update();const w=reg.installing||reg.waiting;
+      if(w&&w.state!=='activated')await new Promise(ok=>{const t=setTimeout(ok,8000);w.addEventListener('statechange',()=>{if(w.state==='activated'){clearTimeout(t);ok()}})})}}catch(e){}
+  setTimeout(()=>location.reload(),300)}
+async function controleerUpdate(){if(!kanUpdaten()){toast(L.modus==='lokaal'||!location.protocol.startsWith('http')?'Bijwerken kan alleen in de geïnstalleerde app':'Bijwerken lukt nu niet');return}
+  if(!navigator.onLine){toast('Geen internet – probeer het straks nog eens');return}
+  toast('Controleren…');const b=await zoekUpdate();if(b){if(confirm(`Versie ${b} staat klaar. Nu bijwerken?`))werkBij()}else toast(`✓ Je hebt de nieuwste versie (${APP_BOUW})`)}
+setInterval(()=>{if(!document.hidden)zoekUpdate(true)},30*60000);setTimeout(()=>zoekUpdate(true),8000);
+
 /* ================= events ================= */
 let laatsteScroll=0,laatsteVeeg=0;document.addEventListener('touchmove',()=>{laatsteVeeg=Date.now()},{passive:true,capture:true});document.addEventListener('scroll',()=>{if(Date.now()-laatsteVeeg<2500)laatsteScroll=Date.now()},true);
 const VINKACTIE={vink:'.vinkvak',kvink:'.vinkvak',extrakies:'.kiesvak'};
@@ -2850,6 +2871,8 @@ document.addEventListener('click',async e=>{
   case'scanok':if(scan)scanOvernemen();return;
   case'scanstap':{const r=scan?.regels[+v];if(!r)return;r.aantal=Math.max(0,r.aantal+ +b.dataset.n);r.zeker=r.doel?true:r.zeker;r.twijfel=false;toonScan();return}
   case'installeer':installeer();return;
+  case'bijwerken':werkBij();return;
+  case'updatecheck':controleerUpdate();return;
   case'pbfout':meldLeesfout();return;
   case'pakbonopen':openPakbon(v);return;
   case'pakbonophalen':{const lv=S.levering[v];if(!lv?.fotoId||!db?.haal)return;b.disabled=true;b.textContent='Ophalen…';try{const r=await db.haal('notfoto:'+lv.fotoId);if(r?.data)toonFoto(r.data);else{toast('Foto niet gevonden op de server');b.remove()}}catch(e){toast('Ophalen lukt nu niet (geen internet?)');b.disabled=false;b.textContent='📷 Foto van de pakbon ophalen'}return}
@@ -3078,7 +3101,7 @@ document.addEventListener('change',e=>{
 document.addEventListener('keydown',e=>{if(blok){if(/^[0-9]$/.test(e.key)){blokToets(e.key);return}if(e.key==='Backspace'){blokToets('wis');return}if(e.key==='Enter'){blokToets('volgende');return}}if(document.querySelector('.cijferblok')&&!/INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||'')){if(/^[0-9]$/.test(e.key)){document.querySelector(`.cijferblok [data-v="${e.key}"]`)?.click();return}if(e.key==='Backspace'){document.querySelector('.cijferblok .wis')?.click();return}}if(e.key!=='Enter')return;
   if(e.target.id==='notitieIn'){document.querySelector('[data-a=notitie]')?.click();return}
   const b=document.querySelector('[data-a=login],[data-a=setup],[data-a=koppel]');if(b)b.click()});
-document.addEventListener('visibilitychange',()=>{if(document.hidden){if(L.sessie){L.wegSinds=Date.now();bewaarL()}bewaarNu();return}const was=!!L.sessie;weerLaden();volgHash();if(volgVandaag)datum=standaardDatum();controleerSessie();if(was&&!L.sessie){werk=null;document.getElementById('werk').classList.remove('open');sluit();sluitBlok()}if(L.gekoppeld&&db)sync();render();nieuwsNaStart()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){if(L.sessie){L.wegSinds=Date.now();bewaarL()}bewaarNu();return}const was=!!L.sessie;weerLaden();volgHash();zoekUpdate(true);if(volgVandaag)datum=standaardDatum();controleerSessie();if(was&&!L.sessie){werk=null;document.getElementById('werk').classList.remove('open');sluit();sluitBlok()}if(L.gekoppeld&&db)sync();render();nieuwsNaStart()});
 window.addEventListener('pagehide',()=>{if(L.sessie){L.wegSinds=Date.now();bewaarL()}});
 setInterval(()=>{const was=!!L.sessie;controleerSessie();if(was&&!L.sessie){werk=null;document.getElementById('werk').classList.remove('open');sluit();render()}},60000);
 
