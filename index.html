@@ -555,7 +555,7 @@ function vulAan(S){
   for(const k of['historie','derving','karOverride','afwijkend','notities','voorraad','vinkjes','status','avond','dervBest','aanpas','timers','log','fotos','snij','ontdooi','dervHH','bijbak','profielen','berichten','karTaak','afsluit','feestNee','notfotos','dervReg','levering','cadeau','pins','push','pbFouten','prijzen','pushTeam'])S[k]=isObj(S[k])?S[k]:{};
   for(const k of['gebruikers','soorten','karren'])S[k]=Array.isArray(S[k])?S[k]:[];
   S.plan=isObj(S.plan)?S.plan:{};for(const k of['ma','di','wo','do','vr','za','zo'])S.plan[k]=isObj(S.plan[k])?S.plan[k]:{};
-  S.leverdagen=Array.isArray(S.leverdagen)?S.leverdagen:[1,3,5];S.ovenMax=S.ovenMax||10;if(S.omschakel===undefined)S.omschakel=14;if(!Array.isArray(S.versDagen))S.versDagen=[1,2,3,4,5,6];if(!isObj(S.versUitz))S.versUitz={};if(!isObj(S.herinnering))S.herinnering={aan:true,uur:10,min:0};
+  S.leverdagen=Array.isArray(S.leverdagen)?S.leverdagen:[1,3,5];S.ovenMax=S.ovenMax||10;if(S.omschakel===undefined)S.omschakel=14;if(!Array.isArray(S.versDagen))S.versDagen=[1,2,3,4,5,6];if(!isObj(S.versUitz))S.versUitz={};if(!isObj(S.herinnering))S.herinnering={aan:true,uur:10,min:0};if(S.uitlogMin==null)S.uitlogMin=5;
   if(!Array.isArray(S.momenten)||!S.momenten.length)S.momenten=[{id:'m1',naam:'Ochtend'}];
   for(const s of S.soorten){s.pluHalf??='';s.allergenen=Array.isArray(s.allergenen)?s.allergenen:[];s.ingredienten??='';s.nieuwSinds??=null;s.plu??='';s.type??='afbakken';s.gesneden??='voor';s.programma??='';s.instructie??='';s.temp??=null;s.baktijd??=null;s.perDoos??=null}
   if(!isObj(S.programmas)){S.programmas={};for(const x of S.soorten){const n=(x.programma||'').trim();if(!n)continue;const id='p_'+n.toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,30);
@@ -583,7 +583,10 @@ const isAdmin=()=>ik()?.rol==='admin';
 function mag(r){const g=ik();if(!g)return false;if(g.rol==='admin')return true;return g.actief!==false&&!!(g.rechten||{})[r]}
 const kanBeheren=()=>L.modus==='lokaal'||!!L.beheerder;
 const UITLOG_MIN=60;let fouteLogins=0,geblokkeerdTot=0;
-function controleerSessie(){if(L.sessie&&L.laatsteActie&&Date.now()-L.laatsteActie>UITLOG_MIN*60000){L.sessie=null;loginKeuze=null;bewaarL()}}
+function controleerSessie(){if(L.sessie&&L.laatsteActie&&Date.now()-L.laatsteActie>UITLOG_MIN*60000){L.sessie=null;loginKeuze=null;bewaarL()}
+  /* app langer dan de ingestelde tijd niet in beeld geweest (of afgesloten): opnieuw inloggen. 'Direct' = na 20 seconden, zodat camera of delen niet uitlogt */
+  if(L.sessie&&L.wegSinds&&!OEFEN){const m=S.uitlogMin??5,grens=m===0?20000:m*60000;if(Date.now()-L.wegSinds>=grens){L.sessie=null;loginKeuze=null}}
+  if(L.wegSinds){L.wegSinds=null;bewaarL()}}
 let laatsteLog=null;
 function log(tekst,sleutel){
   const t=Date.now(),wie=ik()?.naam||'?',l=laatsteLog&&S.log[laatsteLog];
@@ -707,8 +710,11 @@ function bestelBerekening(){
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const APP_VERSIE='9.13';
-const NIEUWS=[['🔢','Groot cijferblok','Tik op een aantal bij Levering of Derving. Met Volgende tel je de hele lijst achter elkaar af.'],
+const APP_VERSIE='9.16';
+const NIEUWS=[['🔒','Automatisch uitloggen','Heb je de app een paar minuten niet gebruikt (weggeveegd of afgesloten), dan log je opnieuw in met je pincode.'],
+ ['💾','Geen "geheugen vol" meer','Foto\'s worden op een andere plek op de telefoon bewaard. Oudere pakbonfoto\'s staan op de server en haal je op als je ze opent.'],
+ ['🤖','Ook op Android','Brood Opzet werkt nu ook goed op Android-telefoons, met de terugknop, meldingen en een eigen icoon.'],
+ ['🔢','Groot cijferblok','Tik op een aantal bij Levering of Derving. Met Volgende tel je de hele lijst achter elkaar af.'],
  ['👉','Vegen en hele kar','Veeg een regel naar rechts om af te vinken, naar links om terug te zetten. Met ✓ Alles vink je een hele kar in één keer af.'],
  ['🧾','Pakbon = bestelling','Na het scannen staat de pakbon al ingevuld. Tel de levering en pas aan wat afwijkt. Het verschil stuur je met één tik naar de bakker.'],
  ['🗂️','Pakbonnen terugzoeken','Onder Meer → Pakbonnen zie je per dag de pakbon, de telling en het verschil.'],
@@ -722,6 +728,7 @@ const NIEUWS_OUD=[['🔑','Eigen pincode','Nieuwe medewerkers kiezen bij de eers
  ['✅','Duidelijke bevestiging','Na afvinken of opslaan zie je een groene melding. Bij een vreemd aantal vraagt de app "Klopt dit?".'],
  ['🎨','Kleur per kar','Elke kar kan een eigen kleur hebben, zodat je de lijst makkelijk bij de echte kar vindt.'],
  ['⇄','Snel wisselen','Werk je met meerdere mensen op één telefoon? Tik bovenin op je naam om te wisselen.']];
+function nieuwsNaStart(){setTimeout(()=>{if(!L.sessie||document.getElementById('sheet')?.classList.contains('open')||document.getElementById('tour')?.classList.contains('open'))return;const p=prof();if(p.rondleiding&&p.versieGezien!==APP_VERSIE)toonNieuws()},700)}
 function toonNieuws(){const p=prof();if(!L.sessie||p.versieGezien===APP_VERSIE)return false;
   toonSheet(`<div class="pkop"><span style="width:70px"></span><b>Nieuw in versie ${APP_VERSIE}</b><button data-a="nieuwsklaar" style="font-weight:700">Top!</button></div><div class="pinhoud">
    <div class="sectie" style="margin:10px 0 0">${NIEUWS.map(([i,t,x])=>`<div class="rij inv"><div class="nieuwsicoon">${i}</div><div class="groei"><div class="naam">${t}</div><div class="sub">${x}</div></div></div>`).join('')}</div>
@@ -796,7 +803,7 @@ function maakDb(){
   };
 }
 function splitsen(){
-  const o={'beheer:gebruikers':{lijst:S.gebruikers},instellingen:{soorten:S.soorten,karren:S.karren,momenten:S.momenten,ovenMax:S.ovenMax,leverdagen:S.leverdagen,programmas:S.programmas,omschakel:S.omschakel??null,versDagen:S.versDagen,versUitz:S.versUitz,pakbonNegeer:S.pakbonNegeer||[],pakbonNamen:S.pakbonNamen||{},pakbonCijfers:S.pakbonCijfers||{},herinnering:S.herinnering},
+  const o={'beheer:gebruikers':{lijst:S.gebruikers},instellingen:{soorten:S.soorten,karren:S.karren,momenten:S.momenten,ovenMax:S.ovenMax,leverdagen:S.leverdagen,programmas:S.programmas,omschakel:S.omschakel??null,versDagen:S.versDagen,versUitz:S.versUitz,pakbonNegeer:S.pakbonNegeer||[],pakbonNamen:S.pakbonNamen||{},pakbonCijfers:S.pakbonCijfers||{},herinnering:S.herinnering,uitlogMin:S.uitlogMin},
     plan:{plan:S.plan,karOverride:S.karOverride,feestNee:S.feestNee},afwijkend:S.afwijkend,voorraad:S.voorraad,profielen:S.profielen,berichten:S.berichten,pins:S.pins,materiaal:S.materiaal,pakbonfouten:S.pbFouten,pushteam:S.pushTeam};
   const dagen=new Set();for(const k of DAGVELDEN)for(const d of Object.keys(S[k]))dagen.add(d);
   for(const d of dagen){const x={};for(const k of DAGVELDEN)if(S[k][d]!==undefined)x[k]=S[k][d];o['dag:'+d]=x}
@@ -811,7 +818,7 @@ function splitsen(){
 function pasToe(k,v){
   if(!isObj(v))return;v=zonderRev(v);
   if(k==='beheer:gebruikers')S.gebruikers=Array.isArray(v.lijst)?v.lijst:[];
-  else if(k==='instellingen'){for(const f of['soorten','karren','momenten','ovenMax','leverdagen','programmas','omschakel','versDagen','versUitz','pakbonNegeer','pakbonNamen','pakbonCijfers','herinnering'])if(v[f]!==undefined)S[f]=v[f]}
+  else if(k==='instellingen'){for(const f of['soorten','karren','momenten','ovenMax','leverdagen','programmas','omschakel','versDagen','versUitz','pakbonNegeer','pakbonNamen','pakbonCijfers','herinnering','uitlogMin'])if(v[f]!==undefined)S[f]=v[f]}
   else if(k==='plan'){S.plan=v.plan||{};S.karOverride=v.karOverride||{};S.feestNee=v.feestNee||{}}
   else if(k==='afwijkend')S.afwijkend=v;
   else if(k==='voorraad')S.voorraad=v;
@@ -2418,7 +2425,9 @@ function logHtml(){
 function teamHtml(){
   const ms=S.gebruikers.filter(x=>x.rol!=='admin');
   if(!kanBeheren())return`<div class="kop"><h1>Medewerkers</h1></div><p class="leeg">Medewerkers en rechten beheren kan alleen op een toestel dat met de beheerders-login is gekoppeld.</p>`;
-  return`<div class="kop"><div class="koprij"><h1>Medewerkers</h1>${info('team')}</div><p>Geef of ontneem rechten per medewerker.</p></div><div class="sectie">${ms.map(m=>{const r=RECHTEN.filter(([k])=>(m.rechten||{})[k]).length;
+  return`<div class="kop"><div class="koprij"><h1>Medewerkers</h1>${info('team')}</div><p>Geef of ontneem rechten per medewerker.</p></div>
+   <div class="kaartje"><h3>Automatisch uitloggen</h3><div class="sub">Is de app zo lang niet in beeld geweest (weggeveegd of afgesloten), dan moet je opnieuw inloggen. Geldt voor iedereen.</div><div class="segment" style="margin:10px 0 0">${[[0,'Direct'],[2,'2 min'],[5,'5 min'],[15,'15 min']].map(([m,l])=>`<button data-a="uitlogmin" data-v="${m}" class="${(S.uitlogMin??5)===m?'aan':''}">${l}</button>`).join('')}</div><div class="hulp" style="margin-top:6px">Direct = na 20 seconden, zodat even de camera of WhatsApp gebruiken je niet uitlogt.</div></div>
+   <div class="sectie">${ms.map(m=>{const r=RECHTEN.filter(([k])=>(m.rechten||{})[k]).length;
     return`<div class="rij"><button class="regel" data-a="gebruiker" data-v="${m.id}"><div class="groei"><div class="naam">${esc(m.naam)}${pinTijdelijk(m)?' <span class="st aangepast">tijdelijke pincode</span>':''}${prof(m.id).eenvoudig?' <span class="st ontd">eenvoudig</span>':''}</div><div class="sub">${m.actief===false?'<span class="let">Geen toegang</span>':`${r} van ${RECHTEN.length} rechten`}</div></div><span class="pijl">›</span></button></div>`}).join('')}
     <button class="toevoegen" data-a="nieuwegebruiker">+ Medewerker toevoegen</button></div>`;
 }
@@ -2773,6 +2782,7 @@ document.addEventListener('click',async e=>{
     for(const id of Object.keys(S.materiaal.meld))if(!S.materiaal.lijst.some(m=>m.id===id))delete S.materiaal.meld[id];log('Materiaallijst aangepast');bewaar();sluit();render();return}
   case'pushaan':if(!isAdmin())return;pushAan();return;
   case'pushteamaan':pushAanTeam();return;
+  case'uitlogmin':if(!isAdmin())return;S.uitlogMin=+v;log(`Automatisch uitloggen: ${+v?v+' min':'direct'}`);bewaar();render();return;
   case'pushteamuit':pushTeamUit();return;
   case'woweek':woWeek=+v===0?plusDagen(maandag(iso()),-7):plusDagen(woWeek,+v);if(woWeek>maandag(iso()))woWeek=maandag(iso());render();return;
   case'bkterug':{if(!isAdmin()||!kanBeheren())return;if(!confirm(`Alle gegevens terugzetten naar de back-up van ${dagNaamLang(v)}?\n\nWat daarna is ingevuld, gaat verloren.`))return;if(!confirm('Weet je het zeker? Dit kan niet ongedaan worden gemaakt.'))return;
@@ -3068,7 +3078,8 @@ document.addEventListener('change',e=>{
 document.addEventListener('keydown',e=>{if(blok){if(/^[0-9]$/.test(e.key)){blokToets(e.key);return}if(e.key==='Backspace'){blokToets('wis');return}if(e.key==='Enter'){blokToets('volgende');return}}if(document.querySelector('.cijferblok')&&!/INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||'')){if(/^[0-9]$/.test(e.key)){document.querySelector(`.cijferblok [data-v="${e.key}"]`)?.click();return}if(e.key==='Backspace'){document.querySelector('.cijferblok .wis')?.click();return}}if(e.key!=='Enter')return;
   if(e.target.id==='notitieIn'){document.querySelector('[data-a=notitie]')?.click();return}
   const b=document.querySelector('[data-a=login],[data-a=setup],[data-a=koppel]');if(b)b.click()});
-document.addEventListener('visibilitychange',()=>{if(document.hidden){bewaarNu();return}weerLaden();volgHash();if(volgVandaag)datum=standaardDatum();controleerSessie();if(L.gekoppeld&&db)sync();render()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){if(L.sessie){L.wegSinds=Date.now();bewaarL()}bewaarNu();return}const was=!!L.sessie;weerLaden();volgHash();if(volgVandaag)datum=standaardDatum();controleerSessie();if(was&&!L.sessie){werk=null;document.getElementById('werk').classList.remove('open');sluit();sluitBlok()}if(L.gekoppeld&&db)sync();render();nieuwsNaStart()});
+window.addEventListener('pagehide',()=>{if(L.sessie){L.wegSinds=Date.now();bewaarL()}});
 setInterval(()=>{const was=!!L.sessie;controleerSessie();if(was&&!L.sessie){werk=null;document.getElementById('werk').classList.remove('open');sluit();render()}},60000);
 
 /* ================= start ================= */
@@ -3086,7 +3097,7 @@ setTimeout(()=>{if(L.sessie&&mag('vinken'))ocrVoorbereiden()},15000);
 db=maakDb();
 if(L.modus==='lokaal')syncStatus='lokaal';
 else if(L.gekoppeld)syncStatus=db?'start':'offline';
-render();
+render();nieuwsNaStart();
 (async()=>{
   if(L.modus==='lokaal'||!db)return;
   try{const ses=await db.sessie();
