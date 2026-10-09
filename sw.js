@@ -1,5 +1,5 @@
 // Brood Opzet: werkt ook zonder internet. Verhoog VERSIE bij elke nieuwe versie.
-const VERSIE = 'broodopzet-9.14';
+const VERSIE = 'broodopzet-9.15';
 const OCR_CACHE = 'broodopzet-ocr-1'; // leesprogramma voor pakbon scannen (blijft bewaard tussen versies)
 const SUPA_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js';
 const BESTANDEN = ['./', 'index.html', 'manifest.webmanifest', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', SUPA_JS];
@@ -28,7 +28,7 @@ self.addEventListener('push', e => {
   let d = {};
   try { d = e.data ? e.data.json() : {}; } catch (x) { d = { tekst: e.data ? e.data.text() : '' }; }
   e.waitUntil(self.registration.showNotification(d.titel || 'Brood Opzet', {
-    body: d.tekst || '', icon: 'icon-192.png', badge: 'icon-192.png', tag: d.tag || 'brood-opzet', data: { url: d.url || './#materiaal' }
+    body: d.tekst || '', icon: 'icon-192.png', badge: 'badge-96.png', tag: d.tag || 'brood-opzet', data: { url: d.url || './#materiaal' }
   }));
 });
 self.addEventListener('notificationclick', e => {

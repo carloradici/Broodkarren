@@ -482,6 +482,11 @@ body.oefen #statusplek{padding-top:40px}
 .cb2hoofd{background:var(--oranje);color:#fff;border:0}.cb2rand{background:transparent;color:var(--oranje);border:2px solid var(--oranje)}
 .blokactief{outline:3px solid var(--oranje);outline-offset:-3px;border-radius:12px}
 input[data-blok]{cursor:pointer;caret-color:transparent}
+/* 9.15 Android */
+html.android,html.android body{overscroll-behavior-y:none}
+body.toetsenbord #nav{display:none}
+.installkaart{border:2px solid var(--oranje)}
+.welkomkolom{display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:left;margin-top:8px}.welkomkolom ol{margin:4px 0 0;padding-left:18px;font-size:13px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script></head>
 <body><div id="app"><div id="statusplek"></div><div id="opslagmelding">Opslaan mislukt: het geheugen is vol. Verwijder een paar foto's bij Broodsoorten.</div><main id="scherm"></main><nav id="nav"></nav></div>
@@ -933,6 +938,7 @@ rapWeek=maandag(iso());
 function render(){
   const m=document.getElementById('scherm');pasThemaToe();_render();const merk=!!m.querySelector('.merkscherm');document.getElementById('app').classList.toggle('merkmodus',merk);
   if(tab==='lijst'&&zoekOpen)zoekFilter();
+  if(typeof terugBewaak==='function')setTimeout(terugBewaak,0);
   const k=m.querySelector('.kop');if(k&&!merk){k.insertAdjacentHTML('afterbegin',`<img class="koplogo" src="${LOGO_SRC}" alt="Coop Vogelenzang">${isAdmin()?(()=>{const n=belItems().length;return`<button class="belknop" data-a="bel" aria-label="Meldingen">🔔${n?`<span class="belgetal">${n}</span>`:''}</button>`})():''}${ik()&&S.gebruikers.filter(g=>g.rol==='admin'||g.actief!==false).length>1?`<button class="wisselknop ${isAdmin()?'metbel':''}" data-a="wissel">${prof().emoji||'👤'} ${esc((ik().naam||'').split(' ')[0])} ⇄</button>`:''}`);const t=m.querySelector(':scope > .terug');if(t)k.prepend(t)}
 }
 function _render(){
@@ -995,6 +1001,7 @@ function lijstHtml(){
   {const morgen=plusDagen(iso(),1);
    h+=datum===morgen?`<div class="dagbalk morgen">Je zet klaar voor: <b>${esc(dagNaamLang(datum))} (morgen)</b></div>`:datum===iso()?`<div class="dagbalk vandaag">Bakdag vandaag: <b>${esc(dagNaamLang(datum))}</b></div>`:`<div class="dagbalk anders">${datum<iso()?'Eerdere dag':'Later'}: <b>${esc(dagNaamLang(datum))}</b></div>`;
    if(datum===iso()&&naOmschakel()&&mag('vinken'))h+=`<div class="kaartje waarschuw"><b>Let op: dit is de lijst van vandaag.</b><div class="sub">Wil je klaarzetten voor morgen?</div><div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:8px"><button class="knop klein" data-a="naarmorgen">Naar morgen →</button></div></div>`}
+  h+=installHtml();
   if(!prof().eenvoudig)h+=weerRegel(datum);
   if(zoekOpen)h+=`<div class="zoekbalk"><input class="veld" id="kzZoek" type="search" placeholder="Zoek op naam of PLU" value="${esc(zoekTerm)}" autocomplete="off"></div>`;
   if(pk.startsWith('afw:'))h+=`<span class="pil">Afwijkende planning: ${esc(S.afwijkend[datum].naam)}</span>`;
@@ -1326,7 +1333,7 @@ function openLevering(opt={}){
   const d=datum,lv=S.levering[d],l=S.soorten.filter(x=>x.type==='vers'&&x.naam.trim());bewerk={soort:'levering',foto:opt.foto||null,pakbon:opt.pakbon||lv?.pakbon||null,pbNaam:opt.pbNaam||lv?.pbNaam||null};const PB=bewerk.pakbon;
   toonSheet(`<div class="pkop"><button data-a="sluit">Annuleren</button><b>Levering ${esc(datumTekst(d))}</b><button data-a="levopslaan" style="font-weight:700">Opslaan</button></div><div class="pinhoud">
    <label class="knop scanknop">📷 Pakbon scannen (foto of PDF)<input type="file" accept="image/*,application/pdf" id="scanIn" style="display:none"></label>
-   ${opt.voor?'':`<p class="hulp scantip">💡 <b>Tip iPhone:</b> tik op <b>Kies bestand</b> → <b>⋯</b> (rechtsboven) → <b>Scan documenten</b>. Je iPhone knipt de pakbon dan recht en zonder schaduw bij. Tik daarna op Bewaar.</p>`}
+   ${opt.voor?'':IS_ANDROID?`<p class="hulp scantip">💡 <b>Tip Android:</b> scan de pakbon met de <b>Google Drive</b>-app (<b>＋</b> → <b>Scannen</b>) en kies hier daarna de pdf. Drive knipt de pakbon recht en zonder schaduw bij. Een gewone foto kan ook.</p>`:`<p class="hulp scantip">💡 <b>Tip iPhone:</b> tik op <b>Kies bestand</b> → <b>⋯</b> (rechtsboven) → <b>Scan documenten</b>. Je iPhone knipt de pakbon dan recht en zonder schaduw bij. Tik daarna op Bewaar.</p>`}
    <p class="hulp">${PB?'✓ Ingevuld vanaf de pakbon. <b>Tel de levering</b> en pas alleen aan wat afwijkt. Tik dan op Opslaan.':'Scan de pakbon, of neem de aantallen zelf over. Leeg = niets geleverd. Grijs = besteld.'}</p>
    <div class="sectie" style="margin:0">${l.map(x=>{const bes=PB?(PB[x.id]??0):dagTotaal(planKeyVoor(d),x),w=opt.voor?opt.voor[x.id]:lv?.items?.[x.id];return`<div class="rij inv ${opt.let?.has(x.id)?'aandacht':''}"><div class="groei"><div class="naam">${esc(x.naam)}</div><div class="sub">${PB?'pakbon':'besteld'} ${bes}${x.gesneden==='on'?' · ongesneden':''}</div></div>
      <div class="stepper"><button data-a="levstap" data-v="${x.id}" data-n="-1">−</button><input inputmode="numeric" maxlength="3" readonly data-blok id="lev-${x.id}" value="${w??''}" placeholder="${bes}"><button data-a="levstap" data-v="${x.id}" data-n="1">+</button></div></div>`}).join('')}</div>
@@ -1374,7 +1381,7 @@ function toonFeest(){if(!prof().feest)return;const n=[...maakLijst(datum,moment)
    <svg width="150" height="100" viewBox="0 0 300 200" aria-hidden="true">${CROISSANT('#fff','#f17d04')}</svg><div class="feesttitel">Alles klaargezet! 🎉</div>
    <div class="feestsub">${esc(momentNaam(moment))} – ${n} van ${n}</div><div class="feestsub">Goed gedaan, ${esc((ik()?.naam||'').split(' ')[0])}</div><button class="merkknop" data-a="feestdicht">Top!</button></div>`;
   el.classList.add('open')}
-function zetVink(id,n,aan){
+function zetVink(id,n,aan){if(aan)tril();
   S.vinkjes[datum]=S.vinkjes[datum]||{};const vk=S.vinkjes[datum][moment]=S.vinkjes[datum][moment]||{};
   if(aan)vk[id]={n,t:Date.now(),wie:ik()?.naam||''};else delete vk[id];
 }
@@ -1441,7 +1448,7 @@ const UITLEG=[
  ['pakbonnen','Pakbonnen','Hier zoek je eerdere leveringen terug. Per dag zie je wat er op de pakbon stond, wat er geteld is en het verschil, met de foto van de pakbon. Met Delen stuur je het verschil naar de bakker.'],
  ['telling','Levering tellen','De pakbon is de bestelling. Na het scannen staan de aantallen van de pakbon al ingevuld. Tel de levering en pas alleen aan wat afwijkt. Wijkt de telling af, dan zie je na Opslaan het verschil en kun je het met één tik naar de bakker sturen (WhatsApp, mail of sms).'],
  ['gemak','Sneller werken','Tik op een aantal bij Levering of Derving: er komt een groot cijferblok. Met Volgende ga je meteen naar de volgende regel, zo tel je de hele lijst achter elkaar af. Op Klaarzetten kun je een regel naar rechts vegen om af te vinken en naar links om het vinkje weg te halen. Met ✓ Alles bij een kar vink je de hele kar in één keer af (je kunt het ongedaan maken).'],
- ['pakbon','Pakbon scannen','Bij Levering invullen tik je op Pakbon scannen. Maak een foto, kies er een uit je fotobibliotheek of kies een PDF. De app leest de regels en koppelt ze op artikelnummer aan jullie broodsoorten. De eerste keer kies je bij elke regel de juiste broodsoort, Negeren of + Nieuwe broodsoort; dat wordt onthouden. Oranje regels zijn niet zeker of wijken af van de bestelling: controleer die. Met Overnemen komen de aantallen in de levering, daarna tik je op Opslaan. Tip: een rechte foto zonder schaduw leest het best. Op de iPhone kan het nog beter: Pakbon scannen → Kies bestand → ⋯ → Scan documenten. De app zoekt de afvinkvakjes, leest het aantal met de cijfers van de bakker en controleert alles nog eens met een tweede lezing. Bij twijfel staat er ‘aantal nakijken’. Elke goedgekeurde bon maakt het lezen beter.'],
+ ['pakbon','Pakbon scannen','Bij Levering invullen tik je op Pakbon scannen. Maak een foto, kies er een uit je fotobibliotheek of kies een PDF. De app leest de regels en koppelt ze op artikelnummer aan jullie broodsoorten. De eerste keer kies je bij elke regel de juiste broodsoort, Negeren of + Nieuwe broodsoort; dat wordt onthouden. Oranje regels zijn niet zeker of wijken af van de bestelling: controleer die. Met Overnemen komen de aantallen in de levering, daarna tik je op Opslaan. Tip: een rechte foto zonder schaduw leest het best. Op de iPhone kan het nog beter: Pakbon scannen → Kies bestand → ⋯ → Scan documenten. Op Android: scan met de Google Drive-app (＋ → Scannen) en kies daarna de pdf. De app zoekt de afvinkvakjes, leest het aantal met de cijfers van de bakker en controleert alles nog eens met een tweede lezing. Bij twijfel staat er ‘aantal nakijken’. Elke goedgekeurde bon maakt het lezen beter.'],
  ['leverdagen','Leverdagen vers brood','Bij Broodsoorten en instellingen stel je in op welke dagen de bakker vers brood levert. Met Uitzonderingen zet je een datum op Geen levering (bijv. een feestdag) of Extra levering. Bij Afwijkende dagen en de feestdagmelding kun je ook kiezen of er vers brood wordt geleverd. Op een dag zonder levering staat er geen vers brood op Klaarzetten, krijg je geen melding om de levering in te vullen en telt het vers brood niet mee.'],
  ['morgen','Klaarzetten voor morgen','De lijst op Klaarzetten hoort bij de bakdag. Vanaf de omschakeltijd (in te stellen bij Broodsoorten en instellingen, standaard 14:00) opent Klaarzetten op morgen, met een blauwe balk "Je zet klaar voor: … (morgen)". Bekijk je na die tijd de lijst van vandaag, dan krijg je een waarschuwing met de knop Naar morgen. Bijbakken en Oven vullen horen altijd bij vandaag; de levering vul je in op de dag zelf.'],
  ['materiaal','Materiaal','Onder Meer → Materiaal meld je dat verpakkingsmateriaal bijna op is: tik op Bijna op, en als het echt op is op Op!. Je naam en de tijd komen erbij, zodat niemand het dubbel meldt. Staat het er niet tussen? Tik op + Iets anders. De beheerder krijgt een melding en zet het op Besteld en later op Aangevuld.'],
@@ -1462,11 +1469,11 @@ function instellingenHtml(){const p=prof();
    <div class="hulp" style="margin-top:14px">Startpagina na inloggen</div><div class="segment" style="margin:8px 0 0">${[['slim','Slim'],['lijst','Klaarzetten'],['derving','Derving'],['plan','Invullen']].map(([v,l])=>`<button data-a="prof" data-k="start" data-v="${v}" class="${(p.start||'slim')===v?'aan':''}">${l}</button>`).join('')}</div>
    ${(p.start||'slim')==='slim'?`<div class="hulp" style="margin-top:6px">Slim: overdag Klaarzetten (na de levertijd meteen bij de levering), 's avonds Derving vanaf <select class="veld" id="dervUur" style="width:86px;display:inline-block;padding:4px 8px">${[12,13,14,15,16,17,18,19,20,21].map(u=>`<option value="${u}" ${u===(p.dervUur??17)?'selected':''}>${u}:00</option>`).join('')}</select></div>`:''}
    ${S.momenten.length>1?`<div class="hulp" style="margin-top:14px">Standaard bakmoment</div>${seg('moment',[['','Geen'],...S.momenten.map(m=>[m.id,esc(m.naam)])])}`:''}</div>
-   ${isAdmin()&&kanBeheren()?`<div class="kaartje"><h3>Face ID</h3>${!faceKan()?'<p class="hulp">Face ID wordt hier niet ondersteund. Open Brood Opzet vanaf je beginscherm op je iPhone.</p>':L.faceid&&L.faceid.uid===L.sessie?'<div class="sub">✓ Aan op dit toestel. Op het inlogscherm staat de knop Inloggen met Face ID.</div><div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:8px"><button class="knop rand klein" data-a="faceuit">Face ID uitzetten</button></div>':'<div class="sub">Log op dit toestel in met Face ID in plaats van je pincode. Alleen voor jou, alleen op deze telefoon.</div><div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:8px"><button class="knop klein" data-a="faceaan">Face ID aanzetten</button></div>'}</div>`:''}
+   ${isAdmin()&&kanBeheren()?`<div class="kaartje"><h3>Face ID</h3>${!faceKan()?`<p class="hulp">${IS_ANDROID?'Inloggen met Face ID kan alleen op de iPhone van de beheerder.':'Face ID wordt hier niet ondersteund. Open Brood Opzet vanaf je beginscherm op je iPhone.'}</p>`:L.faceid&&L.faceid.uid===L.sessie?'<div class="sub">✓ Aan op dit toestel. Op het inlogscherm staat de knop Inloggen met Face ID.</div><div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:8px"><button class="knop rand klein" data-a="faceuit">Face ID uitzetten</button></div>':'<div class="sub">Log op dit toestel in met Face ID in plaats van je pincode. Alleen voor jou, alleen op deze telefoon.</div><div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:8px"><button class="knop klein" data-a="faceaan">Face ID aanzetten</button></div>'}</div>`:''}
    <div class="kaartje"><h3>Pincode</h3>${ik()?.rol==='admin'&&!kanBeheren()?'<p class="hulp">Je eigen pincode wijzig je op je eigen telefoon.</p>':'<div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:6px"><button class="knop rand klein" data-a="pinwijzig">Pincode wijzigen</button></div>'}</div>
    <div class="kaartje"><h3>Eenvoud</h3>${sw('eenvoudig','Eenvoudige modus (minder informatie, grotere knoppen)')}${isAdmin()?sw('werkvloer','Werkvloer-weergave (beheerdersdingen op Klaarzetten verbergen)'):''}</div>
-   ${mag('vinken')&&!(isAdmin()&&kanBeheren())?`<div class="kaartje"><h3>Pushmelding levering</h3><div class="sub">Een melding op deze telefoon als de levering om ${tijd2(S.herinnering.uur??10,S.herinnering.min)} nog niet is ingevuld.${S.herinnering.aan?'':' (De beheerder heeft de herinnering nu uitgezet.)'}</div><div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:8px">${pushStatus()==='niet'?'<span class="hulp" style="margin:0">Werkt alleen als de app op het beginscherm staat (iOS 16.4 of nieuwer).</span>':L.pushTeamAan&&(S.pushTeam.subs||[]).some(x=>x.endpoint===L.pushTeamAan)?'<span class="goed" style="margin-right:10px">✓ Staat aan</span><button class="knop rand klein" data-a="pushteamuit">Uitzetten</button>':'<button class="knop klein" data-a="pushteamaan">Aanzetten op dit toestel</button>'}</div></div>`:''}
-   <div class="kaartje"><h3>Meldingen</h3>${sw('bevestig','Groene bevestiging na een actie')}${sw('feest','"Alles klaargezet!"-melding')}${sw('groet','Begroeting en voortgangsring')}</div>`}
+   ${mag('vinken')&&!(isAdmin()&&kanBeheren())?`<div class="kaartje"><h3>Pushmelding levering</h3><div class="sub">Een melding op deze telefoon als de levering om ${tijd2(S.herinnering.uur??10,S.herinnering.min)} nog niet is ingevuld.${S.herinnering.aan?'':' (De beheerder heeft de herinnering nu uitgezet.)'}</div><div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:8px">${pushStatus()==='niet'?`<span class="hulp" style="margin:0">${esc(pushNietTekst())}</span>`:L.pushTeamAan&&(S.pushTeam.subs||[]).some(x=>x.endpoint===L.pushTeamAan)?'<span class="goed" style="margin-right:10px">✓ Staat aan</span><button class="knop rand klein" data-a="pushteamuit">Uitzetten</button>':'<button class="knop klein" data-a="pushteamaan">Aanzetten op dit toestel</button>'}</div></div>`:''}
+   <div class="kaartje"><h3>Meldingen</h3>${sw('bevestig','Groene bevestiging na een actie')}${kanTrillen()?sw('tril','Kort trillen bij afvinken'):''}${sw('feest','"Alles klaargezet!"-melding')}${sw('groet','Begroeting en voortgangsring')}</div>`}
 
 function programmasHtml(){
   const l=Object.values(S.programmas).sort((a,b)=>a.naam.localeCompare(b.naam,'nl')),zonder=S.soorten.filter(x=>x.type==='afbakken'&&!x.programmaId);
@@ -1537,7 +1544,7 @@ function openBel(){const l=belItems(),P=prof();
    <label class="schakel" style="margin:16px 0 0;color:var(--tekst);font-weight:400">Werkvloer-weergave (beheerdersdingen op Klaarzetten verbergen)<input type="checkbox" data-prof="werkvloer" ${P.werkvloer?'checked':''}></label></div>`)}
 function pushHtml(){const st=pushStatus(),aan=st==='granted'&&S.push.subs?.length,stil=S.push.stil||{van:21,tot:7},uren=[...Array(24).keys()];
   return`<div class="kop"><div class="koprij"><h1>Pushmeldingen</h1></div><p>Een melding op je telefoon als materiaal bijna op is, ook als de app dicht is.</p></div>
-   <div class="kaartje"><h3>${aan?'✓ Staan aan':'Staan uit'}</h3><div class="sub">${st==='niet'?'Dit werkt alleen als Brood Opzet op het beginscherm staat, op iOS 16.4 of nieuwer.':st==='denied'?'Meldingen zijn geweigerd. Zet ze aan via Instellingen → Meldingen → Brood Opzet.':`${(S.push.subs||[]).length} ${(S.push.subs||[]).length===1?'toestel':'toestellen'} aangemeld.`}</div>
+   <div class="kaartje"><h3>${aan?'✓ Staan aan':'Staan uit'}</h3><div class="sub">${st==='niet'?pushNietTekst():st==='denied'?pushGeweigerdTekst():`${(S.push.subs||[]).length} ${(S.push.subs||[]).length===1?'toestel':'toestellen'} aangemeld.`}</div>
     <div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:10px;flex-wrap:wrap">${st!=='niet'&&st!=='denied'?`<button class="knop klein" data-a="pushaan">${aan?'Dit toestel opnieuw aanmelden':'Pushmeldingen aanzetten'}</button>`:''}${aan?'<button class="knop rand klein" data-a="pushtest">Testmelding sturen</button>':''}</div></div>
    <div class="kaartje"><h3>Stille uren</h3><div class="sub">In deze uren komen alleen meldingen van "Op!" door. "Bijna op" volgt daarna.</div>
     <div style="display:flex;align-items:center;gap:10px;margin-top:10px">Van <select class="veld" id="stilVan" style="width:90px">${uren.map(u=>`<option value="${u}" ${u===stil.van?'selected':''}>${u}:00</option>`).join('')}</select> tot <select class="veld" id="stilTot" style="width:90px">${uren.map(u=>`<option value="${u}" ${u===stil.tot?'selected':''}>${u}:00</option>`).join('')}</select></div></div>
@@ -1560,7 +1567,7 @@ const VAPID_PUBLIEK='BMq2CTiL_Zpze43M7a5Ik1nZwFyB-xYRLeXAt4R6s7w_WBebpQvP_uHXS8Q
 function stuurPush(extra){try{return fetch(SUPA_URL+'/functions/v1/stuur-push',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY},body:JSON.stringify(extra||{})}).then(async r=>{let j={};try{j=await r.json()}catch(e){}return{status:r.status,...j}}).catch(()=>({netwerk:true}))}catch(e){return Promise.resolve({netwerk:true})}}
 function pushStatus(){if(!('serviceWorker'in navigator)||!('PushManager'in window))return'niet';if(typeof Notification==='undefined')return'niet';return Notification.permission}
 async function pushAan(){
-  if(pushStatus()==='niet'){toast('Pushmeldingen werken alleen als de app op het beginscherm staat (iOS 16.4 of nieuwer)');return}
+  if(pushStatus()==='niet'){toast(pushNietTekst());return}
   try{const j=await pushAbonneer();if(!j)return;
     S.push.subs=(S.push.subs||[]).filter(x=>x.endpoint!==j.endpoint);S.push.subs.push({endpoint:j.endpoint,keys:j.keys,toestel:navigator.userAgent.slice(0,60),t:Date.now()});
     bewaar();render();toast('Pushmeldingen staan aan');setTimeout(()=>stuurPush({test:true}),1500)}catch(e){toast('Aanzetten lukte niet: '+(e.message||e))}}
@@ -1568,25 +1575,27 @@ function appUrl(){return location.href.split('#')[0].split('?')[0].replace(/inde
 function laadQr(){return window.qrcode?Promise.resolve():new Promise((ok,nee)=>{const x=document.createElement('script');x.src='https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js';x.onload=ok;x.onerror=nee;document.head.appendChild(x)})}
 function qrSvg(tekst,cel=5){const q=qrcode(0,'M');q.addData(tekst);q.make();return q.createSvgTag({cellSize:cel,margin:2,scalable:true})}
 function qrInPdf(doc,tekst,x,y,maat){const q=qrcode(0,'M');q.addData(tekst);q.make();const n=q.getModuleCount(),c=maat/n;doc.setFillColor(0,0,0);for(let r=0;r<n;r++)for(let k=0;k<n;k++)if(q.isDark(r,k))doc.rect(x+k*c,y+r*c,c+0.01,c+0.01,'F')}
-const INSTALLATIE=['Open de link (of scan de QR-code) met Safari.','Tik onderaan op de deelknop (vierkantje met pijl omhoog).','Kies "Zet op beginscherm" en tik op "Voeg toe".','Open Brood Opzet vanaf je beginscherm, kies je naam, vul de tijdelijke pincode in en kies daarna je eigen pincode.'];
+const INSTALLATIE_TEKST=()=>`iPhone:\n${INSTALL_IPHONE.map((x,i)=>`${i+1}. ${x}`).join('\n')}\n\nAndroid:\n${INSTALL_ANDROID.map((x,i)=>`${i+1}. ${x}`).join('\n')}\n\nDaarna: ${INSTALL_SLOT}`;
 let welkomst=null;
 function openWelkomst(u,pin){welkomst={naam:u.naam,pin};
   toonSheet(`<div class="pkop"><span style="width:70px"></span><b>Welkomstkaart</b><button data-a="sluit" style="font-weight:700">Klaar</button></div><div class="pinhoud">
    <p class="hulp">Geef deze kaart aan <b>${esc(u.naam)}</b>. De tijdelijke pincode staat erop; bij de eerste keer inloggen kiest ${esc(u.naam)} een eigen pincode.</p>
    <div class="welkomkaart"><div class="welkomtitel">Welkom bij Brood Opzet, ${esc(u.naam)}!</div><div class="welkompin">Tijdelijke pincode: <b>${esc(pin)}</b></div><div id="welkomQr" class="welkomqr"></div>
-    <ol>${INSTALLATIE.map(t=>`<li>${esc(t)}</li>`).join('')}</ol><div class="sub">${esc(appUrl())}</div></div>
+    <div class="welkomkolom"><div><b>iPhone</b><ol>${INSTALL_IPHONE.map(t=>`<li>${esc(t)}</li>`).join('')}</ol></div><div><b>Android</b><ol>${INSTALL_ANDROID.map(t=>`<li>${esc(t)}</li>`).join('')}</ol></div></div><p class="sub">Daarna: ${esc(INSTALL_SLOT)}</p><div class="sub">${esc(appUrl())}</div></div>
    <div class="knoppen"><button class="knop" data-a="welkomdeel">Delen (WhatsApp)</button><button class="knop rand" data-a="welkompdf">PDF / printen</button></div></div>`);
   laadQr().then(()=>{const el=document.getElementById('welkomQr');if(el)el.innerHTML=qrSvg(appUrl())}).catch(()=>{})}
-async function welkomDeel(){const w=welkomst;if(!w)return;const t=`Welkom bij Brood Opzet, ${w.naam}!\n\nJe tijdelijke pincode: ${w.pin}\n\n${INSTALLATIE.map((x,i)=>`${i+1}. ${x}`).join('\n')}\n\n${appUrl()}`;
+async function welkomDeel(){const w=welkomst;if(!w)return;const t=`Welkom bij Brood Opzet, ${w.naam}!\n\nJe tijdelijke pincode: ${w.pin}\n\n${INSTALLATIE_TEKST()}\n\n${appUrl()}`;
   try{if(navigator.share){await navigator.share({text:t});return}}catch(e){if(e&&e.name==='AbortError')return}
   try{await navigator.clipboard.writeText(t);toast('Tekst gekopieerd')}catch(e){toast('Delen lukt hier niet')}}
+function pdfKolommen(doc,y0,fs){for(const[x,titel,l]of[[18,'iPhone',INSTALL_IPHONE],[110,'Android',INSTALL_ANDROID]]){doc.setFont('helvetica','bold');doc.setFontSize(fs+2);doc.text(titel,x,y0);doc.setFont('helvetica','normal');doc.setFontSize(fs);let y=y0+8;
+  l.forEach((t,i)=>{const r=doc.splitTextToSize(`${i+1}. ${t}`,84);doc.text(r,x,y);y+=r.length*(fs*.45)+2})}}
 async function maakQrPdf(soort){
   try{await laadPdf();await laadQr()}catch(e){toast('PDF maken lukt niet zonder internet');return}
   const doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'}),O=[241,125,4];doc.setFillColor(...O);doc.rect(0,0,210,28,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(22);doc.text('Brood Opzet',105,18,{align:'center'});doc.setTextColor(20,20,20);
   if(soort==='winkel'){doc.setFontSize(26);doc.text('Scan om Brood Opzet te openen',105,52,{align:'center'});qrInPdf(doc,appUrl(),45,64,120);doc.setFont('helvetica','normal');doc.setFontSize(13);
-    INSTALLATIE.slice(0,3).forEach((t,i)=>doc.text(`${i+1}. ${t}`,22,204+i*9));doc.text('4. Open Brood Opzet vanaf je beginscherm en log in met je naam en pincode.',22,231);doc.setFontSize(10);doc.text(appUrl(),105,285,{align:'center'})}
+    pdfKolommen(doc,198,12);doc.setFontSize(12);doc.text('Daarna: open Brood Opzet vanaf je beginscherm en log in met je naam en pincode.',105,262,{align:'center'});doc.setFontSize(10);doc.text(appUrl(),105,285,{align:'center'})}
   else{const w=welkomst;doc.setFontSize(22);doc.text(`Welkom, ${w.naam}!`,105,48,{align:'center'});doc.setFont('helvetica','normal');doc.setFontSize(15);doc.text('Je tijdelijke pincode:',105,62,{align:'center'});doc.setFont('helvetica','bold');doc.setFontSize(34);doc.text(w.pin,105,78,{align:'center'});
-    qrInPdf(doc,appUrl(),65,90,80);doc.setFont('helvetica','normal');doc.setFontSize(12);let y=184;INSTALLATIE.forEach((t,i)=>{const r=doc.splitTextToSize(`${i+1}. ${t}`,166);doc.text(r,22,y);y+=r.length*6+3});doc.setFontSize(10);doc.text(appUrl(),105,285,{align:'center'})}
+    qrInPdf(doc,appUrl(),65,90,80);doc.setFont('helvetica','normal');pdfKolommen(doc,182,11);doc.setFontSize(11);doc.text(doc.splitTextToSize('Daarna: '+INSTALL_SLOT,170),20,252);doc.setFontSize(10);doc.text(appUrl(),105,285,{align:'center'})}
   const f=new File([doc.output('blob')],soort==='winkel'?'brood-opzet-qr-winkel.pdf':`welkom-${(welkomst?.naam||'').toLowerCase().replace(/[^a-z0-9]+/g,'-')}.pdf`,{type:'application/pdf'});
   try{if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:f.name});return}}catch(e){if(e&&e.name==='AbortError')return;if(e&&e.name==='NotAllowedError'){toast('Tik nog een keer');return}}
   toast('Delen wordt op dit toestel niet ondersteund')}
@@ -1649,7 +1658,7 @@ async function ocrVoorbereiden(){try{if(L.ocrKlaar===2||!navigator.onLine||!('ca
 async function pushAbonneer(){const p=await Notification.requestPermission();if(p!=='granted'){toast('Meldingen zijn niet toegestaan');render();return null}
   const reg=await navigator.serviceWorker.ready;const b64=VAPID_PUBLIEK.replace(/-/g,'+').replace(/_/g,'/'),raw=atob(b64+'='.repeat((4-b64.length%4)%4)),key=Uint8Array.from(raw,c=>c.charCodeAt(0));
   return(await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key})).toJSON()}
-async function pushAanTeam(){if(pushStatus()==='niet'){toast('Pushmeldingen werken alleen als de app op het beginscherm staat (iOS 16.4 of nieuwer)');return}
+async function pushAanTeam(){if(pushStatus()==='niet'){toast(pushNietTekst());return}
   try{const j=await pushAbonneer();if(!j)return;S.pushTeam.subs=(S.pushTeam.subs||[]).filter(x=>x.endpoint!==j.endpoint);S.pushTeam.subs.push({endpoint:j.endpoint,keys:j.keys,uid:L.sessie,t:Date.now()});
     L.pushTeamAan=j.endpoint;bewaarL();bewaar();render();toast('Meldingen staan aan op dit toestel')}catch(e){toast('Aanzetten lukte niet: '+(e.message||e))}}
 function pushTeamUit(){S.pushTeam.subs=(S.pushTeam.subs||[]).filter(x=>x.endpoint!==L.pushTeamAan);L.pushTeamAan=null;bewaarL();bewaar();render();toast('Meldingen staan uit op dit toestel')}
@@ -2098,7 +2107,7 @@ function werkPlaten(){
 function renderWerk(){
   const el=document.getElementById('werk'),p=werkPlaten(),v=S.vinkjes[datum]?.[moment]||{};
   if(!p.length){werk=null;el.classList.remove('open');return}
-  werk.i=Math.min(Math.max(0,werk.i),p.length);el.classList.add('open');
+  werk.i=Math.min(Math.max(0,werk.i),p.length);el.classList.add('open');setTimeout(terugBewaak,0);
   const ka=p.filter(x=>x.regels.every(r=>v[r.s.id])).length;
   let h=`<div class="wkop"><button data-a="werkdicht">Sluiten</button><span>${ka} / ${p.length} klaar</span><span style="width:60px"></span></div><div class="wbalk"><div style="width:${ka/p.length*100}%"></div></div>`;
   if(werk.i>=p.length){h+=`<div class="klaarscherm"><b>✓</b><div style="font-size:22px;font-weight:800">${ka===p.length?'Alles klaargezet!':'Einde van de lijst'}</div><p style="color:var(--grijs)">${ka<p.length?`Nog ${p.length-ka} niet afgevinkt.`:''}</p></div>
@@ -2520,7 +2529,7 @@ function gebruikerOpslaan(){
 }
 
 /* ---------- sheets ---------- */
-function toonSheet(html){undoVerberg();document.getElementById('paneel').innerHTML=html;document.getElementById('sheet').classList.add('open')}
+function toonSheet(html){undoVerberg();document.getElementById('paneel').innerHTML=html;document.getElementById('sheet').classList.add('open');setTimeout(terugBewaak,0)}
 function sluit(){document.getElementById('sheet').classList.remove('open');bewerk=null}
 function openSoort(s){
   bewerk={...s,soort:'brood',foto:S.fotos[s.id]||null,type:s.type||'afbakken',gesneden:s.gesneden||'voor',programmaId:s.programmaId||null,allergenen:[...(s.allergenen||[])]};verwStap=false;
@@ -2588,7 +2597,7 @@ function naarLevering(){const h=S.herinnering||{},nu=new Date(),na=nu.getHours()
 let blok=null;
 function blokVelden(){return[...document.querySelectorAll('input[data-blok]')]}
 function blokSleutel(el){return el.id?'#'+el.id:el.dataset.cderv?`[data-cderv="${el.dataset.cderv}"]`:null}
-function openBlok(el){const k=blokSleutel(el);if(!k)return;blok={k,nieuw:true};toonBlok()}
+function openBlok(el){const k=blokSleutel(el);if(!k)return;blok={k,nieuw:true};toonBlok();setTimeout(terugBewaak,0)}
 function blokEl(){return blok&&document.querySelector(blok.k)}
 function toonBlok(){const el=blokEl();if(!el){sluitBlok();return}const rij=el.closest('.rij'),naam=rij?.querySelector('.naam')?.textContent||'',sub=rij?.querySelector('.sub')?.textContent||'',l=blokVelden(),i=l.indexOf(el);
   document.querySelectorAll('.blokactief').forEach(x=>x.classList.remove('blokactief'));rij?.classList.add('blokactief');rij?.scrollIntoView({block:'center',behavior:'smooth'});
@@ -2617,6 +2626,41 @@ document.addEventListener('touchmove',e=>{if(!veeg)return;const t=e.touches[0],d
   veeg.dx=dx;veeg.r.style.transform=`translateX(${Math.max(-110,Math.min(110,dx))}px)`;const kl=veeg.r.classList.contains('klaar');veeg.r.classList.toggle('veegaan',dx>70&&!kl);veeg.r.classList.toggle('veeguit',dx<-70&&kl)},{passive:true});
 document.addEventListener('touchend',()=>{if(!veeg)return;const{r,dx,horiz}=veeg;veeg=null;r.style.transform='';r.classList.remove('veegaan','veeguit','veegt');if(!horiz||Math.abs(dx)<70)return;
   const kl=r.classList.contains('klaar');if((dx>0&&!kl)||(dx<0&&kl)){const vk=r.querySelector('.vinkvak');if(vk){laatsteScroll=0;vk.click()}}});
+
+/* ================= 9.15: Android ================= */
+const IS_ANDROID=/Android/i.test(navigator.userAgent)||!!window.__ANDROID_TEST__;
+const IS_STANDALONE=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+document.documentElement.classList.toggle('android',IS_ANDROID);
+const INSTALL_IPHONE=['Open de link (of scan de QR-code) met Safari.','Tik onderaan op de deelknop (vierkantje met pijl omhoog).','Kies "Zet op beginscherm" en tik op "Voeg toe".'];
+const INSTALL_ANDROID=['Open de link (of scan de QR-code) met Chrome.','Tik rechtsboven op de drie puntjes.','Kies "App installeren" of "Toevoegen aan startscherm".'];
+const INSTALL_SLOT='Open Brood Opzet vanaf je beginscherm, kies je naam, vul de tijdelijke pincode in en kies daarna je eigen pincode.';
+const pushNietTekst=()=>IS_ANDROID?'Dit werkt als Brood Opzet als app op je beginscherm staat (via Chrome → drie puntjes → App installeren).':'Dit werkt alleen als Brood Opzet op het beginscherm staat, op iOS 16.4 of nieuwer.';
+const pushGeweigerdTekst=()=>IS_ANDROID?'Meldingen zijn geweigerd. Zet ze aan via Instellingen → Apps → Brood Opzet (of Chrome) → Meldingen.':'Meldingen zijn geweigerd. Zet ze aan via Instellingen → Meldingen → Brood Opzet.';
+/* installeren op Android: Chrome geeft een installatievraag die we op een knop zetten */
+let installVraag=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installVraag=e;try{render()}catch(x){}});
+window.addEventListener('appinstalled',()=>{installVraag=null;toast('Brood Opzet staat op je beginscherm');try{render()}catch(x){}});
+const installHtml=()=>installVraag&&!IS_STANDALONE()?`<div class="kaartje installkaart"><b>📲 Zet Brood Opzet op je beginscherm</b><div class="sub">Dan open je de app met één tik, net als een gewone app, en werken meldingen.</div><div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:8px"><button class="knop klein" data-a="installeer">Op beginscherm zetten</button></div></div>`:'';
+async function installeer(){if(!installVraag)return;installVraag.prompt();try{await installVraag.userChoice}catch(e){}installVraag=null;render()}
+/* trillen bij afvinken (alleen Android, keuze in App-instellingen) */
+const kanTrillen=()=>IS_ANDROID&&typeof navigator.vibrate==='function';
+function tril(){try{if(kanTrillen()&&prof().tril)navigator.vibrate(30)}catch(e){}}
+/* terugknop van Android: eerst venster dicht, dan terug naar Meer/Klaarzetten, pas dan de app uit */
+let terugWacht=false;
+function opDiepte(){return!!(blok||document.getElementById('sheet')?.classList.contains('open')||werk||document.getElementById('tour')?.classList.contains('open')||sub||(L.sessie&&tab!==startTab(prof())&&tab!=='lijst'))}
+function terugBewaak(){if(!IS_ANDROID||terugWacht||!L.sessie)return;if(opDiepte()){try{history.pushState({bo:1},'');terugWacht=true}catch(e){}}}
+function terugStap(){
+  if(blok){const derv=!!blokEl()?.dataset.cderv;sluitBlok();if(derv)render();return true}
+  if(document.getElementById('tour')?.classList.contains('open'))return false;
+  if(document.getElementById('sheet')?.classList.contains('open')){sluit();render();return true}
+  if(werk){werk=null;document.getElementById('werk').classList.remove('open');render();return true}
+  if(sub){sub=null;render();return true}
+  if(tab!=='lijst'&&tab!==startTab(prof())){tab=startTab(prof());render();return true}
+  return false}
+window.addEventListener('popstate',()=>{if(!IS_ANDROID)return;const was=terugWacht;terugWacht=false;if(!was)return;if(terugStap())setTimeout(terugBewaak,0);else history.back()});
+/* toetsenbord open: menubalk onderin verbergen (Android) */
+document.addEventListener('focusin',e=>{if(IS_ANDROID&&e.target.matches('input:not([readonly]):not([type=checkbox]):not([type=radio]):not([type=file]),textarea'))document.body.classList.add('toetsenbord')});
+document.addEventListener('focusout',()=>{if(IS_ANDROID)setTimeout(()=>{const a=document.activeElement;if(!a||!a.matches('input:not([readonly]),textarea'))document.body.classList.remove('toetsenbord')},120)});
 
 /* ================= events ================= */
 let laatsteScroll=0,laatsteVeeg=0;document.addEventListener('touchmove',()=>{laatsteVeeg=Date.now()},{passive:true,capture:true});document.addEventListener('scroll',()=>{if(Date.now()-laatsteVeeg<2500)laatsteScroll=Date.now()},true);
@@ -2745,7 +2789,7 @@ document.addEventListener('click',async e=>{
   case'wissel':log('Gewisseld van persoon');L.sessie=null;loginKeuze=null;geenVoorkeur=true;ovenModus=false;sub=null;bewaar();render();return;
   case'welkomdeel':welkomDeel();return;
   case'welkompdf':maakQrPdf('welkom');return;
-  case'qrwinkel':if(!isAdmin())return;toonSheet(`<div class="pkop"><span style="width:70px"></span><b>QR-code voor de winkel</b><button data-a="sluit" style="font-weight:700">Klaar</button></div><div class="pinhoud"><p class="hulp">Hang deze A4 op bij de broodafdeling. Collega's scannen hem met de camera en zetten de app op hun beginscherm.</p><div id="winkelQr" class="welkomqr groot"></div><div class="knoppen"><button class="knop" data-a="qrwinkelpdf">PDF maken / printen</button></div><p class="hulp" style="text-align:center">${esc(appUrl())}</p></div>`);laadQr().then(()=>{const el=document.getElementById('winkelQr');if(el)el.innerHTML=qrSvg(appUrl(),6)}).catch(()=>{});return;
+  case'qrwinkel':if(!isAdmin())return;toonSheet(`<div class="pkop"><span style="width:70px"></span><b>QR-code voor de winkel</b><button data-a="sluit" style="font-weight:700">Klaar</button></div><div class="pinhoud"><p class="hulp">Hang deze A4 op bij de broodafdeling. Collega's scannen hem met de camera en zetten de app op hun beginscherm, op iPhone én Android.</p><div id="winkelQr" class="welkomqr groot"></div><div class="knoppen"><button class="knop" data-a="qrwinkelpdf">PDF maken / printen</button></div><p class="hulp" style="text-align:center">${esc(appUrl())}</p></div>`);laadQr().then(()=>{const el=document.getElementById('winkelQr');if(el)el.innerHTML=qrSvg(appUrl(),6)}).catch(()=>{});return;
   case'qrwinkelpdf':maakQrPdf('winkel');return;
   case'pk':pinKiesToets(v);return;
   case'facelogin':faceLogin();return;
@@ -2795,6 +2839,7 @@ document.addEventListener('click',async e=>{
   case'scanstop':scan=null;openLevering();return;
   case'scanok':if(scan)scanOvernemen();return;
   case'scanstap':{const r=scan?.regels[+v];if(!r)return;r.aantal=Math.max(0,r.aantal+ +b.dataset.n);r.zeker=r.doel?true:r.zeker;r.twijfel=false;toonScan();return}
+  case'installeer':installeer();return;
   case'pbfout':meldLeesfout();return;
   case'pakbonopen':openPakbon(v);return;
   case'pakbonophalen':{const lv=S.levering[v];if(!lv?.fotoId||!db?.haal)return;b.disabled=true;b.textContent='Ophalen…';try{const r=await db.haal('notfoto:'+lv.fotoId);if(r?.data)toonFoto(r.data);else{toast('Foto niet gevonden op de server');b.remove()}}catch(e){toast('Ophalen lukt nu niet (geen internet?)');b.disabled=false;b.textContent='📷 Foto van de pakbon ophalen'}return}
