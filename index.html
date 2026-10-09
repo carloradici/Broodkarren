@@ -672,7 +672,9 @@ function snapshot(){
    for(const d of Object.keys(S.dervReg))if(d<dgrens){const l=Object.values(S.dervReg[d]||{});if(l.length&&l.every(r=>r.kassa))delete S.dervReg[d]}}
   const nodig=new Set();for(const d of Object.keys(S.notities))for(const n of Object.values(S.notities[d]||{}))if(n.fotoId)nodig.add(n.fotoId);for(const lv of Object.values(S.levering))if(lv?.fotoId)nodig.add(lv.fotoId);
   for(const id of Object.keys(S.notfotos))if(!nodig.has(id)&&S.notfotos[id]===null)delete S.notfotos[id];
-  for(const id of Object.keys(S.notfotos))if(oudePakbonFoto(id)&&S.notfotos[id]!==null){delete S.notfotos[id];delete basis['notfoto:'+id]}
+  for(const id of Object.keys(S.notfotos))if(oudePakbonFoto(id)&&S.notfotos[id]!==null){delete S.notfotos[id];delete basis['notfoto:'+id];delete revs['notfoto:'+id]}
+  /* leesfout-foto van een medewerker: na het versturen van dit toestel af (alleen de beheerder bewaart hem) */
+  if(!kanBeheren())for(const id of Object.keys(S.notfotos))if(id.startsWith('pf')&&S.notfotos[id]&&basis['notfoto:'+id]===stabiel({data:S.notfotos[id]})){delete S.notfotos[id];delete basis['notfoto:'+id];delete revs['notfoto:'+id]}
   const lg=Date.now()-60*864e5;for(const[id,l]of Object.entries(S.log))if(l.t<lg)delete S.log[id];
 }
 function historie(s,groep){
@@ -712,7 +714,7 @@ function bestelBerekening(){
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const APP_VERSIE='9.17',APP_BOUW='9.17';
+const APP_VERSIE='9.17',APP_BOUW='9.18';
 const NIEUWS=[['🔄','Versie en bijwerken','Onderaan Meer zie je op welke versie de app draait. Met Controleren op update haal je meteen de nieuwste versie op. Staat er een nieuwe klaar, dan zie je bovenin een balkje.'],
  ['🔒','Automatisch uitloggen','Heb je de app een paar minuten niet gebruikt (weggeveegd of afgesloten), dan log je opnieuw in met je pincode.'],
  ['💾','Geen "geheugen vol" meer','Foto\'s worden op een andere plek op de telefoon bewaard. Oudere pakbonfoto\'s staan op de server en haal je op als je ze opent.'],
@@ -789,9 +791,12 @@ function maakDb(){
     async login(e,p){return chk(await c.auth.signInWithPassword({email:e,password:p})).session},
     async logout(){await c.auth.signOut()},
     async isBeheerder(uid){return !!chk(await c.from('beheerders').select('user_id').eq('user_id',uid).maybeSingle())},
-    async alles(){try{const a=chk(await c.from('app_data').select('sleutel,waarde').not('sleutel','like','notfoto:lv%'));
-      const b=chk(await c.from('app_data').select('sleutel,waarde').like('sleutel','notfoto:lv%').gte('sleutel','notfoto:lv'+plusDagen(iso(),-60)));return a.concat(b)}
-      catch(e){console.warn('gefilterd ophalen mislukt, alles ophalen',e);return chk(await c.from('app_data').select('sleutel,waarde'))}},
+    /* opstarten: alleen wat sinds de vorige keer veranderd is; leesfout-foto's alleen naar de beheerder */
+    async alles(opt={}){const q=()=>c.from('app_data').select('sleutel,waarde,bijgewerkt'),zonderPf=r=>opt.beheerder?r:r.not('sleutel','like','notfoto:pf%');
+      if(opt.sinds)return chk(await zonderPf(q().gt('bijgewerkt',opt.sinds)));
+      try{const a=chk(await zonderPf(q().not('sleutel','like','notfoto:lv%')));
+        const b=chk(await q().like('sleutel','notfoto:lv%').gte('sleutel','notfoto:lv'+plusDagen(iso(),-60)));return a.concat(b)}
+      catch(e){console.warn('gefilterd ophalen mislukt, alles ophalen',e);return chk(await q())}},
     async haal(k){const d=chk(await c.from('app_data').select('waarde').eq('sleutel',k).maybeSingle());return d?d.waarde:null},
     async schrijf(k,v,opt={}){const nu=new Date().toISOString();
       try{
@@ -855,7 +860,7 @@ function pasOpsToe(obj,ops){
 }
 function ontvang(k,v){
   if(OEFEN||!isObj(v))return;const rev=v._rev||0;if(revs[k]!=null&&rev<=revs[k])return;revs[k]=rev;v=zonderRev(v);
-  if(k.startsWith('notfoto:')&&oudePakbonFoto(k.slice(8))){delete basis[k];delete S.notfotos[k.slice(8)];return}
+  if((k.startsWith('notfoto:')&&oudePakbonFoto(k.slice(8)))||(k.startsWith('notfoto:pf')&&!kanBeheren())){delete basis[k];delete revs[k];delete S.notfotos[k.slice(8)];return}
   const lokaal=splitsen()[k],lj=stabiel(lokaal);
   if(basis[k]===undefined||lokaal===undefined||lj===basis[k]){basis[k]=stabiel(v);pasToe(k,v)}
   else{const ops=diff(JSON.parse(basis[k]),lokaal);basis[k]=stabiel(v);pasToe(k,pasOpsToe(kloon(v),ops));planSync()}
@@ -919,12 +924,14 @@ document.addEventListener('focusout',()=>setTimeout(()=>{if(uitgesteldRender){co
 async function koppelStart(){
   syncStatus='start';render();await opslagKlaar;
   try{
-    const rows=await db.alles();
+    const volledig=!L.gekoppeld||!L.syncTot||!idbOk||!Object.keys(basis).length||Date.now()-(L.volledigOp||0)>7*864e5;
+    const rows=await db.alles({sinds:volledig?null:new Date(Date.parse(L.syncTot)-15*60000).toISOString(),beheerder:!!L.beheerder});
     if(!L.gekoppeld){
       if(rows.some(r=>r.sleutel==='instellingen')){S=leegS();basis={};revs={}}else{basis={};revs={}}
       L.gekoppeld=true;bewaarL();
     }
     for(const r of rows)ontvang(r.sleutel,r.waarde);
+    {const max=rows.reduce((m,r)=>r.bijgewerkt&&r.bijgewerkt>m?r.bijgewerkt:m,L.syncTot||'');if(max)L.syncTot=max;if(volledig)L.volledigOp=Date.now();bewaarL()}
     db.abonneer((k,v)=>{ontvang(k,v);bewaarSync();bewaarS();renderZacht()},
       s=>{if(s==='SUBSCRIBED'&&syncStatus==='offline')sync()});
     zetStatus('online');bewaarNu();await sync();
