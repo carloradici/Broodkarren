@@ -598,6 +598,8 @@ try{basis=JSON.parse(localStorage.getItem(OPSLAG_BASIS)||'{}')||{}}catch(e){basi
 try{revs=JSON.parse(localStorage.getItem(OPSLAG_REVS)||'{}')||{}}catch(e){revs={}}
 for(const k of Object.keys(basis)){try{basis[k]=stabiel(JSON.parse(basis[k]))}catch(e){delete basis[k]}}
 if(S&&S.sessie&&!L.sessie){L.sessie=S.sessie;L.laatsteActie=S.laatsteActie}
+/* 10.2: gekoppeld toestel zonder eigen gegevens (opslag gewist of beschadigd): leeg beginnen en alles opnieuw ophalen, niets terugsturen */
+if(!window.__BEGINSTAAT__&&L.gekoppeld&&L.modus!=='lokaal'&&!(S&&Array.isArray(S.soorten))){S=leegS();basis={};revs={};L.syncTot=null;L.herstel=true;try{localStorage.setItem(OPSLAG_LOKAAL,JSON.stringify(L))}catch(e){}}
 if(!S||!S.soorten){let v1=null;if(!NS)try{v1=JSON.parse(localStorage.getItem('broodkarren-v1')||'null')}catch(e){}S=NS?leegS():vanV1(v1&&v1.items?v1:DEFAULTS)}
 S=vulAan(naarV6(naarV3(S)));
 
@@ -983,7 +985,7 @@ function bestelBerekening(){
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const APP_VERSIE='10.0',APP_BOUW='10.1';
+const APP_VERSIE='10.0',APP_BOUW='10.2';
 const NIEUWS=[['🏪','Brood Opzet per winkel','De app werkt nu per winkel. Alles wat je al had, hoort bij je eigen winkel. Voor jou verandert er niets.'],
  ['🔑','Koppelen met een code','Een nieuwe telefoon koppel je voortaan met de koppelcode van de winkel, zonder wachtwoord. De beheerder vindt de code onder Meer.'],
  ['🌤️','Weer en bakker','De beheerder kiest bij Broodsoorten en instellingen de plaats voor het weer en de naam van de bakker.'],
@@ -1024,6 +1026,7 @@ function oudePakbonFoto(id){const m=/^lv(\d{4}-\d{2}-\d{2})$/.exec(id||'');retur
 const opslagKlaar=(async()=>{if(window.ReactNativeWebView||window.__BEGINSTAAT__!==undefined)return;idb=await idbOpen();if(!idb)return;const a=await idbAlles();if(!a)return;
   const lsBasis=(()=>{try{return localStorage.getItem(OPSLAG_BASIS)}catch(e){return null}})();
   const idbHeeftBasis=Object.keys(a).some(k=>k.startsWith('b:'));if(idbHeeftBasis)basis={};
+  if(L.herstel)for(const k of Object.keys(a))if(k.startsWith('b:'))delete a[k];  /* oude serverkopie niet gebruiken: alles komt opnieuw van de server */
   for(const[k,v]of Object.entries(a)){idbBekend.set(k,v);const id=k.slice(2);
     if(k.startsWith('f:')){if(!S.fotos[id])S.fotos[id]=v}
     else if(k.startsWith('n:')){if(S.notfotos[id]!==null&&!S.notfotos[id]&&!oudePakbonFoto(id))S.notfotos[id]=v}
@@ -1139,11 +1142,17 @@ function ontvang(k,v){
   else{const ops=diff(JSON.parse(basis[k]),lokaal);basis[k]=stabiel(v);pasToe(k,pasOpsToe(kloon(v),ops));planSync()}
 }
 function planSync(){if(L.modus==='lokaal'||!db||!L.gekoppeld)return;clearTimeout(syncTimer);syncTimer=setTimeout(sync,250)}
-const geweigerd=new Set();
+const geweigerd=new Set();let serverGezien=false;
+/* 10.2: rem op grote verwijderingen (bijv. een toestel dat ineens de standaardlijst stuurt) */
+function krimpOk(k,oud,nieuw){const n=(o,f)=>Array.isArray(o?.[f])?o[f].length:0;
+  if(k==='instellingen')return!(n(oud,'soorten')>=6&&n(nieuw,'soorten')<n(oud,'soorten')/2);
+  if(k==='beheer:gebruikers')return!(n(oud,'lijst')>=3&&n(nieuw,'lijst')<n(oud,'lijst')/2);
+  return true}
+async function opnieuwOphalen(){try{const rows=await db.alles({beheerder:!!L.beheerder});for(const r of rows)ontvang(r.sleutel,r.waarde);serverGezien=true;bewaarSync();bewaarS();render()}catch(e){setTimeout(opnieuwOphalen,15000)}}
 async function sync(){
-  if(OEFEN||!db||!L.gekoppeld||L.modus==='lokaal'||opSlot())return;await opslagKlaar;
+  if(OEFEN||!db||!L.gekoppeld||L.modus==='lokaal'||opSlot()||!serverGezien||L.herstel)return;await opslagKlaar;
   if(syncBezig){syncOpnieuw=true;return}
-  syncBezig=true;let veranderd=false,fout=false;
+  syncBezig=true;let veranderd=false,fout=false,krimp=false;
   try{
     for(const k of Object.keys(splitsen())){
       if((k.startsWith('beheer:')||k.startsWith('prive:'))&&!L.beheerder)continue;
@@ -1157,9 +1166,11 @@ async function sync(){
         if(basis[k]!==undefined&&bestaat)nieuw=pasOpsToe(kloon(sb),diff(JSON.parse(basis[k]),lokaal));
         else if(bestaat&&isObj(sb)&&isObj(lokaal))nieuw=pasOpsToe(kloon(sb),diff({},lokaal));
         else nieuw=kloon(lokaal);
+        if(bestaat&&!krimpOk(k,sb,nieuw)){console.warn('grote verwijdering tegengehouden',k);delete basis[k];delete revs[k];krimp=true;break}
         const rev=(srev||0)+1;
         try{await db.schrijf(k,{...nieuw,_rev:rev},{bestaat,rev:srev})}
         catch(e){if(e&&e.conflict&&poging<5){await new Promise(r=>setTimeout(r,150+Math.random()*300));continue}
+          if(/P0420|Te veel/i.test((e?.code||'')+' '+(e?.message||''))){delete basis[k];delete revs[k];krimp=true;break}
           if(/42501|row-level security/i.test((e?.code||'')+' '+(e?.message||''))||(e&&e.conflict&&WINKEL)){console.warn('geweigerd',k);geweigerd.add(k);break}throw e}
         revs[k]=Math.max(revs[k]||0,rev);basis[k]=stabiel(nieuw);
         const nu=splitsen()[k];
@@ -1170,7 +1181,9 @@ async function sync(){
     }
     zetStatus('online');
   }catch(e){fout=true;zetStatus('offline');console.warn('sync',e);clearTimeout(retryTimer);retryTimer=setTimeout(sync,15000)}
-  finally{syncBezig=false;bewaarSync();bewaarS();
+  finally{syncBezig=false;
+    if(krimp){serverGezien=false;toast('Een grote verwijdering is tegengehouden. De gegevens worden opnieuw opgehaald.');opnieuwOphalen()}
+    bewaarSync();bewaarS();
     if(veranderd)renderZacht();if(syncOpnieuw&&!fout){syncOpnieuw=false;sync()}}
 }
 function zetStatus(s){if(syncStatus===s)return;syncStatus=s;document.querySelectorAll('.status').forEach(el=>el.outerHTML=statusHtml())}
@@ -1207,6 +1220,7 @@ async function koppelStart(){
       L.gekoppeld=true;delete L.wissel;delete L.vanLokaal;delete L.melding;bewaarL();
     }
     for(const r of rows)ontvang(r.sleutel,r.waarde);
+    serverGezien=true;if(L.herstel){delete L.herstel;bewaarL()}
     {const max=rows.reduce((m,r)=>r.bijgewerkt&&r.bijgewerkt>m?r.bijgewerkt:m,L.syncTot||'');if(max)L.syncTot=max;if(volledig)L.volledigOp=Date.now();bewaarL()}
     db.abonneer((k,v)=>{ontvang(k,v);bewaarSync();bewaarS();renderZacht()},
       s=>{if(s==='SUBSCRIBED'&&syncStatus==='offline')sync()});
@@ -1241,6 +1255,7 @@ function _render(){
   if(!S.momenten.find(x=>x.id===moment))moment=S.momenten[0].id;
   if(winkelKiezen){m.innerHTML=winkelKiesHtml();nav.innerHTML='';return}
   if(L.modus!=='lokaal'&&!L.gekoppeld){m.innerHTML=L.wissel?`<div class="login"><h1>Verbinden…</h1><p>${esc(winkelNaam())} wordt geopend.</p></div>`:koppelHtml();nav.innerHTML='';return}
+  if(L.herstel&&L.gekoppeld){m.innerHTML=`<div class="login"><h1>Gegevens ophalen…</h1><p>Dit toestel haalt alle gegevens opnieuw op van de server. ${syncStatus==='offline'?'Er is nu geen internet; zodra er verbinding is, gaat het verder.':'Een ogenblik.'}</p></div>`;nav.innerHTML='';return}
   if(syncStatus==='start'&&!S.gebruikers.length){m.innerHTML=`<div class="login"><h1>Verbinden…</h1><p>Gegevens worden opgehaald.</p></div>`;nav.innerHTML='';return}
   if(!S.gebruikers.some(g=>g.rol==='admin')){m.innerHTML=setupHtml();nav.innerHTML='';return}
   const g=ik();if(!g||(g.rol!=='admin'&&g.actief===false)){if(L.sessie){L.sessie=null;bewaarL()}m.innerHTML=loginHtml();nav.innerHTML='';return}
