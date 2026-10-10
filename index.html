@@ -816,6 +816,7 @@ function aanbiederHtml(){if(!aanb&&!aanbFout){laadAanbieder();return`<div class=
    <div class="knoppen"><button class="knop" data-a="uitnodigingnieuw">+ Nieuwe ondernemer uitnodigen</button></div>
    ${u.length?`<div class="sectie"><div class="karkop"><b>Openstaande uitnodigingen</b><span>${u.length}</span></div>${u.map(x=>`<div class="rij inv"><div class="groei"><div class="naam">${esc(x.code)}</div><div class="sub">${PAKKET_NAAM[x.pakket]||x.pakket}${x.proef_pakket?` · ${x.proef_dagen} dagen ${PAKKET_NAAM[x.proef_pakket]} proberen`:''}${x.notitie?' · '+esc(x.notitie):''} · geldig tot ${esc(datumNL(x.verloopt))}</div></div><button class="knop klein" data-a="uitnodigingdeel" data-v="${esc(x.code)}">Delen</button><button class="knop rand klein rood" data-a="uitnodigingverw" data-v="${esc(x.code)}">${afwStap==='uitn:'+x.code?'Zeker?':'×'}</button></div>`).join('')}</div>`:''}
    ${o.map(x=>`<div class="sectie"><div class="karkop"><b>${esc(x.naam)}</b><span>${x.status==='opgezegd'?'opgezegd':esc((x.eigenaren||[]).join(', '))}</span></div>
+     ${x.id!==WINKEL?.ondernemer?`<div class="rij inv"><div class="groei"><div class="sub">${(x.winkels||[]).length} ${(x.winkels||[]).length===1?'winkel':'winkels'} · sinds ${esc(datumNL(x.gemaakt))}</div></div><button class="knop rand klein rood" data-a="ondweg" data-v="${x.id}">Verwijderen</button></div>`:''}
      ${x.status==='opgezegd'?`<div class="rij inv"><div class="groei"><div class="sub">Opgezegd op ${esc(datumNL(x.opgezegd_op))} · wordt gewist op ${esc(datumNL(new Date(Date.parse(x.opgezegd_op)+60*864e5).toISOString()))}</div></div><button class="knop rand klein" data-a="opzegterug" data-v="${x.id}">Terugdraaien</button></div>`:''}
      ${(x.winkels||[]).map(w=>`<div class="rij"><button class="regel" data-a="aanbwinkel" data-v="${w.id}"><div class="groei"><div class="naam">${w.slot?'🔒 ':''}${esc(w.naam)}</div><div class="sub">${PAKKET_NAAM[w.pakket]||w.pakket}${(w.extra||[]).length?' + '+w.extra.map(f=>FUNCTIE_NAAM[f]||f).join(', '):''}${w.proef_pakket&&w.proef_tot?` · proef ${PAKKET_NAAM[w.proef_pakket]} t/m ${esc(datumTekst(w.proef_tot))}`:''} · ${w.toestellen} ${w.toestellen===1?'toestel':'toestellen'} · ${w.laatst_gebruikt?'gebruikt '+esc(datumTekst(String(w.laatst_gebruikt).slice(0,10))):'nog niet gebruikt'}${w.notitie?'<br>'+esc(w.notitie):''}</div></div><span class="pijl">›</span></button></div>`).join('')}</div>`).join('')}`}
 function aanbWinkel(id){for(const o of aanb?.ondernemers||[])for(const w of o.winkels||[])if(w.id===id)return w;return null}
@@ -982,7 +983,7 @@ function bestelBerekening(){
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const APP_VERSIE='10.0',APP_BOUW='10.0';
+const APP_VERSIE='10.0',APP_BOUW='10.1';
 const NIEUWS=[['🏪','Brood Opzet per winkel','De app werkt nu per winkel. Alles wat je al had, hoort bij je eigen winkel. Voor jou verandert er niets.'],
  ['🔑','Koppelen met een code','Een nieuwe telefoon koppel je voortaan met de koppelcode van de winkel, zonder wachtwoord. De beheerder vindt de code onder Meer.'],
  ['🌤️','Weer en bakker','De beheerder kiest bij Broodsoorten en instellingen de plaats voor het weer en de naam van de bakker.'],
@@ -1535,7 +1536,7 @@ async function leesPagina(canvas,melding){
 function zonderVakjes(tA,tB){const a=leesPakbonTekst(tA).regels,b=leesPakbonTekst(tB).regels,uit=[];
   for(const r of a){const o=b.find(x=>x.artnr===r.artnr);uit.push({...r,twijfel:!o||o.aantal!==r.aantal})}
   for(const r of b)if(!a.some(x=>x.artnr===r.artnr))uit.push({...r,twijfel:true});return uit}
-function canvasNaarFoto(c){const sc=Math.min(1,1400/Math.max(c.width,c.height)),o=document.createElement('canvas');o.width=Math.round(c.width*sc);o.height=Math.round(c.height*sc);o.getContext('2d').drawImage(c,0,0,o.width,o.height);return o.toDataURL('image/jpeg',.72)}
+function canvasNaarFoto(c){const sc=Math.min(1,1200/Math.max(c.width,c.height)),o=document.createElement('canvas');o.width=Math.round(c.width*sc);o.height=Math.round(c.height*sc);o.getContext('2d').drawImage(c,0,0,o.width,o.height);return o.toDataURL('image/jpeg',.7)}
 /* koppelen: artnr → broodsoort */
 function bekendeArt(){const k={};for(const s of S.soorten)if(s.type==='vers'&&s.naam.trim())for(const a of artnrsVan(s))k[a]=s.id;for(const a of S.pakbonNegeer||[])k[normArt(a)]='negeer';return k}
 const kaleNaam=t=>t.toUpperCase().replace(/\b(HEEL|HALF|GESN\.?|GESNEDEN|CP|X|\d+|ST|STUKS|VGB|DECO|800)\b/g,' ').replace(/[^A-Z ]/g,' ').replace(/\s+/g,' ').trim();
@@ -1917,7 +1918,7 @@ function pakbonnenHtml(){const ds=Object.keys(S.levering).filter(d=>S.levering[d
 function openPakbon(d){const lv=S.levering[d];if(!lv)return;const ids=S.soorten.filter(s=>s.type==='vers'&&(lv.items?.[s.id]||lv.pakbon?.[s.id])).map(s=>s.id),v=levVerschil(lv),foto=lv.fotoId&&S.notfotos[lv.fotoId],pb=!!lv.pakbon;
   toonSheet(`<div class="pkop"><span style="width:70px"></span><b>${esc(datumTekst(d))}</b><button data-a="sluit" style="font-weight:700">Sluiten</button></div><div class="pinhoud">
    <p class="hulp">Ingevuld door ${esc(lv.wie||'?')} om ${tijdTekst(lv.t)}.${pb?'':' Geen pakbon gescand.'}</p>
-   ${foto?`<img class="pakbonduim" src="${foto}" alt="Pakbon" data-a="pakbonfoto" data-v="${d}"><p class="hulp" style="text-align:center;margin-top:0">Tik op de pakbon om te vergroten</p>`:lv.fotoId&&L.gekoppeld&&L.modus!=='lokaal'?`<div class="knoppen"><button class="knop rand klein" data-a="pakbonophalen" data-v="${d}">📷 Foto van de pakbon ophalen</button></div><p class="hulp" style="text-align:center;margin-top:0">Oudere pakbonfoto's staan alleen op de server.</p>`:''}
+   ${foto?`<img class="pakbonduim" src="${foto}" alt="Pakbon" data-a="pakbonfoto" data-v="${d}"><p class="hulp" style="text-align:center;margin-top:0">Tik op de pakbon om te vergroten</p>`:lv.fotoId&&d<plusDagen(iso(),-183)?`<p class="hulp" style="text-align:center">Pakbonfoto's worden 6 maanden bewaard. Deze foto is niet meer beschikbaar.</p>`:lv.fotoId&&L.gekoppeld&&L.modus!=='lokaal'?`<div class="knoppen"><button class="knop rand klein" data-a="pakbonophalen" data-v="${d}">📷 Foto van de pakbon ophalen</button></div><p class="hulp" style="text-align:center;margin-top:0">Oudere pakbonfoto's staan alleen op de server.</p>`:''}
    <div class="tabelwrap"><table class="tabel"><tr><th>Broodsoort</th>${pb?'<th>Pakbon</th>':''}<th>Geteld</th>${pb?'<th>Verschil</th>':''}</tr>${ids.map(id=>{const s=S.soorten.find(x=>x.id===id),p=lv.pakbon?.[id]??0,n=lv.items?.[id]??0;
      return`<tr><td>${esc(s.naam)}</td>${pb?`<td>${p}</td>`:''}<td>${n}</td>${pb?`<td class="${n<p?'hoog':''}">${n===p?'':(n>p?'+':'')+(n-p)}</td>`:''}</tr>`}).join('')}</table></div>
    ${v.length?`<div class="knoppen"><button class="knop rand" data-a="verschildeel" data-v="${d}">Verschil delen met de bakker</button></div>`:''}</div>`)}
@@ -2167,7 +2168,7 @@ function zoekFilter(){const z=zoekTerm.trim().toLowerCase(),m=document.getElemen
 let notFoto=null;
 const notFotoSrc=n=>(n.fotoId&&S.notfotos[n.fotoId])||n.foto||null;
 function verkleinNaar(file,max,cb,type){const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{const sc=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement('canvas');
-  c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);const x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(img,0,0,c.width,c.height);cb(c.toDataURL(type||'image/jpeg',.8))};img.src=r.result};r.readAsDataURL(file)}
+  c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);const x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(img,0,0,c.width,c.height);cb(c.toDataURL(type||'image/jpeg',.7))};img.src=r.result};r.readAsDataURL(file)}
 function toonFoto(src){toonSheet(`<div class="pkop"><span style="width:70px"></span><b>Foto</b><button data-a="sluit" style="font-weight:700">Sluiten</button></div><div class="pinhoud"><p class="hulp" style="text-align:center">Tik op de foto om in of uit te zoomen.</p><div class="fotozoom"><img src="${src}" alt="" data-a="fotozoom"></div></div>`)}
 
 
@@ -3061,6 +3062,16 @@ document.addEventListener('click',async e=>{
     catch(e){b.disabled=false;document.getElementById('fout').textContent=foutTekst(e)}return}
   case'uitnodigingdeel':deelTekst(uitnTekst(v),'Uitnodiging Brood Opzet');return;
   case'uitnodigingverw':{if(!isAanbieder())return;if(afwStap!=='uitn:'+v){afwStap='uitn:'+v;render();return}afwStap=null;try{await db.rpc('verwijder_uitnodiging',{c:v});await laadAanbieder()}catch(e){toast(foutTekst(e))}return}
+  case'ondweg':{if(!isAanbieder())return;const o=(aanb?.ondernemers||[]).find(x=>x.id===v);if(!o||o.id===WINKEL?.ondernemer)return;
+    toonSheet(`<div class="pkop"><button data-a="sluit">Annuleren</button><b>Ondernemer verwijderen</b><span style="width:70px"></span></div><div class="pinhoud">
+     <div class="kaartje waarschuw"><b>${esc(o.naam)}</b><div class="sub">Alle winkels (${(o.winkels||[]).map(w=>esc(w.naam)).join(', ')||'geen'}), gegevens, back-ups en inlogaccounts worden direct en definitief gewist. Gekoppelde toestellen worden losgekoppeld. Dit kan niet ongedaan worden gemaakt.</div></div>
+     <label>Typ ter bevestiging de naam: <b>${esc(o.naam)}</b></label><input class="veld" id="ondNaam" autocomplete="off">
+     <div class="fout" id="fout"></div><div class="knoppen"><button class="knop rood" data-a="ondwegdoe" data-v="${o.id}">Definitief verwijderen</button></div></div>`);return}
+  case'ondwegdoe':{if(!isAanbieder())return;const o=(aanb?.ondernemers||[]).find(x=>x.id===v),n=document.getElementById('ondNaam').value;
+    if(!o||n.trim().toLowerCase()!==o.naam.trim().toLowerCase()){document.getElementById('fout').textContent='De naam klopt niet.';return}
+    b.disabled=true;b.textContent='Bezig…';
+    try{await db.rpc('verwijder_ondernemer',{o:v,bevestig:n});log(`Ondernemer ${o.naam} verwijderd`);sluit();await laadAanbieder();toast(`${o.naam} is verwijderd`)}
+    catch(e){b.disabled=false;b.textContent='Definitief verwijderen';document.getElementById('fout').textContent=foutTekst(e)}return}
   case'aanbwinkel':openAanbWinkel(v);return;
   case'aanbpakket':bewerk.pakket=v;bewerk.extra=bewerk.extra.filter(f=>!PAKKETTEN[v].includes(f));toonAanbWinkel();return;
   case'aanbextra':bewerk.extra=bewerk.extra.includes(v)?bewerk.extra.filter(f=>f!==v):[...bewerk.extra,v];toonAanbWinkel();return;
@@ -3450,8 +3461,8 @@ document.addEventListener('change',e=>{
   else if(t.id==='logoIn'&&t.files&&t.files[0]){if(!isAdmin())return;verkleinNaar(t.files[0],520,src=>{S.winkelLogo=src;log('Eigen logo ingesteld');bewaar();render()},'image/png')}
   else if(t.id==='scanIn'&&t.files&&t.files[0]){if(!mag('vinken')||!heeft('scan'))return;startScan(t.files[0])}
   else if(t.dataset&&t.dataset.scan!=null&&scan){const i=+t.dataset.scan,r=scan.regels[i];if(t.value==='nieuw'){if(!mag('soorten')){toast('Geen rechten om een broodsoort aan te maken');t.value=r.doel;return}scanNieuweSoort(i)}else{r.doel=t.value;r.zeker=true;r.voorstel=false}toonScan()}
-  else if(t.id==='levFotoIn'&&t.files&&t.files[0])verkleinNaar(t.files[0],1600,src=>{if(bewerk)bewerk.foto=src;const k=document.getElementById('levFotoKnop');if(k){k.classList.add('aan');k.firstChild.textContent='✓'}toast('Foto van de pakbon klaar')});
-  else if(t.id==='notFotoIn'&&t.files&&t.files[0])verkleinNaar(t.files[0],1600,src=>{notFoto=src;const l=t.closest('.fotoknop');if(l){l.classList.add('aan');l.firstChild.textContent='✓'}toast('Foto klaar – typ eventueel tekst en tik op +')});
+  else if(t.id==='levFotoIn'&&t.files&&t.files[0])verkleinNaar(t.files[0],1200,src=>{if(bewerk)bewerk.foto=src;const k=document.getElementById('levFotoKnop');if(k){k.classList.add('aan');k.firstChild.textContent='✓'}toast('Foto van de pakbon klaar')});
+  else if(t.id==='notFotoIn'&&t.files&&t.files[0])verkleinNaar(t.files[0],1200,src=>{notFoto=src;const l=t.closest('.fotoknop');if(l){l.classList.add('aan');l.firstChild.textContent='✓'}toast('Foto klaar – typ eventueel tekst en tik op +')});
   else if(t.id==='notMetFoto'){notMetFoto=t.checked;const el=document.getElementById('notLijst');if(el)el.innerHTML=notLijstHtml()}
   else if(t.id==='pluZonder'){pluZonder=t.value;const el=document.getElementById('pluLijst');if(el)el.innerHTML=pluLijstHtml()}
   else if(t.id==='ovenMaxIn'){log(`Oven max. ${S.ovenMax} platen`,'ovenmax');t.value=S.ovenMax}
@@ -3467,6 +3478,7 @@ setInterval(()=>{const was=!!L.sessie;controleerSessie();if(was&&!L.sessie){werk
 
 /* ================= start ================= */
 {const q=new URLSearchParams(location.search),u=q.get('uitnodiging'),k=q.get('koppel');
+ if((u||k)&&L.gekoppeld)setTimeout(()=>toonSheet(`<div class="pkop"><span style="width:60px"></span><b>Al gekoppeld</b><button data-a="sluit" style="font-weight:700">Begrepen</button></div><div class="pinhoud"><div class="kaartje"><div class="sub">Dit toestel is al gekoppeld met <b>${esc(winkelNaam())}</b>. ${u?'Een uitnodiging werkt alleen op een toestel dat nog niet gekoppeld is. Open de link op de telefoon van de nieuwe ondernemer, of test hem in een privévenster van Safari.':'Deze koppelcode is voor een ander toestel. Er is niets veranderd.'}</div></div></div>`),900);
  if(u||k){if(u&&!L.gekoppeld){L.uitnodiging=u.toUpperCase().replace(/[^A-Z0-9]/g,'');koppelTab='code'}if(k&&!L.gekoppeld)L.koppelcode=k.toUpperCase().replace(/[^A-Z0-9]/g,'');bewaarL();try{history.replaceState(null,'',location.pathname+location.hash)}catch(e){}}}
 if(window.ReactNativeWebView||window.__BEGINSTAAT__!==undefined)document.querySelector('.test')?.remove();
 for(const d of Object.keys(S.derving))borgHistorie(d);

@@ -1,5 +1,5 @@
 // Brood Opzet: werkt ook zonder internet. Verhoog VERSIE bij elke nieuwe versie.
-const VERSIE = 'broodopzet-10.0';
+const VERSIE = 'broodopzet-10.1';
 const OCR_CACHE = 'broodopzet-ocr-1'; // leesprogramma voor pakbon scannen (blijft bewaard tussen versies)
 const SUPA_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js';
 const BESTANDEN = ['./', 'index.html', 'manifest.webmanifest', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', SUPA_JS];
