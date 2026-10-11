@@ -985,7 +985,7 @@ function bestelBerekening(){
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const APP_VERSIE='10.0',APP_BOUW='10.2';
+const APP_VERSIE='10.0',APP_BOUW='10.3';
 const NIEUWS=[['🏪','Brood Opzet per winkel','De app werkt nu per winkel. Alles wat je al had, hoort bij je eigen winkel. Voor jou verandert er niets.'],
  ['🔑','Koppelen met een code','Een nieuwe telefoon koppel je voortaan met de koppelcode van de winkel, zonder wachtwoord. De beheerder vindt de code onder Meer.'],
  ['🌤️','Weer en bakker','De beheerder kiest bij Broodsoorten en instellingen de plaats voor het weer en de naam van de bakker.'],
@@ -1598,16 +1598,19 @@ function toonScan(){
   if(scan.stap==='fout'){toonSheet(`<div class="pkop"><button data-a="scanstop">Terug</button><b>Pakbon lezen</b><span style="width:70px"></span></div><div class="pinhoud"><div class="kaartje"><b>Dat lukte niet</b><div class="sub">${esc(scan.melding)}</div></div><div class="knoppen"><label class="knop" style="margin:0">📷 Opnieuw proberen<input type="file" accept="image/*,application/pdf" id="scanIn" style="display:none"></label></div></div>`);return}
   const d=scan.d,datumAnders=scan.datumBon&&scan.datumBon!==d,bes=x=>dagTotaal(planKeyVoor(d),x),tot=scanTotalen(),open=scan.regels.filter(r=>!r.doel).length;
   const niet=S.soorten.filter(x=>x.type==='vers'&&x.naam.trim()&&!(x.id in tot)&&bes(x)>0);
-  toonSheet(`<div class="pkop"><button data-a="scanstop">Annuleren</button><b>Pakbon controleren</b><button data-a="scanok" style="font-weight:700">Overnemen</button></div><div class="pinhoud">
+  if(!scan.volgorde||scan.volgorde.length!==scan.regels.length)scan.volgorde=scan.regels.map((r,i)=>i).sort((a,b)=>scanRang(scan.regels[a])-scanRang(scan.regels[b])||a-b);
+  const oudeScroll=document.querySelector('#paneel .pinhoud.scanlijst')?.scrollTop;
+  toonSheet(`<div class="pkop"><button data-a="scanstop">Annuleren</button><b>Pakbon controleren</b><button data-a="scanok" style="font-weight:700">Overnemen</button></div><div class="pinhoud scanlijst">
    ${datumAnders?`<div class="kaartje waarschuw rood"><b>Let op: andere datum</b><div class="sub">De pakbon is van ${esc(datumTekst(scan.datumBon))}, je vult de levering in voor ${esc(datumTekst(d))}.</div></div>`:scan.datumBon?`<p class="hulp">✓ Pakbon van ${esc(datumTekst(scan.datumBon))}</p>`:''}
-   <p class="hulp">Controleer de aantallen. <span class="oranjetekst">Oranje</span> = niet zeker of wijkt af van de bestelling. ${open?`<b>${open} ${open===1?'regel':'regels'} nog koppelen.</b>`:''}</p>
-   <div class="sectie" style="margin:0">${scan.regels.map((r,i)=>[r,i]).sort((x,y)=>scanRang(x[0])-scanRang(y[0])).map(([r,i])=>{const s=S.soorten.find(x=>x.id===r.doel),b=s?bes(s):null,afw=s&&Math.abs(tot[s.id]-b)>=Math.max(3,Math.ceil(b*0.5)),let_=!r.doel||((!r.zeker||r.twijfel)&&r.doel!=='negeer')||afw;
+   <p class="hulp">Controleer de aantallen. <span class="oranjetekst">Oranje</span> = niet zeker of wijkt af van de bestelling.<br><b>${open?`${open} ${open===1?'regel':'regels'} nog koppelen`:'✓ Alle regels gekoppeld'}</b></p>
+   <div class="sectie" style="margin:0">${scan.volgorde.map(i=>[scan.regels[i],i]).map(([r,i])=>{const s=S.soorten.find(x=>x.id===r.doel),b=s?bes(s):null,afw=s&&Math.abs(tot[s.id]-b)>=Math.max(3,Math.ceil(b*0.5)),let_=!r.doel||((!r.zeker||r.twijfel)&&r.doel!=='negeer')||afw;
      return`<div class="rij inv scanrij ${let_?'aandacht':''} ${r.doel==='negeer'?'genegeerd':''}" style="flex-wrap:wrap"><div class="groei"><div class="naam" style="font-size:15px">${esc(r.naam)}</div><div class="sub">${r.artnr?'art. '+esc(r.artnr):'art.nr. niet gelezen'}${r.voorstel?' · <b>voorstel</b>':''}${!r.zeker&&r.bekend?' · nummer niet zeker gelezen':''}${r.twijfel&&r.doel!=='negeer'?' · <b>aantal nakijken</b>':''}${s&&b!=null?` · besteld ${b}`:''}</div>
       <select class="veld scankeuze" data-scan="${i}">${versOpties(r.doel)}</select></div>
       <div class="stepper"><button data-a="scanstap" data-v="${i}" data-n="-1">−</button><input readonly value="${r.aantal}"><button data-a="scanstap" data-v="${i}" data-n="1">+</button></div></div>`}).join('')}</div>
    ${niet.length?`<div class="kaartje waarschuw"><b>Niet op de pakbon gevonden</b><div class="sub">${niet.map(x=>`${esc(x.naam)} (besteld ${bes(x)})`).join(', ')}. Deze komen op 0 te staan. Controleer of een regel is overgeslagen.</div></div>`:''}
    <p class="hulp">Gekozen koppelingen worden onthouden, dus de volgende keer gaat het vanzelf.</p>
    <div class="knoppen"><button class="knop rand klein" data-a="pbfout">⚠️ Leesfout melden</button></div><p class="hulp" style="text-align:center;margin-top:0">Klopt er iets niet aan het lezen? Meld het, dan kan het scannen beter worden.</p></div>`);
+  if(oudeScroll!=null){const el=document.querySelector('#paneel .pinhoud.scanlijst');if(el)el.scrollTop=oudeScroll}
 }
 function scanNieuweSoort(i){const r=scan.regels[i],half=/^HALF/.test(r.naam)||/GESN/.test(r.naam),kn=kaleNaam(r.naam).toLowerCase(),naam=(half?'Half ':'')+kn.replace(/\b\w/g,c=>c.toUpperCase())+(half?' gesneden':'');
   const voorbeeld=S.soorten.find(x=>x.type==='vers'),id=nieuwId();
