@@ -508,6 +508,15 @@ body.toetsenbord #nav{display:none}
 .fstatus.groen{background:color-mix(in srgb,var(--groen) 16%,var(--kaart));color:var(--groen)}.fstatus.rood{background:color-mix(in srgb,var(--rood) 16%,var(--kaart));color:var(--rood)}
 .cijfer b.rood{color:var(--rood)}
 .factregel{border:1px solid var(--lijn);border-radius:12px;padding:8px;margin-top:8px}
+#factVb{position:fixed;inset:0;z-index:60;background:rgba(20,20,20,.94);display:none;flex-direction:column}
+#factVb.open{display:flex}
+#factVb .vbkop{display:flex;justify-content:space-between;align-items:center;padding:calc(env(safe-area-inset-top) + 12px) 16px 10px;color:#fff;font-size:17px}
+#factVb .vbkop button{background:#fff;color:#f17d04;border:0;border-radius:10px;padding:8px 16px;font-weight:800;font-size:15px}
+#factVb .vbinhoud{flex:1;overflow:auto;padding:4px 10px 10px;-webkit-overflow-scrolling:touch}
+#factVb .vbinhoud img{width:100%;display:block;background:#fff;border-radius:4px;box-shadow:0 2px 12px rgba(0,0,0,.4)}
+#factVb.zoom .vbinhoud img{width:220%;max-width:none}
+#factVb .vbmelding{color:#fff;text-align:center;margin-top:40px}
+#factVb .vbhulp{color:rgba(255,255,255,.7);text-align:center;font-size:13px;margin:0 0 calc(env(safe-area-inset-bottom) + 10px)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script></head>
 <body><div id="app"><div id="statusplek"></div><div id="opslagmelding">Opslaan mislukt: het geheugen is vol. Verwijder een paar foto's bij Broodsoorten.</div><main id="scherm"></main><nav id="nav"></nav></div>
@@ -657,7 +666,7 @@ function toonFactBewerk(){const f=bewerk.f,k=S.facturen.klanten,sc=document.quer
    <button class="toevoegen" data-a="factregelerbij">+ Regel toevoegen</button>
    <div class="kaartje" id="factTot"></div>
    <div class="fout" id="fout"></div>
-   <div class="knoppen" style="flex-wrap:wrap">${f.nummer?'':`<button class="knop" data-a="factafronden">Afronden (nummer ${volgendNummer(f.datum)})</button>`}${f.status==='concept'&&S.facturen.lijst[f.id]?`<button class="knop rand rood" data-a="factweg">${afwStap==='factweg'?'Zeker? Tik nogmaals':'Concept weggooien'}</button>`:''}</div></div>`);
+   <div class="knoppen" style="flex-wrap:wrap"><button class="knop rand" data-a="factvb">👁 Voorbeeld</button>${f.nummer?'':`<button class="knop" data-a="factafronden">Afronden (nummer ${volgendNummer(f.datum)})</button>`}${f.status==='concept'&&S.facturen.lijst[f.id]?`<button class="knop rand rood" data-a="factweg">${afwStap==='factweg'?'Zeker? Tik nogmaals':'Concept weggooien'}</button>`:''}</div></div>`);
   factTotTonen();if(sc){const el=document.querySelector('#paneel .pinhoud');if(el)el.scrollTop=sc}}
 function leesFactForm(){const f=bewerk?.f;if(!f||!document.getElementById('factForm'))return;const g=id=>document.getElementById(id);
   f.klant={naam:g('fkNaam').value.trim(),adres:g('fkAdres').value.trim(),pcPlaats:g('fkPc').value.trim(),email:g('fkMail').value.trim()};
@@ -681,7 +690,7 @@ function toonFactuur(){const f=S.facturen.lijst[bewerk?.id];if(!f)return sluit()
     <div class="sub" style="margin-top:6px">${esc(datumTekst(f.datum))} · vervalt ${esc(datumTekst(f.verval))} · <span class="fstatus ${kl}">${st}</span>${f.verstuurdOp?` · verstuurd ${esc(datumTekst(iso(new Date(f.verstuurdOp))))}`:''}${f.betaaldOp?` · betaald ${esc(datumTekst(iso(new Date(f.betaaldOp))))}`:''}</div></div>
    <div class="sectie" style="margin:8px 0">${f.regels.map(r=>`<div class="rij inv"><div class="groei"><div class="naam">${esc(r.oms)}</div><div class="sub">${String(r.aantal).replace('.',',')} × € ${bedragTekst(r.prijs)} · ${r.btw}% BTW</div></div><b>${fEuro(fCent(r.aantal*r.prijs))}</b></div>`).join('')}
     <div class="rij inv"><div class="groei"><div class="sub">waarvan BTW ${fEuro(t.btw)}</div></div><b>${fEuro(t.tot)}</b></div></div>
-   <div class="knoppen" style="flex-wrap:wrap"><button class="knop" data-a="factdeel">📄 PDF delen</button>
+   <div class="knoppen" style="flex-wrap:wrap"><button class="knop" data-a="factdeel">📄 PDF delen</button><button class="knop rand" data-a="factvb">👁 Voorbeeld</button>
     ${f.status==='afgerond'?`<button class="knop rand" data-a="factaanpas">Aanpassen</button><button class="knop rand" data-a="factverstuurd">Markeer als verstuurd</button>${laatste?`<button class="knop rand rood" data-a="factweg">${afwStap==='factweg'?'Zeker? Tik nogmaals':'Verwijderen'}</button>`:''}`:''}
     ${f.status==='verstuurd'?`<button class="knop rand" data-a="factbetaald">✓ Betaald</button><button class="knop rand" data-a="factniet">Toch niet verstuurd</button>`:''}
     ${f.status==='betaald'?`<button class="knop rand" data-a="factnietbetaald">Toch niet betaald</button>`:''}
@@ -693,7 +702,8 @@ function toonFactuur(){const f=S.facturen.lijst[bewerk?.id];if(!f)return sluit()
 let factLogoUrl=null;
 function factLogo(){if(factLogoUrl)return Promise.resolve(factLogoUrl);return new Promise((ok,nee)=>{const im=new Image();im.onload=()=>{try{const c=document.createElement('canvas');c.width=660;c.height=374;const x=c.getContext('2d');x.fillStyle='#f07c00';x.fillRect(0,0,660,374);
   const sc=Math.min(560/im.width,300/im.height),w=im.width*sc,h=im.height*sc;x.drawImage(im,(660-w)/2,(374-h)/2,w,h);factLogoUrl=c.toDataURL('image/jpeg',.9);ok(factLogoUrl)}catch(e){nee(e)}};im.onerror=nee;im.src=logoSrc()})}
-function factPdf(f){const B=S.facturen.bedrijf,t=factTotalen(f),doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'}),O=[240,124,0];
+function factPdf(f,opt={}){const conc=!!opt.concept,nr=conc?'Concept':String(f.nummer),B=S.facturen.bedrijf,t=factTotalen(f),doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'}),O=[240,124,0];
+  if(conc){doc.setTextColor(232);doc.setFont('helvetica','bold');doc.setFontSize(90);doc.text('CONCEPT',105,190,{align:'center',angle:35});doc.setTextColor(20)}
   if(factLogoUrl)doc.addImage(factLogoUrl,'JPEG',14,12,52,29.5);
   doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text(B.naam||'',104,16);doc.setFont('helvetica','normal');doc.setFontSize(9.5);
   let y=21;for(const r of[B.adres,B.pcPlaats,B.tel,B.email])if(r){doc.text(r,104,y);y+=4.6}
@@ -702,7 +712,7 @@ function factPdf(f){const B=S.facturen.bedrijf,t=factTotalen(f),doc=new window.j
   if(f.credit){doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(90);doc.text('Creditering van factuur '+f.credit,196,63,{align:'right'});doc.setTextColor(20)}
   doc.setFontSize(10);doc.setFont('helvetica','bold');doc.text(f.klant.naam||'',14,64);doc.setFont('helvetica','normal');y=69;for(const r of[f.klant.adres,f.klant.pcPlaats,f.klant.email])if(r){doc.text(r,14,y);y+=4.8}
   doc.autoTable({startY:f.credit?67:64,margin:{left:120,right:14},theme:'plain',styles:{fontSize:9.5,cellPadding:1.2,textColor:20},columnStyles:{0:{textColor:110},1:{halign:'right',fontStyle:'bold'}},
-    body:[['Factuurnummer',String(f.nummer)],['Factuurdatum',datumNL(f.datum)],['Vervaldatum',datumNL(f.verval)]]});
+    body:[['Factuurnummer',nr],['Factuurdatum',datumNL(f.datum)],['Vervaldatum',datumNL(f.verval)]]});
   doc.autoTable({startY:Math.max(y,doc.lastAutoTable.finalY)+8,margin:{left:14,right:14},theme:'striped',head:[['Omschrijving','Aantal','Prijs incl. BTW','BTW','BTW bedrag','Totaal']],
     body:f.regels.map(r=>{const tc=fCent(r.aantal*r.prijs),b=Math.round(tc*r.btw/(100+r.btw));return[r.oms,String(r.aantal).replace('.',','),'€ '+bedragTekst(r.prijs),r.btw+'%',fEuro(b),fEuro(tc)]}),
     headStyles:{fillColor:O,textColor:255,fontStyle:'bold'},styles:{fontSize:9.5,cellPadding:2,textColor:20},columnStyles:{1:{halign:'center',cellWidth:16},2:{halign:'right',cellWidth:28},3:{halign:'center',cellWidth:13},4:{halign:'right',cellWidth:24},5:{halign:'right',cellWidth:26}},
@@ -710,8 +720,8 @@ function factPdf(f){const B=S.facturen.bedrijf,t=factTotalen(f),doc=new window.j
   const rij=[...[0,9,21].map(p=>[`BTW ${p}%`,fEuro(t.per[p].btw)]),['Totaal excl. BTW',fEuro(t.ex)],['Te betalen',fEuro(t.tot)]];
   doc.autoTable({startY:doc.lastAutoTable.finalY+6,margin:{left:120,right:14},theme:'plain',body:rij,styles:{fontSize:10,cellPadding:1.4,textColor:20},columnStyles:{1:{halign:'right'}},
     didParseCell:d=>{if(d.row.index===rij.length-1){d.cell.styles.fontStyle='bold';d.cell.styles.fontSize=12;d.cell.styles.textColor=O}}});
-  doc.setFontSize(9);doc.setTextColor(90);doc.text(doc.splitTextToSize((B.voet||'')+` Factuurnummer: ${f.nummer}.`,182),105,272,{align:'center'});
-  return new File([doc.output('blob')],`factuur-${f.nummer}.pdf`,{type:'application/pdf'})}
+  doc.setFontSize(9);doc.setTextColor(90);doc.text(doc.splitTextToSize((B.voet||'')+(conc?'':` Factuurnummer: ${f.nummer}.`),182),105,272,{align:'center'});
+  return new File([doc.output('blob')],`factuur-${conc?'concept':f.nummer}.pdf`,{type:'application/pdf'})}
 async function factDelen(){const f=S.facturen.lijst[bewerk?.id];if(!f)return;
   if(!(window.jspdf&&window.jspdf.jsPDF&&window.jspdf.jsPDF.API.autoTable)||!factLogoUrl){toast('Even geduld, de PDF wordt voorbereid…');try{await laadPdf();await factLogo()}catch(e){toast('PDF maken lukt niet zonder internet');return}toast('Klaar – tik nog een keer op PDF delen');return}
   const file=factPdf(f);
@@ -730,6 +740,19 @@ function toonFactInst(){const B=S.facturen.bedrijf,v=(id,l,w)=>`<label>${l}</lab
    ${v('btw','BTW-nummer',B.btw)}${v('kvk','KvK',B.kvk)}${v('iban','IBAN',B.iban)}${v('bic','BIC',B.bic)}
    <label>Betaaltermijn (dagen)</label><input class="veld" id="fb_termijn" inputmode="numeric" value="${B.termijn||14}" style="width:90px">
    <label>Tekst onderaan</label><textarea class="veld" id="fb_voet" rows="3">${esc(B.voet||'')}</textarea></div>`)}
+
+/* ---- voorbeeld bekijken (zonder delen of bewaren) ---- */
+async function factVoorbeeld(f,concept){
+  let ov=document.getElementById('factVb');if(!ov){ov=document.createElement('div');ov.id='factVb';ov.setAttribute('role','dialog');document.body.appendChild(ov)}
+  ov.innerHTML='<div class="vbkop"><b>Voorbeeld factuur</b><button data-a="factvbsluit">Sluiten</button></div><div class="vbinhoud"><p class="vbmelding">Voorbeeld maken…</p></div><p class="vbhulp">Tik op de factuur om in of uit te zoomen</p>';ov.classList.add('open');
+  try{if(!(window.jspdf&&window.jspdf.jsPDF&&window.jspdf.jsPDF.API.autoTable))await laadPdf();await factLogo().catch(()=>{});
+    const file=factPdf(f,{concept}),lok=await ocrLokaal();
+    await laadScript(lok?'ocr/pdf.min.js':PDF_JS,()=>window.pdfjsLib);pdfjsLib.GlobalWorkerOptions.workerSrc=window.__PDF_WORKER__||(lok?new URL('ocr/pdf.worker.min.js',location.href).href:PDF_WORKER);
+    const pdf=await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise,pg=await pdf.getPage(1),vp=pg.getViewport({scale:2.2}),c=document.createElement('canvas');
+    c.width=vp.width;c.height=vp.height;await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
+    if(!ov.classList.contains('open'))return;ov.querySelector('.vbinhoud').innerHTML=`<img src="${c.toDataURL('image/jpeg',.9)}" alt="Voorbeeld van de factuur" data-a="factvbzoom">`}
+  catch(e){console.warn(e);const el=ov.querySelector('.vbinhoud');if(el)el.innerHTML='<p class="vbmelding">Het voorbeeld lukt nu niet. Controleer je internetverbinding.</p>'}}
+function sluitVoorbeeld(){const ov=document.getElementById('factVb');if(ov){ov.classList.remove('open','zoom');ov.innerHTML=''}}
 
 /* ================= 10.0 meerdere winkels ================= */
 const PAKKETTEN={basis:[],plus:['scan','push','rapport'],compleet:['scan','push','rapport','advies','euro','cadeau','deeg']};
@@ -1113,7 +1136,7 @@ function bestelBerekening(){
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const APP_VERSIE='10.0',APP_BOUW='10.4';
+const APP_VERSIE='10.0',APP_BOUW='10.5';
 const NIEUWS=[['🏪','Brood Opzet per winkel','De app werkt nu per winkel. Alles wat je al had, hoort bij je eigen winkel. Voor jou verandert er niets.'],
  ['🔑','Koppelen met een code','Een nieuwe telefoon koppel je voortaan met de koppelcode van de winkel, zonder wachtwoord. De beheerder vindt de code onder Meer.'],
  ['🌤️','Weer en bakker','De beheerder kiest bij Broodsoorten en instellingen de plaats voor het weer en de naam van de bakker.'],
@@ -3197,6 +3220,9 @@ document.addEventListener('click',async e=>{
   case'ovweek':ovWeek=v==='0'?plusDagen(maandag(iso()),-7):plusDagen(ovWeek,+v);ovData=null;render();return;
   case'slotfunctie':openSlotFunctie(v);return;
   case'factfilter':factFilter=v;render();return;
+  case'factvb':{if(!facturenMag())return;if(bewerk?.soort==='factuur'){leesFactForm();factVoorbeeld(kloon(bewerk.f),!bewerk.f.nummer)}else{const f=S.facturen.lijst[bewerk?.id];if(f)factVoorbeeld(f,false)}return}
+  case'factvbsluit':sluitVoorbeeld();return;
+  case'factvbzoom':document.getElementById('factVb')?.classList.toggle('zoom');return;
   case'factnieuw':if(!facturenMag())return;openFactBewerk(nieuweFactuur());return;
   case'factopen':if(!facturenMag())return;openFactuur(v);return;
   case'factregelerbij':{if(bewerk?.soort!=='factuur')return;leesFactForm();const r=bewerk.f.regels;r.push({oms:'',aantal:1,prijs:0,btw:r.length?r[r.length-1].btw:9});toonFactBewerk();setTimeout(()=>{const l=[...document.querySelectorAll('#factForm [data-ff=oms]')].pop();if(l)l.focus()},60);return}
