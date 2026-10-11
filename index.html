@@ -765,7 +765,7 @@ async function factVoorbeeld(f,concept){
     c.width=vp.width;c.height=vp.height;await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
     if(!ov.classList.contains('open'))return;ov.querySelector('.vbinhoud').innerHTML=`<img src="${c.toDataURL('image/jpeg',.9)}" alt="Voorbeeld van de factuur" data-a="factvbzoom">`}
   catch(e){console.warn(e);const el=ov.querySelector('.vbinhoud');if(el)el.innerHTML='<p class="vbmelding">Het voorbeeld lukt nu niet. Controleer je internetverbinding.</p>'}}
-function sluitVoorbeeld(){const ov=document.getElementById('factVb');if(ov){ov.classList.remove('open','zoom');ov.innerHTML=''}}
+function sluitVoorbeeld(){if(typeof bbVbOpruim==='function'&&bbVbOpruim)bbVbOpruim();const ov=document.getElementById('factVb');if(ov){ov.classList.remove('open','zoom');ov.innerHTML=''}}
 
 
 /* ================= 10.7 bestelboeken (uit het bestelboek van de leverancier) ================= */
@@ -920,23 +920,42 @@ async function bbMaakPdf(b){await laadScript(PDF_LIB,()=>window.PDFLib);const PL
     const t=`${b.naam} – Pagina ${n+1}`;page.drawText(t,{x:(W-font.widthOfTextAtSize(t,9))/2,y:18,size:9,font})}
   return new File([await out.save()],`bestelboek-${b.naam.toLowerCase().replace(/[^a-z0-9]+/g,'-')}-${BB.naam.replace(/\s+/g,'-')}.pdf`,{type:'application/pdf'})}
 /* voorbeeld: elke originele pagina één keer tekenen en de regels eruit knippen (snel, ook op de telefoon) */
+/* 10.8.1 voorbeeld: alleen de pagina's rond de plek waar je kijkt worden getekend (geen geheugenprobleem op de iPhone) */
+let bbVbOpruim=null;
 async function bbVoorbeeld(b){let ov=document.getElementById('factVb');if(!ov){ov=document.createElement('div');ov.id='factVb';ov.setAttribute('role','dialog');document.body.appendChild(ov)}
-  ov.innerHTML=`<div class="vbkop"><b>${esc(b.naam)}</b><button data-a="factvbsluit">Sluiten</button></div><div class="vbinhoud"><p class="vbmelding">Voorbeeld maken…</p></div><p class="vbhulp">Tik op een pagina om in of uit te zoomen</p>`;ov.classList.add('open');
-  try{await laadPdfjs();const pdf=await pdfjsLib.getDocument({data:new Uint8Array(BB.pdf.slice(0))}).promise,p1=await pdf.getPage(1),[,,W,H]=p1.view,sc=1.5,ind=bbIndeling(b,H),bron={};
-    const pagina=async i=>{if(bron[i])return bron[i];const pg=await pdf.getPage(i+1),vp=pg.getViewport({scale:sc}),c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;return bron[i]=c};
-    const el=ov.querySelector('.vbinhoud');el.innerHTML='';
-    for(let n=0;n<ind.length&&ov.classList.contains('open');n++){const c=document.createElement('canvas');c.width=W*sc;c.height=H*sc;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);
-      for(const{r,y}of ind[n]){const s=await pagina(r.p),h=r.top-r.bot;x.drawImage(s,0,(H-r.top)*sc,W*sc,h*sc,0,y*sc,W*sc,h*sc);
+  if(bbVbOpruim)bbVbOpruim();
+  if(!document.getElementById('bbVbCss')){const st=document.createElement('style');st.id='bbVbCss';st.textContent='#factVb .bbvbp{width:100%;background:#fff;border-radius:4px;margin-bottom:10px;box-shadow:0 2px 12px rgba(0,0,0,.4);position:relative;overflow:hidden}#factVb.zoom .bbvbp{width:220%}#factVb .bbvbp img{width:100%!important;height:100%;display:block;box-shadow:none;border-radius:0}#factVb .bbvbp span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#999;font-size:14px}';document.head.appendChild(st)}
+  ov.innerHTML=`<div class="vbkop"><b>${esc(b.naam)}</b><span id="bbVbTel" style="font-size:14px;opacity:.8"></span><button data-a="factvbsluit">Sluiten</button></div><div class="vbinhoud"><p class="vbmelding">Voorbeeld maken…</p></div><p class="vbhulp">Tik op een pagina om in of uit te zoomen</p>`;ov.classList.add('open');
+  let pdf=null,io=null,dicht=false;const urls={},bron=new Map(),sc=1.5;
+  const opruim=()=>{dicht=true;if(io)io.disconnect();for(const u of Object.values(urls))URL.revokeObjectURL(u);for(const c of bron.values()){c.width=c.height=0}bron.clear();if(pdf){pdf.destroy();pdf=null}bbVbOpruim=null};bbVbOpruim=opruim;
+  try{await laadPdfjs();pdf=await pdfjsLib.getDocument({data:new Uint8Array(BB.pdf.slice(0))}).promise;if(dicht)return;
+    const p1=await pdf.getPage(1),[,,W,H]=p1.view,ind=bbIndeling(b,H),N=ind.length,el=ov.querySelector('.vbinhoud'),tel=document.getElementById('bbVbTel'),uit=document.createElement('canvas'),ux=uit.getContext('2d');
+    el.innerHTML=ind.map((_,n)=>`<div class="bbvbp" data-n="${n}" data-a="factvbzoom" style="aspect-ratio:${W}/${H}"><span>Pagina ${n+1}</span></div>`).join('');
+    const pagina=async i=>{if(bron.has(i)){const c=bron.get(i);bron.delete(i);bron.set(i,c);return c}
+      const pg=await pdf.getPage(i+1),vp=pg.getViewport({scale:sc}),c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;pg.cleanup();
+      bron.set(i,c);while(bron.size>3){const[k,o]=bron.entries().next().value;o.width=o.height=0;bron.delete(k)}return c};
+    const teken=async n=>{uit.width=W*sc;uit.height=H*sc;const x=ux;x.fillStyle='#fff';x.fillRect(0,0,uit.width,uit.height);
+      for(const{r,y}of ind[n]){const s=await pagina(r.p),h=r.top-r.bot;if(dicht)return null;x.drawImage(s,0,(H-r.top)*sc,W*sc,h*sc,0,y*sc,W*sc,h*sc);
         if(r.eigen){const fnt=(sz,b)=>`${b?'bold ':''}${sz*sc}px Helvetica,Arial,sans-serif`;
           bbEigenTeken({rect:(px,dy,w,hh,c)=>{x.fillStyle=c;x.fillRect(px*sc,(y+dy)*sc,w*sc,hh*sc)},
             text:(t,px,bl,sz,b,re)=>{x.fillStyle='#000';x.font=fnt(sz,b);x.textAlign=re?'right':'left';x.fillText(t,px*sc,(y+bl)*sc)},
             breed:(t,sz,b)=>{x.font=fnt(sz,b);return x.measureText(t).width/sc},
             ster:(cx,cy,R)=>{x.fillStyle='#000';x.beginPath();bbSterPunten(cx,y+cy,R).forEach(([a,c],i)=>i?x.lineTo(a*sc,c*sc):x.moveTo(a*sc,c*sc));x.closePath();x.fill()}},r)}}
       x.fillStyle='#000';x.font=`${9*sc}px Helvetica,Arial,sans-serif`;x.textAlign='center';x.fillText(`${b.naam} – Pagina ${n+1}`,W*sc/2,(H-18)*sc);
-      el.insertAdjacentHTML('beforeend',`<img src="${c.toDataURL('image/jpeg',.85)}" alt="Pagina ${n+1}" data-a="factvbzoom" style="margin-bottom:10px">`);
-      for(const k of Object.keys(bron))if(!ind.slice(n+1).some(p=>p.some(q=>q.r.p===+k)))delete bron[k]}
-    pdf.destroy()}
-  catch(e){console.warn(e);const el=ov.querySelector('.vbinhoud');if(el)el.innerHTML='<p class="vbmelding">Bekijken lukt nu niet.</p>'}}
+      const blob=await new Promise(ok=>uit.toBlob(ok,'image/jpeg',.85));uit.width=uit.height=1;return blob};
+    const zicht=new Set();let bezig=false;
+    const gewenst=()=>{const s=new Set();for(const n of zicht)for(let k=n-1;k<=n+1;k++)if(k>=0&&k<N)s.add(k);return s};
+    const werk=async()=>{if(bezig||dicht)return;bezig=true;
+      try{for(;;){const g=gewenst();
+        for(const k of Object.keys(urls))if(!g.has(+k)){const d=el.querySelector(`[data-n="${k}"]`);if(d)d.innerHTML=`<span>Pagina ${+k+1}</span>`;URL.revokeObjectURL(urls[k]);delete urls[k]}
+        const n=[...g].sort((a,c)=>a-c).find(k=>!urls[k]);if(n===undefined||dicht)break;
+        const blob=await teken(n);if(dicht||!blob)break;urls[n]=URL.createObjectURL(blob);const d=el.querySelector(`[data-n="${n}"]`);if(d)d.innerHTML=`<img src="${urls[n]}" alt="Pagina ${n+1}">`}}
+      catch(e){console.warn(e);if(!dicht)meldFout(e,'Bestelboek bekijken')}
+      bezig=false};
+    io=new IntersectionObserver(es=>{for(const x of es){const n=+x.target.dataset.n;if(x.isIntersecting)zicht.add(n);else zicht.delete(n)}
+      if(tel&&zicht.size)tel.textContent=`Pagina ${Math.min(...zicht)+1} van ${N}`;werk()},{root:el,rootMargin:'200px 0px'});
+    el.querySelectorAll('.bbvbp').forEach(d=>io.observe(d));tel.textContent=`Pagina 1 van ${N}`}
+  catch(e){console.warn(e);const el=ov.querySelector('.vbinhoud');if(el&&!dicht)el.innerHTML='<p class="vbmelding">Bekijken lukt nu niet.</p>'}}
 let bbKlaar=null,bbKlaarId=null;
 async function bbPdf(id){const b=S.bestelboeken.boeken[id];if(!b||!BB)return;toonSheet(`<div class="pkop"><span style="width:60px"></span><b>${esc(b.naam)}</b><button data-a="sluit" style="font-weight:700">Sluiten</button></div><div class="pinhoud"><p class="leeg" id="bbPdfStatus">PDF maken…</p></div>`);
   try{const f=await bbMaakPdf(b);bbKlaar=f;bbKlaarId=id;const n=Object.keys(b.arts).length;
@@ -1341,7 +1360,7 @@ function bestelBerekening(){
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const APP_VERSIE='10.0',APP_BOUW='10.8';
+const APP_VERSIE='10.0',APP_BOUW='10.8.1';
 const NIEUWS=[['🏪','Brood Opzet per winkel','De app werkt nu per winkel. Alles wat je al had, hoort bij je eigen winkel. Voor jou verandert er niets.'],
  ['🔑','Koppelen met een code','Een nieuwe telefoon koppel je voortaan met de koppelcode van de winkel, zonder wachtwoord. De beheerder vindt de code onder Meer.'],
  ['🌤️','Weer en bakker','De beheerder kiest bij Broodsoorten en instellingen de plaats voor het weer en de naam van de bakker.'],
