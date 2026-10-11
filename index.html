@@ -520,6 +520,10 @@ body.toetsenbord #nav{display:none}
 /* 10.7 bestelboeken */
 .bbvink{width:26px;height:26px;border:2px solid var(--oranje);border-radius:7px;display:inline-flex;align-items:center;justify-content:center;margin-right:10px;flex:none;color:#fff;font-weight:800;font-size:15px}
 .bbvink.aan{background:var(--oranje)}
+/* 10.7.1 foutmelding */
+#foutbalk{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) + 84px);z-index:70;background:#b71c1c;color:#fff;border-radius:14px;padding:12px 14px;font-size:14px;line-height:1.4;box-shadow:0 6px 20px rgba(0,0,0,.35);display:none}
+#foutbalk.open{display:block}#foutbalk div{word-break:break-word;margin-top:4px;opacity:.95}
+#foutbalk button{margin-top:8px;background:#fff;color:#b71c1c;border:0;border-radius:9px;padding:7px 16px;font-weight:800}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script></head>
 <body><div id="app"><div id="statusplek"></div><div id="opslagmelding">Opslaan mislukt: het geheugen is vol. Verwijder een paar foto's bij Broodsoorten.</div><main id="scherm"></main><nav id="nav"></nav></div>
@@ -865,6 +869,15 @@ async function pdfVoorbeeldBestand(file,titel){let ov=document.getElementById('f
       el.insertAdjacentHTML('beforeend',`<img src="${c.toDataURL('image/jpeg',.85)}" alt="Pagina ${i}" data-a="factvbzoom" style="margin-bottom:10px">`)}}
   catch(e){const el=ov.querySelector('.vbinhoud');if(el)el.innerHTML='<p class="vbmelding">Bekijken lukt nu niet.</p>'}}
 
+/* ================= 10.7.1 foutvanger: een scherm met een fout laat de app nooit meer hangen ================= */
+function foutTekstKort(e){const m=String(e&&(e.message||e)||'onbekend');const st=String(e&&e.stack||'').split('\n').find(r=>/\d+:\d+/.test(r))||'';const p=/:(\d+):(\d+)\)?\s*$/.exec(st);return m.slice(0,160)+(p?` (regel ${p[1]}:${p[2]})`:'')}
+function meldFout(e,waar){const t=foutTekstKort(e);console.error(waar,e);try{L.laatsteFout={t:Date.now(),waar:waar||'',tekst:t,versie:APP_BOUW};bewaarL()}catch(x){}
+  try{let el=document.getElementById('foutbalk');if(!el){el=document.createElement('div');el.id='foutbalk';document.body.appendChild(el)}
+    el.innerHTML=`<b>Er ging iets mis${waar?' bij '+esc(waar):''}</b><div>${esc(t)}</div><button data-a="foutweg">Oké</button>`;el.classList.add('open')}catch(x){}}
+function veiligScherm(){try{return tab==='lijst'?lijstHtml():tab==='plan'?planHtml():tab==='derving'?dervingHtml():meerHtml()}
+  catch(e){const waar=(tab==='meer'&&sub?'Meer → '+sub:tab);meldFout(e,waar);if(tab==='meer'&&sub){sub=null;try{return meerHtml()}catch(x){}}tab='meer';sub=null;try{return meerHtml()}catch(x){return'<p class="leeg">Er ging iets mis. Sluit de app en open hem opnieuw.</p>'}}}
+window.addEventListener('error',e=>{if(e&&e.error)meldFout(e.error,'')});
+window.addEventListener('unhandledrejection',e=>{const r=e&&e.reason;if(r&&!(r.name==='AbortError'||r.conflict))meldFout(r,'')});
 /* ================= 10.0 meerdere winkels ================= */
 const PAKKETTEN={basis:[],plus:['scan','push','rapport'],compleet:['scan','push','rapport','advies','euro','cadeau','deeg']};
 const PAKKET_NAAM={basis:'Basis',plus:'Plus',compleet:'Compleet'};
@@ -1247,7 +1260,7 @@ function bestelBerekening(){
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const APP_VERSIE='10.0',APP_BOUW='10.7';
+const APP_VERSIE='10.0',APP_BOUW='10.7.1';
 const NIEUWS=[['🏪','Brood Opzet per winkel','De app werkt nu per winkel. Alles wat je al had, hoort bij je eigen winkel. Voor jou verandert er niets.'],
  ['🔑','Koppelen met een code','Een nieuwe telefoon koppel je voortaan met de koppelcode van de winkel, zonder wachtwoord. De beheerder vindt de code onder Meer.'],
  ['🌤️','Weer en bakker','De beheerder kiest bij Broodsoorten en instellingen de plaats voor het weer en de naam van de bakker.'],
@@ -1526,7 +1539,7 @@ function _render(){
   if(!S.gebruikers.some(g=>g.rol==='admin')){m.innerHTML=setupHtml();nav.innerHTML='';return}
   const g=ik();if(!g||(g.rol!=='admin'&&g.actief===false)){if(L.sessie){L.sessie=null;bewaarL()}m.innerHTML=loginHtml();nav.innerHTML='';return}
   const t=TABS.find(x=>x[0]===tab);if(!t||(t[2]&&!mag(t[2])))tab='lijst';
-  m.innerHTML=tab==='lijst'?lijstHtml():tab==='plan'?planHtml():tab==='derving'?dervingHtml():meerHtml();
+  m.innerHTML=veiligScherm();
   {const wb=winkelBalk();if(wb)m.insertAdjacentHTML('afterbegin',wb)}
   nav.innerHTML=TABS.filter(([k,l,r])=>!r||mag(r)).map(([k,l,r])=>{const ok=true;return`<button data-a="${ok?'tab':'slot'}" data-v="${k}" class="${tab===k?'aan':''} ${ok?'':'op-slot'}">${ok?'':SLOT+' '}${l}</button>`}).join('');
   if(werk)renderWerk();
@@ -2879,7 +2892,7 @@ function meerHtml(){
     ${meerLijstHtml(items)}
     ${kanBeheren()?`<div class="rij"><button class="regel" data-a="gebruiker" data-v="${g.id}"><div class="groei"><div class="naam">Mijn pincode wijzigen</div></div><span class="pijl">›</span></button></div>`:''}</div>
 
-    <div class="kaartje"><h3>Dit toestel</h3>${statusHtml()}<div class="sub" style="margin-top:6px"><b>Versie ${APP_BOUW}</b>${nieuweBouw?` · <span class="oranjetekst">versie ${esc(nieuweBouw)} staat klaar</span>`:''}</div><div class="sub">${L.modus==='lokaal'?'Gegevens staan alleen op dit toestel.':WINKEL?`Gekoppeld met <b>${esc(WINKEL.naam)}</b> als ${{eigenaar:'eigenaar',bedrijfsleider:'bedrijfsleider',winkel:'winkeltoestel'}[WINKEL.rol]||WINKEL.rol}.`:`Gekoppeld met de ${L.beheerder?'beheerders':'winkel'}-login.`}</div>
+    <div class="kaartje"><h3>Dit toestel</h3>${statusHtml()}${L.laatsteFout&&Date.now()-L.laatsteFout.t<7*864e5?`<div class="sub" style="margin-top:6px">Laatste fout (${esc(datumTekst(iso(new Date(L.laatsteFout.t))))} ${esc(tijdTekst(L.laatsteFout.t))}${L.laatsteFout.waar?', '+esc(L.laatsteFout.waar):''}): <span class="oranjetekst">${esc(L.laatsteFout.tekst)}</span></div>`:''}<div class="sub" style="margin-top:6px"><b>Versie ${APP_BOUW}</b>${nieuweBouw?` · <span class="oranjetekst">versie ${esc(nieuweBouw)} staat klaar</span>`:''}</div><div class="sub">${L.modus==='lokaal'?'Gegevens staan alleen op dit toestel.':WINKEL?`Gekoppeld met <b>${esc(WINKEL.naam)}</b> als ${{eigenaar:'eigenaar',bedrijfsleider:'bedrijfsleider',winkel:'winkeltoestel'}[WINKEL.rol]||WINKEL.rol}.`:`Gekoppeld met de ${L.beheerder?'beheerders':'winkel'}-login.`}</div>
     <div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:10px;flex-wrap:wrap"><button class="knop rand" data-a="updatecheck">Controleren op update</button>${L.modus==='lokaal'?`<button class="knop rand" data-a="naarkoppel">Toestel koppelen</button>`:isAdmin()?`<button class="knop rand" data-a="ontkoppel">${afwStap==='ontkoppel'?'Zeker? Tik nogmaals':'Toestel ontkoppelen'}</button>`:''}</div></div>
     <div class="knoppen"><button class="knop rand" data-a="uitloggen">Uitloggen</button></div>`;
 }
@@ -3294,6 +3307,7 @@ document.addEventListener('click',async e=>{
   if(a==='gebruiker'&&!isAdmin()&&v!==L.sessie)return;
   if(!['bbweg','factweg','factklantweg','codenieuw','toestelweg','opzeggen','uitnodigingverw','afwweg','momentweg','wis','ontkoppel','afwnul','ontweg','bijweg','notweg','berichtweg','kassaweg'].includes(a)){if(afwStap==='wis'||afwStap==='ontkoppel'){afwStap=null;if(a!=='vink')render()}else afwStap=null}
   switch(a){
+  case'foutweg':document.getElementById('foutbalk')?.classList.remove('open');return;
   case'koppel':{const mail=document.getElementById('kMail').value.trim(),ww=document.getElementById('kWw').value;koppelFout='';
     if(!mail||!ww){document.getElementById('fout').textContent='Vul e-mailadres en wachtwoord in.';return}
     b.disabled=true;b.textContent='Bezig…';
