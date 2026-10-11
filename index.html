@@ -770,7 +770,7 @@ function sluitVoorbeeld(){const ov=document.getElementById('factVb');if(ov){ov.c
 
 /* ================= 10.7 bestelboeken (uit het bestelboek van de leverancier) ================= */
 const PDF_LIB='https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js';
-function vulBestelboeken(b){b=isObj(b)?b:{};if(!isObj(b.boeken))b.boeken={};for(const[id,x]of Object.entries(b.boeken)){if(!isObj(x)){delete b.boeken[id];continue}if(!isObj(x.arts))x.arts={};if(!x.id)x.id=id;if(!x.naam)x.naam='Boek'}if(!isObj(b.bekend))b.bekend={};if(!isObj(b.nieuw))b.nieuw={};if(!isObj(b.editie))b.editie={};return b}
+function vulBestelboeken(b){b=isObj(b)?b:{};if(!isObj(b.boeken))b.boeken={};for(const[id,x]of Object.entries(b.boeken)){if(!isObj(x)){delete b.boeken[id];continue}if(!isObj(x.arts))x.arts={};if(!x.id)x.id=id;if(!x.naam)x.naam='Boek'}if(!isObj(b.eigen))b.eigen={};for(const[k,e]of Object.entries(b.eigen)){if(!isObj(e)||!/^\d{5,7}$/.test(k)){delete b.eigen[k];continue}e.art=k;if(typeof e.naam!=='string')e.naam=''}if(!isObj(b.bekend))b.bekend={};if(!isObj(b.nieuw))b.nieuw={};if(!isObj(b.editie))b.editie={};return b}
 let BB=null,bbZoek='',bbFilter='alle',bbOpen={},bbBoek=null,bbBezig='';
 const bbMag=()=>mag('bestelboek');
 async function laadPdfjs(){const lok=await ocrLokaal();await laadScript(lok?'ocr/pdf.min.js':PDF_JS,()=>window.pdfjsLib);pdfjsLib.GlobalWorkerOptions.workerSrc=window.__PDF_WORKER__||(lok?new URL('ocr/pdf.worker.min.js',location.href).href:PDF_WORKER)}
@@ -808,7 +808,32 @@ async function bbInlezen(file){if(!bbMag())return;bbBezig='Bestelboek openen…'
     log(`Bestelboek ${naam} ingelezen (${arts.length} artikelen)`);bewaar();bbBezig='';toast(`✓ ${naam}: ${arts.length} artikelen ingelezen`)}
   catch(e){console.warn(e);bbBezig='';toast(e.message&&/bestelboek/.test(e.message)?e.message:'Inlezen lukte niet. Controleer je internet en probeer opnieuw.')}
   render()}
-function bbArtikelen(){return(BB?.rijen||[]).filter(r=>r.t==='a')}
+/* 10.8 eigen artikelen */
+function bbEigenLijst(){return Object.values(S.bestelboeken.eigen||{}).filter(isObj)}
+function bbEigenInBoek(){if(!BB)return[];const a=new Set(BB.rijen.filter(r=>r.t==='a').map(r=>r.art));return bbEigenLijst().filter(e=>a.has(e.art))}
+function bbRijen(){if(!BB)return[];const inBoek=new Set(),laatste={};BB.rijen.forEach((r,i)=>{if(r.t==='a'){inBoek.add(r.art);laatste[r.groep]=i}});
+  const tA=BB.rijen.find(r=>r.t==='a'),tG=BB.rijen.find(r=>r.t==='g'),eig={},los=[];
+  for(const e of bbEigenLijst()){if(inBoek.has(e.art)||!tA)continue;const rij={t:'a',eigen:1,art:e.art,naam:e.naam,eh:e.eh||'',bst:e.bst||'',cons:e.cons||'',ink:e.ink||'',p:tA.p,top:tA.top,bot:tA.bot};
+    if(e.groep&&laatste[e.groep]!==undefined){rij.groep=e.groep;(eig[e.groep]=eig[e.groep]||[]).push(rij)}else{rij.groep='Eigen artikelen';los.push(rij)}}
+  if(!Object.keys(eig).length&&!los.length)return BB.rijen;
+  const srt=a=>a.sort((x,y)=>x.naam.localeCompare(y.naam,'nl')),uit=[];
+  BB.rijen.forEach((r,i)=>{uit.push(r);if(r.t==='a'&&laatste[r.groep]===i&&eig[r.groep])uit.push(...srt(eig[r.groep]))});
+  if(los.length){if(tG)uit.push({t:'g',eigen:1,naam:'Eigen artikelen',p:tG.p,top:tG.top,bot:tG.bot});uit.push(...srt(los))}
+  return uit}
+function bbArtikelen(){return bbRijen().filter(r=>r.t==='a')}
+/* barcode zoals de leverancier: MSI met twee controlecijfers (mod 10 + mod 10) */
+function msiCode(a){const m10=x=>{let t=0;[...x].reverse().forEach((c,i)=>{const v=+c*(i%2?1:2);t+=Math.floor(v/10)+v%10});return String((10-t%10)%10)};const c=a+m10(a);return c+m10(c)}
+function msiBalken(code){let s='1110';for(const d of code)for(const b of(+d).toString(2).padStart(4,'0'))s+=b==='1'?'1110':'1000';s+='10001';
+  const r=[];for(let i=0;i<s.length;){if(s[i]==='1'){let j=i;while(s[j]==='1')j++;r.push([i,j-i]);i=j}else i++}return r}
+const bbTxt=t=>String(t||'').replace(/[^\x20-\x7E -ÿ€]/g,'');
+/* eigen regel tekenen over een lege kopie van een echte regel (zelfde lijnen en weekvakken) */
+function bbEigenTeken(pen,r){const h=r.top-r.bot,W='#fff',Z='#000';
+  if(r.t==='g'){pen.rect(8.6,0.8,370,h-1.6,W);pen.text(bbTxt(r.naam),27.8,16.5,11.98,1);return}
+  pen.rect(8.6,0.8,370,h-1.6,W);pen.rect(380.1,0.8,15.8,h-1.6,W);
+  const naam=bbTxt(r.naam);pen.text(r.art,8.16,8.88,7.92,1);pen.text(naam,57.09,8.88,7.92,1);pen.ster(57.09+pen.breed(naam,7.92,1)+5.5,6.1,3.3);
+  pen.text(bbTxt(r.eh),8.16,19.44,7.92,1);if(r.cons)pen.text(r.cons,196.6,19.44,7.92,0,1);if(r.ink)pen.text(r.ink,243.9,19.44,7.92,0,1);if(r.bst)pen.text(r.bst,369.2,8.88,7.92,1,1);
+  const mw=99.854/157;for(const[i,n]of msiBalken(msiCode(r.art)))pen.rect(246.72+(10+i)*mw,2.88,n*mw,17.28,Z)}
+function bbSterPunten(cx,cy,R){const p=[];for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,rr=i%2?R*.45:R;p.push([cx+rr*Math.cos(a),cy+rr*Math.sin(a)])}return p}
 function bestelboekenHtml(){const B=S.bestelboeken,boeken=Object.values(B.boeken).sort((a,b)=>a.naam.localeCompare(b.naam,'nl')),nNieuw=Object.keys(B.nieuw).length;
   if(!BB)bbLaad().then(x=>{if(x&&sub==='bestelboeken')render()});
   const arts=new Set(bbArtikelen().map(r=>r.art));
@@ -817,47 +842,81 @@ function bestelboekenHtml(){const B=S.bestelboeken,boeken=Object.values(B.boeken
     ${B.editie.naam&&BB&&B.editie.naam!==BB.naam?`<div class="sub oranjetekst" style="margin-top:6px">Op een ander toestel is al ${esc(B.editie.naam)} ingelezen. Lees die ook hier in.</div>`:''}
     <div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:10px"><label class="knop ${BB?'rand':''} klein">${BB?'Nieuw bestelboek inlezen':'Bestelboek inlezen'}<input type="file" accept="application/pdf,.pdf" id="bbIn" style="display:none" ${bbBezig?'disabled':''}></label></div></div>
    ${nNieuw&&BB?`<div class="kaartje"><h3>✨ ${nNieuw} nieuwe ${nNieuw===1?'artikel':'artikelen'} in ${esc(B.editie.naam)}</h3><div class="sub">Kijk of ze in een van je boeken moeten. Ze staan bij het kiezen bovenaan onder "Nieuw".</div></div>`:''}
+   ${(()=>{const d=bbEigenInBoek();return d.length?`<div class="kaartje"><h3>★ ${d.length} ${d.length===1?'eigen artikel staat':'eigen artikelen staan'} nu in het bestelboek</h3><div class="sub">${d.map(e=>esc(e.naam||e.art)).join(', ')}. De app gebruikt nu de regel van de leverancier, je eigen versie is niet meer nodig.</div><div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:8px"><button class="knop rand klein" data-a="bbeigenopruim">Eigen versie verwijderen</button></div></div>`:''})()}
    <div class="sectie">${boeken.map(b=>{const n=Object.keys(b.arts).length,weg=BB?Object.keys(b.arts).filter(a=>!arts.has(a)).length:0;
      return`<div class="rij inv"><div class="groei"><div class="naam">📘 ${esc(b.naam)}</div><div class="sub">${n} ${n===1?'artikel':'artikelen'}${weg?` · <span class="oranjetekst">${weg} niet meer leverbaar</span>`:''}</div></div>
       <button class="knop rand klein" data-a="bbkies" data-v="${b.id}">Kiezen</button><button class="knop klein" data-a="bbpdf" data-v="${b.id}" ${BB&&n?'':'disabled'}>PDF</button></div>`}).join('')||'<p class="leeg">Nog geen boeken. Maak bijvoorbeeld een boek voor Brood, AGF of Vers.</p>'}
     <button class="toevoegen" data-a="bbnieuw">+ Nieuw boek</button></div>`}
 /* kiezen per boek */
 function bbLijstHtml(b){const alle=bbArtikelen(),nieuw=S.bestelboeken.nieuw,z=bbZoek.trim().toLowerCase();
-  const zicht=alle.filter(r=>(bbFilter!=='gekozen'||b.arts[r.art])&&(bbFilter!=='nieuw'||nieuw[r.art])&&(!z||r.naam.toLowerCase().includes(z)||r.art.includes(z)||r.bst===z));
+  const zicht=alle.filter(r=>(bbFilter!=='eigen'||r.eigen)&&(bbFilter!=='gekozen'||b.arts[r.art])&&(bbFilter!=='nieuw'||nieuw[r.art])&&(!z||r.naam.toLowerCase().includes(z)||r.art.includes(z)||r.bst===z));
   const groepen=[],idx={};for(const r of zicht){let g=idx[r.groep];if(!g){g=idx[r.groep]={naam:r.groep,r:[]};groepen.push(g)}g.r.push(r)}
   const open=!!z||bbFilter!=='alle';let n=0;
   return groepen.map(g=>{const k=g.r.filter(r=>b.arts[r.art]).length,isOpen=open||bbOpen[g.naam],toon=isOpen?g.r.filter(()=>n++<300):[];
     return`<div class="sectie menu meergroep ${isOpen?'open':''}" data-bbgroep="${esc(g.naam)}"><div class="rijflex"><button class="groepkop" data-a="bbgroep" data-v="${esc(g.naam)}" style="flex:1"><b>${esc(g.naam)}</b><span class="bbtel">${k}/${g.r.length} ${isOpen?'▴':'▾'}</span></button><button class="knop rand klein" style="margin:6px" data-a="bbgroepalles" data-v="${esc(g.naam)}">${k===g.r.length?'Niets':'Alles'}</button></div>
-      ${isOpen?`<div class="meerinhoud">${toon.map(r=>`<div class="rij"><button class="regel" data-a="bbvink" data-v="${r.art}"><span class="bbvink ${b.arts[r.art]?'aan':''}">${b.arts[r.art]?'✓':''}</span><div class="groei"><div class="naam">${esc(r.naam)}${nieuw[r.art]?' <span class="fstatus oranje">nieuw</span>':''}</div><div class="sub">${r.art} · bst.nr. ${esc(r.bst||'–')} · ${esc(r.eh)}${r.cons?' · € '+esc(r.cons.replace('.',',')):''}</div></div></button></div>`).join('')}</div>`:''}</div>`}).join('')||'<p class="leeg">Niets gevonden.</p>'}
+      ${isOpen?`<div class="meerinhoud">${toon.map(r=>`<div class="rij" ${r.eigen?'style="display:flex;align-items:center"':''}><button class="regel" data-a="bbvink" data-v="${r.art}"><span class="bbvink ${b.arts[r.art]?'aan':''}">${b.arts[r.art]?'✓':''}</span><div class="groei"><div class="naam">${r.eigen?'★ ':''}${esc(r.naam)}${nieuw[r.art]?' <span class="fstatus oranje">nieuw</span>':''}</div><div class="sub">${r.art} · bst.nr. ${esc(r.bst||'–')} · ${esc(r.eh)}${r.cons?' · € '+esc(r.cons.replace('.',',')):''}${r.eigen?' · eigen artikel':''}</div></div></button>${r.eigen?`<button class="knop rand klein" style="margin-right:12px" data-a="bbeigen" data-v="${r.art}">Wijzig</button>`:''}</div>`).join('')}</div>`:''}</div>`}).join('')||'<p class="leeg">Niets gevonden.</p>'}
 function bbKiesHtml(){const b=S.bestelboeken.boeken[bbBoek];if(!b){sub='bestelboeken';return bestelboekenHtml()}
   const nieuw=S.bestelboeken.nieuw,arts=new Set(bbArtikelen().map(r=>r.art)),weg=BB?Object.keys(b.arts).filter(a=>!arts.has(a)):[],n=Object.keys(b.arts).length;
   return`<div class="kop"><div class="koprij"><h1>${esc(b.naam)}</h1></div><p id="bbAantal">${n} ${n===1?'artikel':'artikelen'} gekozen${BB?' · '+esc(BB.naam):''}</p></div>
    <div class="knoppen" style="justify-content:flex-start;padding-top:0;flex-wrap:wrap"><button class="knop rand klein" data-a="bbhernoem">Naam wijzigen</button><button class="knop rand klein rood" data-a="bbweg">${afwStap==='bbweg'?'Zeker? Tik nogmaals':'Boek verwijderen'}</button></div>
    ${!BB?'<p class="leeg">Lees eerst het bestelboek van de leverancier in.</p>':`
    <div class="zoekbalk"><input class="veld" id="bbZoek" type="search" placeholder="Zoek op naam, artikelnummer of bestelnummer" value="${esc(bbZoek)}" autocomplete="off"></div>
-   <div class="chips" style="margin:0 16px 8px">${[['alle','Alles'],['gekozen','Gekozen'],['nieuw',`Nieuw (${Object.keys(nieuw).length})`]].map(([k,t])=>`<button class="chip ${bbFilter===k?'aan':''}" data-a="bbfilter" data-v="${k}">${t}</button>`).join('')}</div>
+   <div class="chips" style="margin:0 16px 8px">${[['alle','Alles'],['gekozen','Gekozen'],['nieuw',`Nieuw (${Object.keys(nieuw).length})`],['eigen',`★ Eigen (${bbArtikelen().filter(r=>r.eigen).length})`]].map(([k,t])=>`<button class="chip ${bbFilter===k?'aan':''}" data-a="bbfilter" data-v="${k}">${t}</button>`).join('')}</div>
    ${weg.length?`<div class="kaartje waarschuw"><b>${weg.length} ${weg.length===1?'artikel staat':'artikelen staan'} niet meer in het bestelboek</b><div class="sub">${weg.map(esc).join(', ')}</div><div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:8px"><button class="knop rand klein" data-a="bbwegruim">Uit dit boek halen</button></div></div>`:''}
+   <div class="knoppen" style="justify-content:flex-start;padding-top:0"><button class="knop rand klein" data-a="bbeigen" data-v="">★ Eigen artikel toevoegen</button></div>
    <div id="bbLijst">${bbLijstHtml(b)}</div>`}`}
 function bbLijstVernieuw(){const b=S.bestelboeken.boeken[bbBoek],el=document.getElementById('bbLijst');if(b&&el)el.innerHTML=bbLijstHtml(b);bbAantalTonen()}
 function bbAantalTonen(){const b=S.bestelboeken.boeken[bbBoek],el=document.getElementById('bbAantal');if(b&&el){const n=Object.keys(b.arts).length;el.textContent=`${n} ${n===1?'artikel':'artikelen'} gekozen${BB?' · '+BB.naam:''}`}}
-let bbZoekT=null;
+let bbZoekT=null,bbEigenArt=null,bbLaatsteGroep='';
+function toonBbEigen(art){if(!BB)return;const e=art?S.bestelboeken.eigen[art]:null;bbEigenArt=e?art:null;
+  const groepen=[...new Set(BB.rijen.filter(r=>r.t==='a').map(r=>r.groep))],gk=e?.groep&&groepen.includes(e.groep)?e.groep:groepen.includes(bbLaatsteGroep)?bbLaatsteGroep:groepen[0];
+  const v=(id,l,w,x='')=>`<label>${l}</label><input class="veld" id="be_${id}" value="${esc(w??'')}" autocomplete="off" ${x}>`;
+  toonSheet(`<div class="pkop"><button data-a="sluit">Annuleren</button><b>${e?'Eigen artikel':'Nieuw eigen artikel'}</b><button data-a="bbeigenbewaar" style="font-weight:700">Bewaren</button></div><div class="pinhoud">
+   <p class="sub" style="margin:0 0 6px">Voor artikelen die je wel kunt bestellen maar die niet in het bestelboek staan. Ze komen met een ★ in de PDF, met barcode, onderaan de afdeling die je kiest.</p>
+   ${v('art','Artikelnummer',e?.art,'inputmode="numeric" maxlength="7" placeholder="bijv. 979378"')}<div class="sub" id="beCode">${e?'Barcode: '+msiCode(e.art):''}</div>
+   ${v('naam','Omschrijving',e?.naam,'maxlength="40" placeholder="bijv. Bosui 1st"')}
+   <label>Afdeling in het boek</label><select class="veld" id="be_groep">${groepen.map(g=>`<option ${g===gk?'selected':''}>${esc(g)}</option>`).join('')}</select>
+   ${v('eh','Besteleenheid (bst.eh.)',e?.eh||'ST','maxlength="4" style="width:90px;text-transform:uppercase"')}
+   ${v('bst','Bestelnummer (bst.nr.)',e?.bst,'inputmode="numeric" maxlength="6" style="width:120px" placeholder="optioneel"')}
+   ${v('cons','Consumentenprijs',e?.cons?.replace('.',','),'inputmode="decimal" style="width:120px" placeholder="optioneel"')}
+   ${v('ink','Inkoopprijs',e?.ink?.replace('.',','),'inputmode="decimal" style="width:120px" placeholder="optioneel"')}
+   <div class="fout" id="fout"></div>
+   ${e?`<div class="knoppen" style="justify-content:flex-start;padding:12px 0 0"><button class="knop rand rood" data-a="bbeigenweg">${afwStap==='bbeigenweg'?'Zeker? Tik nogmaals':'Eigen artikel verwijderen'}</button></div>`:''}</div>`)}
+function bbEigenBewaar(){const B=S.bestelboeken,g=id=>(document.getElementById('be_'+id)?.value||'').trim(),fout=t=>{document.getElementById('fout').textContent=t};
+  const art=g('art').replace(/\s/g,''),naam=bbTxt(g('naam')).slice(0,40),eh=bbTxt(g('eh')).toUpperCase().slice(0,4)||'ST',bst=g('bst').replace(/\s/g,''),groep=g('groep');
+  if(!/^\d{5,7}$/.test(art))return fout('Het artikelnummer is 5 tot 7 cijfers.');
+  const inBoek=BB.rijen.find(r=>r.t==='a'&&r.art===art);if(inBoek)return fout(`Dit artikel staat al in het bestelboek: ${inBoek.naam}. Zoek het op en vink het aan.`);
+  if(art!==bbEigenArt&&B.eigen[art])return fout('Dit artikelnummer heb je al als eigen artikel.');
+  if(!naam)return fout('Vul een omschrijving in.');if(bst&&!/^\d{1,6}$/.test(bst))return fout('Het bestelnummer bestaat alleen uit cijfers.');
+  const prijs=(t,d)=>{if(!t)return'';const n=parseFloat(t.replace(/[€\s]/g,'').replace(',','.'));return isFinite(n)&&n>=0?n.toFixed(d):null},cons=prijs(g('cons'),2),ink=prijs(g('ink'),3);
+  if(cons===null||ink===null)return fout('Een prijs klopt niet. Gebruik bijvoorbeeld 1,49.');
+  if(bbEigenArt&&art!==bbEigenArt){delete B.eigen[bbEigenArt];for(const bk of Object.values(B.boeken))if(bk.arts[bbEigenArt]){delete bk.arts[bbEigenArt];bk.arts[art]=1}}
+  const nieuw=!bbEigenArt;B.eigen[art]={art,naam,eh,bst,cons,ink,groep,t:Date.now()};bbLaatsteGroep=groep;
+  const bk=B.boeken[bbBoek];if(nieuw&&bk&&sub==='bbkies')bk.arts[art]=1;
+  log(`Eigen artikel ${naam} (${art}) ${nieuw?'toegevoegd':'aangepast'}`);bewaar();sluit();render();toast(nieuw?`★ ${naam} toegevoegd${bk&&sub==='bbkies'?' en aangevinkt':''}`:'Opgeslagen')}
+document.addEventListener('input',e=>{if(e.target.id==='be_art'){const a=e.target.value.replace(/\s/g,''),el=document.getElementById('beCode');if(el)el.textContent=/^\d{5,7}$/.test(a)?'Barcode: '+msiCode(a):''}});
 document.addEventListener('input',e=>{if(e.target.id==='bbZoek'){bbZoek=e.target.value;clearTimeout(bbZoekT);bbZoekT=setTimeout(bbLijstVernieuw,200)}});
 /* PDF samenstellen: originele regels uitknippen en onder elkaar zetten */
 /* indeling: welke originele regels op welke pagina, van boven naar beneden (zelfde voor PDF en voorbeeld) */
 function bbIndeling(b,H){const ONDER=36,paginas=[];let pg=null,y=0,gDrawn=null,groep=null;
   const zet=r=>{pg.push({r,y});y+=r.top-r.bot};
   const nieuw=()=>{pg=[];paginas.push(pg);y=H-BB.kop.top;zet(BB.kop);gDrawn=null};
-  for(const r of BB.rijen){if(r.t==='g'){groep=r;continue}if(!b.arts[r.art])continue;
+  for(const r of bbRijen()){if(r.t==='g'){groep=r;continue}if(!b.arts[r.art])continue;
     const h=r.top-r.bot,gh=groep&&gDrawn!==groep.naam?groep.top-groep.bot:0;
     if(!pg||y+h+gh>H-ONDER)nieuw();
     if(groep&&gDrawn!==groep.naam){zet(groep);gDrawn=groep.naam}
     zet(r)}
   return paginas}
-async function bbMaakPdf(b){await laadScript(PDF_LIB,()=>window.PDFLib);const PL=window.PDFLib,src=await PL.PDFDocument.load(BB.pdf.slice(0)),out=await PL.PDFDocument.create(),font=await out.embedFont(PL.StandardFonts.Helvetica);
+async function bbMaakPdf(b){await laadScript(PDF_LIB,()=>window.PDFLib);const PL=window.PDFLib,src=await PL.PDFDocument.load(BB.pdf.slice(0)),out=await PL.PDFDocument.create(),font=await out.embedFont(PL.StandardFonts.Helvetica),vet=await out.embedFont(PL.StandardFonts.HelveticaBold);
   const{width:W,height:H}=src.getPage(0).getSize(),cache={},emb=async i=>cache[i]||(cache[i]=await out.embedPage(src.getPage(i))),ind=bbIndeling(b,H);
   if(!ind.length)throw new Error('leeg');
   for(let n=0;n<ind.length;n++){const page=out.addPage([W,H]);
-    for(const{r,y}of ind[n]){const h=r.top-r.bot,e=await emb(r.p),yb=H-y-h;page.pushOperators(PL.pushGraphicsState(),PL.rectangle(0,yb-0.4,W,h+0.8),PL.clip(),PL.endPath());page.drawPage(e,{x:0,y:yb-r.bot});page.pushOperators(PL.popGraphicsState())}
+    for(const{r,y}of ind[n]){const h=r.top-r.bot,e=await emb(r.p),yb=H-y-h;page.pushOperators(PL.pushGraphicsState(),PL.rectangle(0,yb-0.4,W,h+0.8),PL.clip(),PL.endPath());page.drawPage(e,{x:0,y:yb-r.bot});page.pushOperators(PL.popGraphicsState());
+      if(r.eigen){const T=yb+h,kl=c=>c==='#fff'?PL.rgb(1,1,1):PL.rgb(0,0,0),f=b=>b?vet:font;
+        bbEigenTeken({rect:(x,dy,w,hh,c)=>page.drawRectangle({x,y:T-dy-hh,width:w,height:hh,color:kl(c)}),
+          text:(t,x,bl,sz,b,re)=>{if(!t)return;page.drawText(t,{x:re?x-f(b).widthOfTextAtSize(t,sz):x,y:T-bl,size:sz,font:f(b),color:PL.rgb(0,0,0)})},
+          breed:(t,sz,b)=>f(b).widthOfTextAtSize(t,sz),
+          ster:(cx,cy,R)=>{const p=bbSterPunten(0,0,R);page.drawSvgPath('M'+p.map(q=>q[0].toFixed(2)+' '+q[1].toFixed(2)).join(' L')+' Z',{x:cx,y:T-cy,color:PL.rgb(0,0,0)})}},r)}}
     const t=`${b.naam} – Pagina ${n+1}`;page.drawText(t,{x:(W-font.widthOfTextAtSize(t,9))/2,y:18,size:9,font})}
   return new File([await out.save()],`bestelboek-${b.naam.toLowerCase().replace(/[^a-z0-9]+/g,'-')}-${BB.naam.replace(/\s+/g,'-')}.pdf`,{type:'application/pdf'})}
 /* voorbeeld: elke originele pagina één keer tekenen en de regels eruit knippen (snel, ook op de telefoon) */
@@ -867,7 +926,12 @@ async function bbVoorbeeld(b){let ov=document.getElementById('factVb');if(!ov){o
     const pagina=async i=>{if(bron[i])return bron[i];const pg=await pdf.getPage(i+1),vp=pg.getViewport({scale:sc}),c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;return bron[i]=c};
     const el=ov.querySelector('.vbinhoud');el.innerHTML='';
     for(let n=0;n<ind.length&&ov.classList.contains('open');n++){const c=document.createElement('canvas');c.width=W*sc;c.height=H*sc;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);
-      for(const{r,y}of ind[n]){const s=await pagina(r.p),h=r.top-r.bot;x.drawImage(s,0,(H-r.top)*sc,W*sc,h*sc,0,y*sc,W*sc,h*sc)}
+      for(const{r,y}of ind[n]){const s=await pagina(r.p),h=r.top-r.bot;x.drawImage(s,0,(H-r.top)*sc,W*sc,h*sc,0,y*sc,W*sc,h*sc);
+        if(r.eigen){const fnt=(sz,b)=>`${b?'bold ':''}${sz*sc}px Helvetica,Arial,sans-serif`;
+          bbEigenTeken({rect:(px,dy,w,hh,c)=>{x.fillStyle=c;x.fillRect(px*sc,(y+dy)*sc,w*sc,hh*sc)},
+            text:(t,px,bl,sz,b,re)=>{x.fillStyle='#000';x.font=fnt(sz,b);x.textAlign=re?'right':'left';x.fillText(t,px*sc,(y+bl)*sc)},
+            breed:(t,sz,b)=>{x.font=fnt(sz,b);return x.measureText(t).width/sc},
+            ster:(cx,cy,R)=>{x.fillStyle='#000';x.beginPath();bbSterPunten(cx,y+cy,R).forEach(([a,c],i)=>i?x.lineTo(a*sc,c*sc):x.moveTo(a*sc,c*sc));x.closePath();x.fill()}},r)}}
       x.fillStyle='#000';x.font=`${9*sc}px Helvetica,Arial,sans-serif`;x.textAlign='center';x.fillText(`${b.naam} – Pagina ${n+1}`,W*sc/2,(H-18)*sc);
       el.insertAdjacentHTML('beforeend',`<img src="${c.toDataURL('image/jpeg',.85)}" alt="Pagina ${n+1}" data-a="factvbzoom" style="margin-bottom:10px">`);
       for(const k of Object.keys(bron))if(!ind.slice(n+1).some(p=>p.some(q=>q.r.p===+k)))delete bron[k]}
@@ -1277,7 +1341,7 @@ function bestelBerekening(){
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const APP_VERSIE='10.0',APP_BOUW='10.7.2';
+const APP_VERSIE='10.0',APP_BOUW='10.8';
 const NIEUWS=[['🏪','Brood Opzet per winkel','De app werkt nu per winkel. Alles wat je al had, hoort bij je eigen winkel. Voor jou verandert er niets.'],
  ['🔑','Koppelen met een code','Een nieuwe telefoon koppel je voortaan met de koppelcode van de winkel, zonder wachtwoord. De beheerder vindt de code onder Meer.'],
  ['🌤️','Weer en bakker','De beheerder kiest bij Broodsoorten en instellingen de plaats voor het weer en de naam van de bakker.'],
@@ -1387,7 +1451,7 @@ function splitsen(){
   if(kanBeheren()&&heeft('push')&&(S.push.subs?.length||S.push.stil))o['prive:push']=S.push;
   if(kanBeheren()&&heeft('euro')&&Object.keys(S.prijzen).length)o['prive:prijzen']=S.prijzen;
   if(kanBeheren()&&(isAanbieder()||L.modus==='lokaal'))o['prive:facturen']=S.facturen;
-  if(Object.keys(S.bestelboeken.boeken).length||S.bestelboeken.editie.naam)o.bestelboeken=S.bestelboeken;
+  if(Object.keys(S.bestelboeken.boeken).length||S.bestelboeken.editie.naam||Object.keys(S.bestelboeken.eigen).length)o.bestelboeken=S.bestelboeken;
   /* 10.0: wat niet in het pakket zit, gaat niet naar de server */
   if(!heeft('deeg'))delete o.voorraad;if(!heeft('push'))delete o.pushteam;
   if(!heeft('scan')){delete o.pakbonfouten;for(const k of Object.keys(o))if(k.startsWith('notfoto:pf'))delete o[k]}
@@ -3322,7 +3386,7 @@ document.addEventListener('click',async e=>{
   if(NODIG[a]&&opSlot()){toast('Deze winkel staat op slot: alleen bekijken');return}
   if(['nieuwegebruiker','gweg','ontkoppel'].includes(a)&&!isAdmin())return;
   if(a==='gebruiker'&&!isAdmin()&&v!==L.sessie)return;
-  if(!['bbweg','factweg','factklantweg','codenieuw','toestelweg','opzeggen','uitnodigingverw','afwweg','momentweg','wis','ontkoppel','afwnul','ontweg','bijweg','notweg','berichtweg','kassaweg'].includes(a)){if(afwStap==='wis'||afwStap==='ontkoppel'){afwStap=null;if(a!=='vink')render()}else afwStap=null}
+  if(!['bbeigenweg','bbweg','factweg','factklantweg','codenieuw','toestelweg','opzeggen','uitnodigingverw','afwweg','momentweg','wis','ontkoppel','afwnul','ontweg','bijweg','notweg','berichtweg','kassaweg'].includes(a)){if(afwStap==='wis'||afwStap==='ontkoppel'){afwStap=null;if(a!=='vink')render()}else afwStap=null}
   switch(a){
   case'foutweg':document.getElementById('foutbalk')?.classList.remove('open');return;
   case'koppel':{const mail=document.getElementById('kMail').value.trim(),ww=document.getElementById('kWw').value;koppelFout='';
@@ -3381,6 +3445,11 @@ document.addEventListener('click',async e=>{
   case'bbweg':{const bk=S.bestelboeken.boeken[bbBoek];if(!bk||!bbMag())return;if(afwStap!=='bbweg'){afwStap='bbweg';render();return}afwStap=null;delete S.bestelboeken.boeken[bbBoek];log(`Bestelboek ${bk.naam} verwijderd`);bewaar();sub='bestelboeken';render();return}
   case'bbpdf':if(!bbMag())return;bbPdf(v);return;
   case'bbdeel':if(bbKlaar)deelBestand(bbKlaar);return;
+  case'bbeigen':if(!bbMag())return;afwStap=null;toonBbEigen(v||null);return;
+  case'bbeigenbewaar':if(!bbMag())return;bbEigenBewaar();return;
+  case'bbeigenweg':{const B=S.bestelboeken,e=B.eigen[bbEigenArt];if(!e||!bbMag())return;if(afwStap!=='bbeigenweg'){afwStap='bbeigenweg';toonBbEigen(bbEigenArt);return}afwStap=null;
+    delete B.eigen[e.art];for(const bk of Object.values(B.boeken))delete bk.arts[e.art];log(`Eigen artikel ${e.naam} (${e.art}) verwijderd`);bewaar();sluit();render();toast('Verwijderd');return}
+  case'bbeigenopruim':{if(!bbMag())return;const d=bbEigenInBoek();for(const e of d)delete S.bestelboeken.eigen[e.art];log(`${d.length} eigen artikel(en) opgeruimd, staan nu in het bestelboek`);bewaar();render();return}
   case'bbvb':{const bk=S.bestelboeken.boeken[bbKlaarId];if(bk&&BB)bbVoorbeeld(bk);return}
   case'factvb':{if(!facturenMag())return;if(bewerk?.soort==='factuur'){leesFactForm();factVoorbeeld(kloon(bewerk.f),!bewerk.f.nummer)}else{const f=S.facturen.lijst[bewerk?.id];if(f)factVoorbeeld(f,false)}return}
   case'factvbsluit':sluitVoorbeeld();return;
