@@ -517,6 +517,9 @@ body.toetsenbord #nav{display:none}
 #factVb.zoom .vbinhoud img{width:220%;max-width:none}
 #factVb .vbmelding{color:#fff;text-align:center;margin-top:40px}
 #factVb .vbhulp{color:rgba(255,255,255,.7);text-align:center;font-size:13px;margin:0 0 calc(env(safe-area-inset-bottom) + 10px)}
+/* 10.7 bestelboeken */
+.bbvink{width:26px;height:26px;border:2px solid var(--oranje);border-radius:7px;display:inline-flex;align-items:center;justify-content:center;margin-right:10px;flex:none;color:#fff;font-weight:800;font-size:15px}
+.bbvink.aan{background:var(--oranje)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script></head>
 <body><div id="app"><div id="statusplek"></div><div id="opslagmelding">Opslaan mislukt: het geheugen is vol. Verwijder een paar foto's bij Broodsoorten.</div><main id="scherm"></main><nav id="nav"></nav></div>
@@ -527,7 +530,7 @@ const SUPA_URL='https://dmvutkvpnoeenybznskz.supabase.co',SUPA_KEY='sb_publishab
 const DAGEN=[['ma','Ma','maandag'],['di','Di','dinsdag'],['wo','Wo','woensdag'],['do','Do','donderdag'],['vr','Vr','vrijdag'],['za','Za','zaterdag'],['zo','Zo','zondag']];
 const GROEP={mv:'ma t/m vr',za:'zaterdagen',zo:'zondagen'};
 const TABS=[['lijst','Klaarzetten',null],['plan','Invullen','invullen'],['derving','Derving','derving'],['meer','Meer',null]];
-const RECHTEN=[['vinken','Klaarzetten: afvinken, aantallen aanpassen, oven'],['derving','Derving invullen'],['invullen','Planning, afwijkende dagen en advies'],['bestellen','Deegbestelling en voorraad tellen'],['rapport','Weekrapport bekijken'],['soorten','Broodsoorten, karren en bakmomenten beheren']];
+const RECHTEN=[['bestelboek','Bestelboeken samenstellen en printen'],['vinken','Klaarzetten: afvinken, aantallen aanpassen, oven'],['derving','Derving invullen'],['invullen','Planning, afwijkende dagen en advies'],['bestellen','Deegbestelling en voorraad tellen'],['rapport','Weekrapport bekijken'],['soorten','Broodsoorten, karren en bakmomenten beheren']];
 const STANDAARD_RECHTEN={vinken:true,derving:true,invullen:false,bestellen:false,rapport:false,soorten:false};
 const WEEKDAGEN=[[1,'Ma'],[2,'Di'],[3,'Wo'],[4,'Do'],[5,'Vr'],[6,'Za'],[0,'Zo']];
 /* 10.0 meerdere winkels: welke winkel dit toestel toont; elke winkel heeft een eigen opslag op het toestel.
@@ -601,6 +604,7 @@ function vulAan(S){
   syncProgVelden(S);
   S.materiaal=vulMateriaal(S.materiaal);
   S.facturen=vulFacturen(S.facturen);
+  S.bestelboeken=vulBestelboeken(S.bestelboeken);
   S.versie=6;return S;
 }
 function syncProgVelden(T=S){for(const x of T.soorten){const p=x.programmaId&&T.programmas?.[x.programmaId];if(x.programmaId&&!p)x.programmaId=null;if(p){x.programma=p.naam;x.temp=p.temp;x.baktijd=p.baktijd}}}
@@ -758,6 +762,108 @@ async function factVoorbeeld(f,concept){
     if(!ov.classList.contains('open'))return;ov.querySelector('.vbinhoud').innerHTML=`<img src="${c.toDataURL('image/jpeg',.9)}" alt="Voorbeeld van de factuur" data-a="factvbzoom">`}
   catch(e){console.warn(e);const el=ov.querySelector('.vbinhoud');if(el)el.innerHTML='<p class="vbmelding">Het voorbeeld lukt nu niet. Controleer je internetverbinding.</p>'}}
 function sluitVoorbeeld(){const ov=document.getElementById('factVb');if(ov){ov.classList.remove('open','zoom');ov.innerHTML=''}}
+
+
+/* ================= 10.7 bestelboeken (uit het bestelboek van de leverancier) ================= */
+const PDF_LIB='https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js';
+function vulBestelboeken(b){b=isObj(b)?b:{};if(!isObj(b.boeken))b.boeken={};if(!isObj(b.bekend))b.bekend={};if(!isObj(b.nieuw))b.nieuw={};if(!isObj(b.editie))b.editie={};return b}
+let BB=null,bbZoek='',bbFilter='alle',bbOpen={},bbBoek=null,bbBezig='';
+const bbMag=()=>mag('bestelboek');
+async function laadPdfjs(){const lok=await ocrLokaal();await laadScript(lok?'ocr/pdf.min.js':PDF_JS,()=>window.pdfjsLib);pdfjsLib.GlobalWorkerOptions.workerSrc=window.__PDF_WORKER__||(lok?new URL('ocr/pdf.worker.min.js',location.href).href:PDF_WORKER)}
+async function bbLaad(){if(BB)return BB;await opslagKlaar;const x=idbBekend.get('x:bestelboek');if(x&&x.rijen)BB=x;return BB}
+/* horizontale lijnen van een pagina (scheiding tussen de regels) */
+function bbLijnen(ops){const O=pdfjsLib.OPS,ys=[];let m=[1,0,0,1,0,0];const st=[];
+  const mul=(a,b)=>[a[0]*b[0]+a[2]*b[1],a[1]*b[0]+a[3]*b[1],a[0]*b[2]+a[2]*b[3],a[1]*b[2]+a[3]*b[3],a[0]*b[4]+a[2]*b[5]+a[4],a[1]*b[4]+a[3]*b[5]+a[5]],tp=(x,y)=>[m[0]*x+m[2]*y+m[4],m[1]*x+m[3]*y+m[5]];
+  for(let i=0;i<ops.fnArray.length;i++){const f=ops.fnArray[i],a=ops.argsArray[i];
+    if(f===O.save)st.push(m);else if(f===O.restore)m=st.pop()||m;else if(f===O.transform)m=mul(m,a);
+    else if(f===O.constructPath){const[os,co]=a;let k=0,cur=null;for(const o of os){
+      if(o===O.rectangle){const[x,y,w,h]=co.slice(k,k+4);k+=4;const p=tp(x,y),q=tp(x+w,y+h);if(Math.abs(q[0]-p[0])>300&&Math.abs(q[1]-p[1])<2)ys.push((p[1]+q[1])/2)}
+      else if(o===O.moveTo){cur=tp(co[k],co[k+1]);k+=2}else if(o===O.lineTo){const q=tp(co[k],co[k+1]);k+=2;if(cur&&Math.abs(q[0]-cur[0])>300&&Math.abs(q[1]-cur[1])<1)ys.push((q[1]+cur[1])/2);cur=q}
+      else if(o===O.curveTo)k+=6;else if(o===O.curveTo2||o===O.curveTo3)k+=4;else if(o===O.closePath){}}}}
+  const u=[];for(const y of ys.sort((a,b)=>b-a))if(!u.length||u[u.length-1]-y>2)u.push(Math.round(y*100)/100);return u}
+async function bbLees(file,meld){await laadPdfjs();const buf=await file.arrayBuffer(),pdf=await pdfjsLib.getDocument({data:new Uint8Array(buf.slice(0))}).promise,rijen=[];let kop=null,groep='';
+  for(let p=1;p<=pdf.numPages;p++){meld(`Bestelboek lezen: pagina ${p} van ${pdf.numPages}`);const pg=await pdf.getPage(p),[tc,ops]=await Promise.all([pg.getTextContent(),pg.getOperatorList()]);
+    const it=tc.items.filter(i=>i.str&&i.str.trim()).map(i=>({s:i.str.trim(),x:i.transform[4],y:i.transform[5],h:Math.abs(i.transform[0])})),ys=bbLijnen(ops);
+    for(let i=0;i<ys.length-1;i++){const top=ys[i],bot=ys[i+1];if(top-bot<8)continue;const b=it.filter(t=>t.y<top&&t.y>bot);if(!b.length)continue;
+      if(b.some(t=>t.s==='Artikel'||t.s==='Artikelomschrijving')){if(!kop)kop={p:p-1,top,bot};continue}
+      const g=b.filter(t=>t.h>10);if(g.length){groep=g.sort((a,c)=>a.x-c.x).map(t=>t.s).join(' ');rijen.push({t:'g',p:p-1,top,bot,naam:groep});continue}
+      const a=b.find(t=>t.x<30&&/^\d{5,7}$/.test(t.s));if(!a)continue;
+      const zelfde=t=>Math.abs(t.y-a.y)<1.5,onder=b.filter(t=>t.y<a.y-1.5);
+      const naam=b.filter(t=>zelfde(t)&&t.x>40&&t.x<330).sort((x,y)=>x.x-y.x).map(t=>t.s).join(' ').replace(/\s+/g,' ');
+      const bst=b.find(t=>zelfde(t)&&t.x>330&&t.x<380&&/^\d+$/.test(t.s));const prijs=onder.filter(t=>t.x>120&&t.x<330&&/^\d+[.,]\d+$/.test(t.s)).sort((x,y)=>x.x-y.x);
+      rijen.push({t:'a',p:p-1,top,bot,art:a.s,naam,groep,eh:(onder.find(t=>t.x<30)||{}).s||'',bst:bst?bst.s:'',cons:prijs[0]?.s||'',ink:prijs[1]?.s||''})}}
+  pdf.destroy();if(!kop||!rijen.some(r=>r.t==='a'))throw new Error('Dit lijkt geen bestelboek van de leverancier te zijn.');
+  return{kop,rijen,pdf:buf,paginas:rijen.length?Math.max(...rijen.map(r=>r.p))+1:0}}
+function bbEditieNaam(n){const m=/w(?:ee)?k[\s_-]*(\d{1,2})/i.exec(n||'');return m?'week '+(+m[1]):(n||'bestelboek').replace(/\.pdf$/i,'')}
+async function bbInlezen(file){if(!bbMag())return;bbBezig='Bestelboek openen…';render();
+  try{const r=await bbLees(file,t=>{bbBezig=t;const el=document.getElementById('bbStatus');if(el)el.textContent=t});
+    const naam=bbEditieNaam(file.name),arts=r.rijen.filter(x=>x.t==='a').map(x=>x.art),B=S.bestelboeken;
+    BB={naam,t:Date.now(),kop:r.kop,rijen:r.rijen,pdf:r.pdf};idbZet('x:bestelboek',BB);idbSchrijf();
+    if(B.editie.naam!==naam){const oud=B.bekend,eerste=!Object.keys(oud).length;B.nieuw={};if(!eerste)for(const a of arts)if(!oud[a])B.nieuw[a]=1;
+      B.bekend={};for(const a of arts)B.bekend[a]=1;B.editie={naam,t:Date.now(),n:arts.length}}
+    log(`Bestelboek ${naam} ingelezen (${arts.length} artikelen)`);bewaar();bbBezig='';toast(`✓ ${naam}: ${arts.length} artikelen ingelezen`)}
+  catch(e){console.warn(e);bbBezig='';toast(e.message&&/bestelboek/.test(e.message)?e.message:'Inlezen lukte niet. Controleer je internet en probeer opnieuw.')}
+  render()}
+function bbArtikelen(){return(BB?.rijen||[]).filter(r=>r.t==='a')}
+function bestelboekenHtml(){const B=S.bestelboeken,boeken=Object.values(B.boeken).sort((a,b)=>a.naam.localeCompare(b.naam,'nl')),nNieuw=Object.keys(B.nieuw).length;
+  if(!BB)bbLaad().then(x=>{if(x&&sub==='bestelboeken')render()});
+  const arts=new Set(bbArtikelen().map(r=>r.art));
+  return`<div class="kop"><div class="koprij"><h1>Bestelboeken</h1></div><p>Je eigen bestelboeken, gemaakt uit het bestelboek van de leverancier</p></div>
+   <div class="kaartje"><h3>📄 Bestelboek van de leverancier</h3>${bbBezig?`<div class="sub" id="bbStatus">${esc(bbBezig)}</div>`:BB?`<div class="sub"><b>${esc(BB.naam)}</b> · ${arts.size} artikelen · ingelezen ${esc(datumTekst(iso(new Date(BB.t))))}</div>`:'<div class="sub">Nog geen bestelboek op dit toestel. Lees het bestelboek van deze week in (pdf).</div>'}
+    ${B.editie.naam&&BB&&B.editie.naam!==BB.naam?`<div class="sub oranjetekst" style="margin-top:6px">Op een ander toestel is al ${esc(B.editie.naam)} ingelezen. Lees die ook hier in.</div>`:''}
+    <div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:10px"><label class="knop ${BB?'rand':''} klein">${BB?'Nieuw bestelboek inlezen':'Bestelboek inlezen'}<input type="file" accept="application/pdf,.pdf" id="bbIn" style="display:none" ${bbBezig?'disabled':''}></label></div></div>
+   ${nNieuw&&BB?`<div class="kaartje"><h3>✨ ${nNieuw} nieuwe ${nNieuw===1?'artikel':'artikelen'} in ${esc(B.editie.naam)}</h3><div class="sub">Kijk of ze in een van je boeken moeten. Ze staan bij het kiezen bovenaan onder "Nieuw".</div></div>`:''}
+   <div class="sectie">${boeken.map(b=>{const n=Object.keys(b.arts).length,weg=BB?Object.keys(b.arts).filter(a=>!arts.has(a)).length:0;
+     return`<div class="rij inv"><div class="groei"><div class="naam">📘 ${esc(b.naam)}</div><div class="sub">${n} ${n===1?'artikel':'artikelen'}${weg?` · <span class="oranjetekst">${weg} niet meer leverbaar</span>`:''}</div></div>
+      <button class="knop rand klein" data-a="bbkies" data-v="${b.id}">Kiezen</button><button class="knop klein" data-a="bbpdf" data-v="${b.id}" ${BB&&n?'':'disabled'}>PDF</button></div>`}).join('')||'<p class="leeg">Nog geen boeken. Maak bijvoorbeeld een boek voor Brood, AGF of Vers.</p>'}
+    <button class="toevoegen" data-a="bbnieuw">+ Nieuw boek</button></div>`}
+/* kiezen per boek */
+function bbLijstHtml(b){const alle=bbArtikelen(),nieuw=S.bestelboeken.nieuw,z=bbZoek.trim().toLowerCase();
+  const zicht=alle.filter(r=>(bbFilter!=='gekozen'||b.arts[r.art])&&(bbFilter!=='nieuw'||nieuw[r.art])&&(!z||r.naam.toLowerCase().includes(z)||r.art.includes(z)||r.bst===z));
+  const groepen=[],idx={};for(const r of zicht){let g=idx[r.groep];if(!g){g=idx[r.groep]={naam:r.groep,r:[]};groepen.push(g)}g.r.push(r)}
+  const open=!!z||bbFilter!=='alle';let n=0;
+  return groepen.map(g=>{const k=g.r.filter(r=>b.arts[r.art]).length,isOpen=open||bbOpen[g.naam],toon=isOpen?g.r.filter(()=>n++<300):[];
+    return`<div class="sectie menu meergroep ${isOpen?'open':''}" data-bbgroep="${esc(g.naam)}"><div class="rijflex"><button class="groepkop" data-a="bbgroep" data-v="${esc(g.naam)}" style="flex:1"><b>${esc(g.naam)}</b><span class="bbtel">${k}/${g.r.length} ${isOpen?'▴':'▾'}</span></button><button class="knop rand klein" style="margin:6px" data-a="bbgroepalles" data-v="${esc(g.naam)}">${k===g.r.length?'Niets':'Alles'}</button></div>
+      ${isOpen?`<div class="meerinhoud">${toon.map(r=>`<div class="rij"><button class="regel" data-a="bbvink" data-v="${r.art}"><span class="bbvink ${b.arts[r.art]?'aan':''}">${b.arts[r.art]?'✓':''}</span><div class="groei"><div class="naam">${esc(r.naam)}${nieuw[r.art]?' <span class="fstatus oranje">nieuw</span>':''}</div><div class="sub">${r.art} · bst.nr. ${esc(r.bst||'–')} · ${esc(r.eh)}${r.cons?' · € '+esc(r.cons.replace('.',',')):''}</div></div></button></div>`).join('')}</div>`:''}</div>`}).join('')||'<p class="leeg">Niets gevonden.</p>'}
+function bbKiesHtml(){const b=S.bestelboeken.boeken[bbBoek];if(!b){sub='bestelboeken';return bestelboekenHtml()}
+  const nieuw=S.bestelboeken.nieuw,arts=new Set(bbArtikelen().map(r=>r.art)),weg=BB?Object.keys(b.arts).filter(a=>!arts.has(a)):[],n=Object.keys(b.arts).length;
+  return`<div class="kop"><div class="koprij"><h1>${esc(b.naam)}</h1></div><p id="bbAantal">${n} ${n===1?'artikel':'artikelen'} gekozen${BB?' · '+esc(BB.naam):''}</p></div>
+   <div class="knoppen" style="justify-content:flex-start;padding-top:0;flex-wrap:wrap"><button class="knop rand klein" data-a="bbhernoem">Naam wijzigen</button><button class="knop rand klein rood" data-a="bbweg">${afwStap==='bbweg'?'Zeker? Tik nogmaals':'Boek verwijderen'}</button></div>
+   ${!BB?'<p class="leeg">Lees eerst het bestelboek van de leverancier in.</p>':`
+   <div class="zoekbalk"><input class="veld" id="bbZoek" type="search" placeholder="Zoek op naam, artikelnummer of bestelnummer" value="${esc(bbZoek)}" autocomplete="off"></div>
+   <div class="chips" style="margin:0 16px 8px">${[['alle','Alles'],['gekozen','Gekozen'],['nieuw',`Nieuw (${Object.keys(nieuw).length})`]].map(([k,t])=>`<button class="chip ${bbFilter===k?'aan':''}" data-a="bbfilter" data-v="${k}">${t}</button>`).join('')}</div>
+   ${weg.length?`<div class="kaartje waarschuw"><b>${weg.length} ${weg.length===1?'artikel staat':'artikelen staan'} niet meer in het bestelboek</b><div class="sub">${weg.map(esc).join(', ')}</div><div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:8px"><button class="knop rand klein" data-a="bbwegruim">Uit dit boek halen</button></div></div>`:''}
+   <div id="bbLijst">${bbLijstHtml(b)}</div>`}`}
+function bbLijstVernieuw(){const b=S.bestelboeken.boeken[bbBoek],el=document.getElementById('bbLijst');if(b&&el)el.innerHTML=bbLijstHtml(b);bbAantalTonen()}
+function bbAantalTonen(){const b=S.bestelboeken.boeken[bbBoek],el=document.getElementById('bbAantal');if(b&&el){const n=Object.keys(b.arts).length;el.textContent=`${n} ${n===1?'artikel':'artikelen'} gekozen${BB?' · '+BB.naam:''}`}}
+let bbZoekT=null;
+document.addEventListener('input',e=>{if(e.target.id==='bbZoek'){bbZoek=e.target.value;clearTimeout(bbZoekT);bbZoekT=setTimeout(bbLijstVernieuw,200)}});
+/* PDF samenstellen: originele regels uitknippen en onder elkaar zetten */
+async function bbMaakPdf(b){await laadScript(PDF_LIB,()=>window.PDFLib);const PL=window.PDFLib,src=await PL.PDFDocument.load(BB.pdf.slice(0)),out=await PL.PDFDocument.create(),font=await out.embedFont(PL.StandardFonts.Helvetica);
+  const sp=src.getPage(0),{width:W,height:H}=sp.getSize(),cache={},emb=async i=>cache[i]||(cache[i]=await out.embedPage(src.getPage(i)));
+  let page=null,y=0,nr=0,gDrawn=null;const ONDER=36;
+  const teken=async r=>{const h=r.top-r.bot,e=await emb(r.p),yb=H-y-h;page.pushOperators(PL.pushGraphicsState(),PL.rectangle(0,yb-0.4,W,h+0.8),PL.clip(),PL.endPath());page.drawPage(e,{x:0,y:yb-r.bot});page.pushOperators(PL.popGraphicsState());y+=h};
+  const nieuwePagina=async()=>{page=out.addPage([W,H]);nr++;y=H-BB.kop.top;await teken(BB.kop);gDrawn=null;const t=`${b.naam} – Pagina ${nr}`;page.drawText(t,{x:(W-font.widthOfTextAtSize(t,9))/2,y:18,size:9,font})};
+  let groep=null;
+  for(const r of BB.rijen){if(r.t==='g'){groep=r;continue}if(!b.arts[r.art])continue;
+    const h=r.top-r.bot,gh=groep&&gDrawn!==groep.naam?groep.top-groep.bot:0;
+    if(!page||y+h+gh>H-ONDER)await nieuwePagina();
+    if(groep&&gDrawn!==groep.naam){await teken(groep);gDrawn=groep.naam}
+    await teken(r)}
+  if(!page)throw new Error('leeg');
+  return new File([await out.save()],`bestelboek-${b.naam.toLowerCase().replace(/[^a-z0-9]+/g,'-')}-${BB.naam.replace(/\s+/g,'-')}.pdf`,{type:'application/pdf'})}
+let bbKlaar=null;
+async function bbPdf(id){const b=S.bestelboeken.boeken[id];if(!b||!BB)return;toonSheet(`<div class="pkop"><span style="width:60px"></span><b>${esc(b.naam)}</b><button data-a="sluit" style="font-weight:700">Sluiten</button></div><div class="pinhoud"><p class="leeg" id="bbPdfStatus">PDF maken…</p></div>`);
+  try{const f=await bbMaakPdf(b);bbKlaar=f;const n=Object.keys(b.arts).length;
+    toonSheet(`<div class="pkop"><span style="width:60px"></span><b>${esc(b.naam)}</b><button data-a="sluit" style="font-weight:700">Sluiten</button></div><div class="pinhoud"><div class="kaartje"><div class="naam">✓ Klaar</div><div class="sub">${n} ${n===1?'artikel':'artikelen'} uit ${esc(BB.naam)}</div></div>
+     <div class="knoppen" style="flex-wrap:wrap"><button class="knop" data-a="bbdeel">📄 Delen of printen</button><button class="knop rand" data-a="bbvb">👁 Bekijken</button></div></div>`)}
+  catch(e){console.warn(e);const el=document.getElementById('bbPdfStatus');if(el)el.textContent='PDF maken lukte niet. Controleer je internetverbinding.'}}
+async function pdfVoorbeeldBestand(file,titel){let ov=document.getElementById('factVb');if(!ov){ov=document.createElement('div');ov.id='factVb';ov.setAttribute('role','dialog');document.body.appendChild(ov)}
+  ov.innerHTML=`<div class="vbkop"><b>${esc(titel)}</b><button data-a="factvbsluit">Sluiten</button></div><div class="vbinhoud"><p class="vbmelding">Voorbeeld maken…</p></div><p class="vbhulp">Tik op een pagina om in of uit te zoomen</p>`;ov.classList.add('open');
+  try{await laadPdfjs();const pdf=await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise,el=ov.querySelector('.vbinhoud');el.innerHTML='';
+    for(let i=1;i<=pdf.numPages&&ov.classList.contains('open');i++){const pg=await pdf.getPage(i),vp=pg.getViewport({scale:1.6}),c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
+      el.insertAdjacentHTML('beforeend',`<img src="${c.toDataURL('image/jpeg',.85)}" alt="Pagina ${i}" data-a="factvbzoom" style="margin-bottom:10px">`)}}
+  catch(e){const el=ov.querySelector('.vbinhoud');if(el)el.innerHTML='<p class="vbmelding">Bekijken lukt nu niet.</p>'}}
 
 /* ================= 10.0 meerdere winkels ================= */
 const PAKKETTEN={basis:[],plus:['scan','push','rapport'],compleet:['scan','push','rapport','advies','euro','cadeau','deeg']};
@@ -1141,7 +1247,7 @@ function bestelBerekening(){
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const APP_VERSIE='10.0',APP_BOUW='10.6';
+const APP_VERSIE='10.0',APP_BOUW='10.7';
 const NIEUWS=[['🏪','Brood Opzet per winkel','De app werkt nu per winkel. Alles wat je al had, hoort bij je eigen winkel. Voor jou verandert er niets.'],
  ['🔑','Koppelen met een code','Een nieuwe telefoon koppel je voortaan met de koppelcode van de winkel, zonder wachtwoord. De beheerder vindt de code onder Meer.'],
  ['🌤️','Weer en bakker','De beheerder kiest bij Broodsoorten en instellingen de plaats voor het weer en de naam van de bakker.'],
@@ -1251,6 +1357,7 @@ function splitsen(){
   if(kanBeheren()&&heeft('push')&&(S.push.subs?.length||S.push.stil))o['prive:push']=S.push;
   if(kanBeheren()&&heeft('euro')&&Object.keys(S.prijzen).length)o['prive:prijzen']=S.prijzen;
   if(kanBeheren()&&(isAanbieder()||L.modus==='lokaal'))o['prive:facturen']=S.facturen;
+  if(Object.keys(S.bestelboeken.boeken).length||S.bestelboeken.editie.naam)o.bestelboeken=S.bestelboeken;
   /* 10.0: wat niet in het pakket zit, gaat niet naar de server */
   if(!heeft('deeg'))delete o.voorraad;if(!heeft('push'))delete o.pushteam;
   if(!heeft('scan')){delete o.pakbonfouten;for(const k of Object.keys(o))if(k.startsWith('notfoto:pf'))delete o[k]}
@@ -1270,6 +1377,7 @@ function pasToe(k,v){
   else if(k==='prive:push')S.push=v;
   else if(k==='prive:prijzen')S.prijzen=v;
   else if(k==='prive:facturen')S.facturen=vulFacturen(v);
+  else if(k==='bestelboeken')S.bestelboeken=vulBestelboeken(v);
   else if(k==='pakbonfouten')S.pbFouten=v;
   else if(k==='pushteam')S.pushTeam=v;
   else if(k==='prive:cadeau')S.cadeau=v.bonnen||{};
@@ -1970,7 +2078,7 @@ const matNaam=id=>S.materiaal.lijst.find(x=>x.id===id)?.naam||S.materiaal.los[id
 function matGemeld(){return[...Object.entries(S.materiaal.meld).map(([id,x])=>({id,naam:matNaam(id),...x})),...Object.values(S.materiaal.los).map(x=>({...x,los:true}))].filter(x=>x.staat)}
 const MAT_LABEL={bijna:['Bijna op','aangepast'],op:['Op!','rood'],besteld:['Besteld','schap']};
 const MEER_GROEP={berichten:'dagelijks',vraag:'dagelijks',materiaal:'dagelijks',notities:'dagelijks',dervlijsten:'dagelijks',ontdooi:'dagelijks',pakbonnen:'dagelijks',afsluiten:'dagelijks',plu:'dagelijks',
-  afwijkend:'planning',bestel:'planning',rapport:'rapporten',nieuw:'rapporten',export:'rapporten',gedaan:'rapporten',log:'rapporten',
+  afwijkend:'planning',bestel:'planning',bestelboeken:'planning',rapport:'rapporten',nieuw:'rapporten',export:'rapporten',gedaan:'rapporten',log:'rapporten',
   soorten:'instellingen',programmas:'instellingen',team:'instellingen',instellingen:'instellingen',klaar:'beheer',qrwinkel:'beheer',cadeau:'beheer',push:'beheer',leesfouten:'beheer',weekoverzicht:'beheer',besteladvies:'beheer',prijzen:'beheer',backup:'beheer',winkels:'beheer',winkel:'beheer',facturen:'beheer',abonnement:'beheer',aanbieder:'beheer',uitleg:'hulp'};
 const GROEPEN=[['dagelijks','Dagelijks'],['planning','Planning'],['rapporten','Rapporten'],['instellingen','Instellingen'],['beheer','Beheer – alleen voor jou'],['hulp','Hulp']];
 function meerLijstHtml(items){
@@ -2728,6 +2836,8 @@ function meerHtml(){
   if(sub==='winkel'&&WINKEL&&kanBeheren()&&isAdmin())return terug+winkelHtml();
   if(sub==='abonnement'&&isEigenaar()&&isAdmin())return terug+abonnementHtml();
   if(sub==='facturen'&&facturenMag())return terug+facturenHtml();
+  if(sub==='bestelboeken'&&bbMag())return terug+bestelboekenHtml();
+  if(sub==='bbkies'&&bbMag())return`<button class="terug" data-a="sub" data-v="bestelboeken">‹ Bestelboeken</button>`+bbKiesHtml();
   if(sub==='aanbieder'&&isAanbieder()&&isAdmin())return terug+aanbiederHtml();
   if(sub==='berichten'&&isAdmin())return terug+berichtenHtml();
   if(sub==='gedaan'&&isAdmin())return terug+gedaanHtml();
@@ -2764,7 +2874,7 @@ function meerHtml(){
     ['bestel','Deegbestelling en voorraad','Voorraad tellen en dozen bestellen',()=>mag('bestellen')],['afwijkend','Afwijkende dagen','Feestdagen, gesloten dagen',()=>mag('invullen')],
     ['soorten','Broodsoorten en instellingen','Soorten, karren, bakmomenten, oven',()=>mag('soorten')],['programmas',"Bakprogramma's","Programma's koppelen aan producten",()=>mag('soorten')],['team','Medewerkers en rechten','Accounts beheren',()=>isAdmin()&&kanBeheren(),isAdmin()?'Alleen op je eigen telefoon':null],
     ['gedaan','Vandaag gedaan','Per persoon wat er is gedaan',()=>isAdmin()],['log','Logboek','Wie deed wat en wanneer',()=>isAdmin()],
-    ['nieuw','Nieuwe producten','Verkoop van nieuwe producten volgen',()=>mag('rapport')],['export','Exporteren naar Excel','Planning, derving of weekrapport',()=>mag('rapport')],['plu','PLU-lijst','PLU-nummers opzoeken',()=>true],['instellingen','App-instellingen','Weergave en persoonlijke keuzes',()=>true],['uitleg','Uitleg','Hoe werkt de app?',()=>true]];
+    ['bestelboeken','📘 Bestelboeken','Eigen bestelboeken uit het bestelboek van de leverancier',()=>bbMag()],['nieuw','Nieuwe producten','Verkoop van nieuwe producten volgen',()=>mag('rapport')],['export','Exporteren naar Excel','Planning, derving of weekrapport',()=>mag('rapport')],['plu','PLU-lijst','PLU-nummers opzoeken',()=>true],['instellingen','App-instellingen','Weergave en persoonlijke keuzes',()=>true],['uitleg','Uitleg','Hoe werkt de app?',()=>true]];
   return`<div class="kop"><div class="koprij"><h1>Meer</h1>${info('meer')}</div><p>Ingelogd als <b>${esc(g.naam)}</b> (${g.rol==='admin'?'beheerder':'medewerker'})</p></div>
     ${meerLijstHtml(items)}
     ${kanBeheren()?`<div class="rij"><button class="regel" data-a="gebruiker" data-v="${g.id}"><div class="groei"><div class="naam">Mijn pincode wijzigen</div></div><span class="pijl">›</span></button></div>`:''}</div>
@@ -3182,7 +3292,7 @@ document.addEventListener('click',async e=>{
   if(NODIG[a]&&opSlot()){toast('Deze winkel staat op slot: alleen bekijken');return}
   if(['nieuwegebruiker','gweg','ontkoppel'].includes(a)&&!isAdmin())return;
   if(a==='gebruiker'&&!isAdmin()&&v!==L.sessie)return;
-  if(!['factweg','factklantweg','codenieuw','toestelweg','opzeggen','uitnodigingverw','afwweg','momentweg','wis','ontkoppel','afwnul','ontweg','bijweg','notweg','berichtweg','kassaweg'].includes(a)){if(afwStap==='wis'||afwStap==='ontkoppel'){afwStap=null;if(a!=='vink')render()}else afwStap=null}
+  if(!['bbweg','factweg','factklantweg','codenieuw','toestelweg','opzeggen','uitnodigingverw','afwweg','momentweg','wis','ontkoppel','afwnul','ontweg','bijweg','notweg','berichtweg','kassaweg'].includes(a)){if(afwStap==='wis'||afwStap==='ontkoppel'){afwStap=null;if(a!=='vink')render()}else afwStap=null}
   switch(a){
   case'koppel':{const mail=document.getElementById('kMail').value.trim(),ww=document.getElementById('kWw').value;koppelFout='';
     if(!mail||!ww){document.getElementById('fout').textContent='Vul e-mailadres en wachtwoord in.';return}
@@ -3225,6 +3335,22 @@ document.addEventListener('click',async e=>{
   case'ovweek':ovWeek=v==='0'?plusDagen(maandag(iso()),-7):plusDagen(ovWeek,+v);ovData=null;render();return;
   case'slotfunctie':openSlotFunctie(v);return;
   case'factfilter':factFilter=v;render();return;
+  case'bbnieuw':{if(!bbMag())return;const n=(prompt('Naam van het boek (bijv. Brood, AGF of Vers)')||'').trim();if(!n)return;const id='bb'+Date.now().toString(36);S.bestelboeken.boeken[id]={id,naam:n.slice(0,40),arts:{}};log(`Bestelboek ${n} aangemaakt`);bewaar();bbBoek=id;bbZoek='';bbFilter='alle';bbOpen={};sub='bbkies';render();m.scrollTop=0;return}
+  case'bbkies':if(!bbMag())return;bbBoek=v;bbZoek='';bbFilter='alle';bbOpen={};sub='bbkies';render();m.scrollTop=0;return;
+  case'bbfilter':bbFilter=v;render();return;
+  case'bbgroep':bbOpen[v]=!bbOpen[v];bbLijstVernieuw();return;
+  case'bbvink':{const bk=S.bestelboeken.boeken[bbBoek];if(!bk||!bbMag())return;if(bk.arts[v])delete bk.arts[v];else bk.arts[v]=1;bewaar();
+    const sp=b.querySelector('.bbvink');if(sp){sp.classList.toggle('aan',!!bk.arts[v]);sp.textContent=bk.arts[v]?'✓':''}
+    const gEl=b.closest('[data-bbgroep]');if(gEl){const rs=bbArtikelen().filter(r=>r.groep===gEl.dataset.bbgroep),k=rs.filter(r=>bk.arts[r.art]).length,tl=gEl.querySelector('.bbtel'),ak=gEl.querySelector('[data-a=bbgroepalles]');
+      if(tl)tl.textContent=tl.textContent.replace(/^\d+\/\d+/,`${k}/${rs.length}`);if(ak)ak.textContent=k===rs.length?'Niets':'Alles'}
+    bbAantalTonen();return}
+  case'bbgroepalles':{const bk=S.bestelboeken.boeken[bbBoek];if(!bk||!bbMag())return;const rs=bbArtikelen().filter(r=>r.groep===v),aan=rs.every(r=>bk.arts[r.art]);for(const r of rs){if(aan)delete bk.arts[r.art];else bk.arts[r.art]=1}bewaar();bbLijstVernieuw();return}
+  case'bbwegruim':{const bk=S.bestelboeken.boeken[bbBoek];if(!bk||!BB)return;const arts=new Set(bbArtikelen().map(r=>r.art));for(const a of Object.keys(bk.arts))if(!arts.has(a))delete bk.arts[a];bewaar();render();return}
+  case'bbhernoem':{const bk=S.bestelboeken.boeken[bbBoek];if(!bk)return;const n=(prompt('Nieuwe naam',bk.naam)||'').trim();if(!n)return;bk.naam=n.slice(0,40);bewaar();render();return}
+  case'bbweg':{const bk=S.bestelboeken.boeken[bbBoek];if(!bk||!bbMag())return;if(afwStap!=='bbweg'){afwStap='bbweg';render();return}afwStap=null;delete S.bestelboeken.boeken[bbBoek];log(`Bestelboek ${bk.naam} verwijderd`);bewaar();sub='bestelboeken';render();return}
+  case'bbpdf':if(!bbMag())return;bbPdf(v);return;
+  case'bbdeel':if(bbKlaar)deelBestand(bbKlaar);return;
+  case'bbvb':if(bbKlaar)pdfVoorbeeldBestand(bbKlaar,'Bestelboek');return;
   case'factvb':{if(!facturenMag())return;if(bewerk?.soort==='factuur'){leesFactForm();factVoorbeeld(kloon(bewerk.f),!bewerk.f.nummer)}else{const f=S.facturen.lijst[bewerk?.id];if(f)factVoorbeeld(f,false)}return}
   case'factvbsluit':sluitVoorbeeld();return;
   case'factvbzoom':document.getElementById('factVb')?.classList.toggle('zoom');return;
@@ -3664,6 +3790,7 @@ document.addEventListener('change',e=>{
   else if(ds.derv&&ds.oud!==t.value){log(`Derving ${datumTekst(dervDatum)}: ${naam(ds.derv)} ${BESTEMMING.find(y=>y[0]===best)[1].toLowerCase()} = ${t.value||'leeg'}`,'d:'+dervDatum+ds.derv+best);bewaar();ds.oud=t.value;
     const el=document.getElementById('ds-'+ds.derv);if(el)el.innerHTML=dervSub(dervDatum,ds.derv,S.historie[dervDatum]?.gezet?.[ds.derv]??0)}
   else if(t.id==='fFoto'&&t.files&&t.files[0])verkleinFoto(t.files[0]);
+  else if(t.id==='bbIn'&&t.files&&t.files[0]){const f=t.files[0];t.value='';bbInlezen(f)}
   else if(t.id==='logoIn'&&t.files&&t.files[0]){if(!isAdmin())return;verkleinNaar(t.files[0],520,src=>{S.winkelLogo=src;log('Eigen logo ingesteld');bewaar();render()},'image/png')}
   else if(t.id==='scanIn'&&t.files&&t.files[0]){if(!mag('vinken')||!heeft('scan'))return;startScan(t.files[0])}
   else if(t.dataset&&t.dataset.scan!=null&&scan){const i=+t.dataset.scan,r=scan.regels[i];if(t.value==='nieuw'){if(!mag('soorten')){toast('Geen rechten om een broodsoort aan te maken');t.value=r.doel;return}scanNieuweSoort(i)}else{r.doel=t.value;r.zeker=true;r.voorstel=false}toonScan()}
