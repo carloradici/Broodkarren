@@ -1362,7 +1362,7 @@ function bestelBerekening(){
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const APP_VERSIE='10.0',APP_BOUW='10.8.2';
+const APP_VERSIE='10.0',APP_BOUW='10.8.3';
 const NIEUWS=[['🏪','Brood Opzet per winkel','De app werkt nu per winkel. Alles wat je al had, hoort bij je eigen winkel. Voor jou verandert er niets.'],
  ['🔑','Koppelen met een code','Een nieuwe telefoon koppel je voortaan met de koppelcode van de winkel, zonder wachtwoord. De beheerder vindt de code onder Meer.'],
  ['🌤️','Weer en bakker','De beheerder kiest bij Broodsoorten en instellingen de plaats voor het weer en de naam van de bakker.'],
@@ -1950,7 +1950,7 @@ function koppelRegels(regels){const bek=bekendeArt(),keys=Object.keys(bek),namen
       if(!k){const basis=r.artnr.slice(0,4),kand=keys.filter(a=>bek[a]!=='negeer'&&a.slice(0,4)===basis&&lev(a,r.artnr)<=Math.max(1,Math.abs(a.length-r.artnr.length)));
         if(kand.length===1&&new Set(kand.map(a=>bek[a])).size===1)k=bek[kand[0]];
         else if(kand.length>1){const s=new Set(kand.map(a=>bek[a]));if(s.size===1)k=bek[kand[0]]}}}
-    const voorstel=k?null:naamVoorstel(r);return{...r,doel:k||(voorstel?voorstel.id:''),zeker,voorstel:!!voorstel,bekend:!!k}})}
+    const voorstel=k?null:naamVoorstel(r);return{...r,orig:r.orig??r.aantal,doel:k||(voorstel?voorstel.id:''),zeker,voorstel:!!voorstel,bekend:!!k}})}
 /* scherm */
 let scan=null;
 async function startScan(file){
@@ -2325,18 +2325,51 @@ function openPakbon(d){const lv=S.levering[d];if(!lv)return;const ids=S.soorten.
 /* leesfouten: medewerker meldt, beheerder bekijkt en deelt */
 function meldLeesfout(){if(!scan)return;const notitie=prompt('Wat klopt er niet? (mag leeg blijven)','');if(notitie===null)return;const id='pf'+Date.now().toString(36);
   S.notfotos[id]=scan.fotoHoog||scan.foto||null;
-  S.pbFouten[id]={id,t:Date.now(),wie:ik()?.naam||'',d:scan.d,notitie:String(notitie).slice(0,300),regels:(scan.regels||[]).map(r=>({a:r.artnr||'',n:r.aantal,naam:r.naam,tw:!!r.twijfel,doel:r.doel||''})),tekst:String(scan.tekst||'').slice(0,6000)};
+  S.pbFouten[id]={id,t:Date.now(),wie:ik()?.naam||'',d:scan.d,notitie:String(notitie).slice(0,300),regels:(scan.regels||[]).map(r=>({a:r.artnr||'',n:r.aantal,o:r.orig??r.aantal,naam:r.naam,tw:!!r.twijfel,doel:r.doel||'',z:!!r.zeker,bk:!!r.bekend,sj:r.sjab||'',ts:(r.tess||[]).join('/')})),datumBon:scan.datumBon||'',versie:APP_BOUW,tekst:String(scan.tekst||'').slice(0,6000)};
   const l=Object.values(S.pbFouten).sort((a,b)=>a.t-b.t);while(l.length>15){const x=l.shift();S.notfotos[x.id]=null;delete S.pbFouten[x.id]}
   log('Leesfout pakbon gemeld');bewaar();bevestig('✓ Gemeld. De beheerder kan dit bekijken.')}
 function leesfoutenHtml(){const l=Object.values(S.pbFouten).sort((a,b)=>b.t-a.t);L.pfGezien=Date.now();bewaarL();
-  return`<div class="kop"><div class="koprij"><h1>Leesfouten pakbon</h1></div><p>Gemeld door medewerkers. Tik op Delen en stuur het naar Claude, dan kan het scannen verder verbeterd worden.</p></div>
+  return`<div class="kop"><div class="koprij"><h1>Leesfouten pakbon</h1></div><p>Gemeld door medewerkers. Stuur een melding naar Claude, dan kan het scannen verder verbeterd worden.</p></div>
+   ${l.length?`<div class="kaartje"><h3>Zo komt het in de goede chat</h3><div class="sub">1. Tik op <b>Delen</b> en kies <b>Bewaar in Bestanden</b>.<br>2. Open bij Claude de chat van Brood Opzet.<br>3. Tik op <b>＋</b> → <b>Bestanden</b> en kies het bestand (brood-opzet-leesfout-…zip).</div>
+    ${l.length>1?`<div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:10px"><button class="knop klein" data-a="pfdeel" data-v="alle">Alle ${l.length} delen in één bestand</button></div>`:''}</div>`:''}
    ${l.length?`<div class="sectie">${l.map(x=>`<div class="rij inv matrij"><div class="groei"><div class="naam">Pakbon ${esc(datumTekst(x.d))}</div><div class="sub">${esc(x.wie)} · ${esc(datumTekst(iso(new Date(x.t))))} ${tijdTekst(x.t)} · ${x.regels.length} regels gelezen${x.notitie?`<br>“${esc(x.notitie)}”`:''}</div></div>
      <div class="matknoppen">${S.notfotos[x.id]?`<button class="knop rand klein" data-a="pffoto" data-v="${x.id}">Foto</button>`:''}<button class="knop klein" data-a="pfdeel" data-v="${x.id}">Delen</button><button class="knop rand klein rood" data-a="pfweg" data-v="${x.id}">Verwijderen</button></div></div>`).join('')}</div>`:'<p class="leeg">Geen leesfouten gemeld. 👌</p>'}`}
-async function deelLeesfout(id){const x=S.pbFouten[id];if(!x)return;
-  const txt=`Leesfout pakbon ${x.d} (gemeld door ${x.wie})\n${x.notitie?'Opmerking: '+x.notitie+'\n':''}\nGelezen regels (art.nr, aantal, naam):\n`+x.regels.map(r=>`${r.a||'?'}\t${r.n}\t${r.naam}${r.tw?'  (twijfel)':''}`).join('\n')+`\n\n--- ruwe tekst ---\n${x.tekst}`;
-  const files=[];const f=S.notfotos[id];if(f)files.push(new File([dataUrlBlob(f)],`pakbon-${x.d}.jpg`,{type:'image/jpeg'}));files.push(new File([txt],`pakbon-${x.d}.txt`,{type:'text/plain'}));
-  try{if(navigator.canShare&&navigator.canShare({files})){await navigator.share({files,title:'Leesfout pakbon'});return}}catch(e){if(e&&e.name==='AbortError')return;if(e&&e.name==='NotAllowedError'){toast('Tik nog een keer');return}}
-  deelTekst(txt,'Leesfout pakbon')}
+/* 10.8.3 melden aan Claude: één zip met alles erin, zodat het in de juiste chat kan */
+const CRC_T=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+function crc32(u){let c=0xFFFFFFFF;for(let i=0;i<u.length;i++)c=CRC_T[(c^u[i])&255]^(c>>>8);return(c^0xFFFFFFFF)>>>0}
+function maakZip(bestanden){const enc=new TextEncoder(),delen=[],cd=[];let off=0;const nu=new Date(),dt=((nu.getHours()<<11)|(nu.getMinutes()<<5)|(nu.getSeconds()>>1))&0xFFFF,dd=(((nu.getFullYear()-1980)<<9)|((nu.getMonth()+1)<<5)|nu.getDate())&0xFFFF;
+  for(const[naam,data]of bestanden){const n=enc.encode(naam),d=typeof data==='string'?enc.encode(data):data,c=crc32(d),h=new DataView(new ArrayBuffer(30));
+    h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0x0800,true);h.setUint16(8,0,true);h.setUint16(10,dt,true);h.setUint16(12,dd,true);h.setUint32(14,c,true);h.setUint32(18,d.length,true);h.setUint32(22,d.length,true);h.setUint16(26,n.length,true);h.setUint16(28,0,true);
+    const z=new DataView(new ArrayBuffer(46));z.setUint32(0,0x02014b50,true);z.setUint16(4,20,true);z.setUint16(6,20,true);z.setUint16(8,0x0800,true);z.setUint16(10,0,true);z.setUint16(12,dt,true);z.setUint16(14,dd,true);z.setUint32(16,c,true);z.setUint32(20,d.length,true);z.setUint32(24,d.length,true);z.setUint16(28,n.length,true);z.setUint32(42,off,true);
+    delen.push(new Uint8Array(h.buffer),n,d);cd.push(new Uint8Array(z.buffer),n);off+=30+n.length+d.length}
+  const cdLen=cd.reduce((t,x)=>t+x.length,0),eind=new DataView(new ArrayBuffer(22));eind.setUint32(0,0x06054b50,true);eind.setUint16(8,bestanden.length,true);eind.setUint16(10,bestanden.length,true);eind.setUint32(12,cdLen,true);eind.setUint32(16,off,true);
+  return new Blob([...delen,...cd,new Uint8Array(eind.buffer)],{type:'application/zip'})}
+async function dataUrlBytes(u){return new Uint8Array(await dataUrlBlob(u).arrayBuffer())}
+function leesfoutTekst(x){const sn=id=>id==='negeer'?'(negeren)':S.soorten.find(s=>s.id===id)?.naam||(id?'?':'(niet gekoppeld)');
+  return`Leesfout pakbon ${x.d}${x.datumBon&&x.datumBon!==x.d?` (datum op de bon: ${x.datumBon})`:''}
+Gemeld door ${x.wie} op ${new Date(x.t).toLocaleString('nl-NL')}${x.versie?` · app ${x.versie}`:''}
+${x.notitie?'Opmerking: '+x.notitie+'\n':''}
+Regels zoals gelezen (art.nr | gelezen aantal → na aanpassen | naam | gekoppeld aan | details):
+`+x.regels.map(r=>`${r.a||'?'} | ${r.o??r.n}${r.o!=null&&r.o!==r.n?' → '+r.n:''} | ${r.naam} | ${sn(r.doel)}${r.tw?' | twijfel':''}${r.sj!==undefined?` | cijferlezing ${r.sj||'-'}, tekstlezing ${r.ts||'-'}${r.bk?'':', nummer onbekend'}`:''}`).join('\n')+`\n\n--- ruwe tekst ---\n${x.tekst}`}
+async function leesfoutZip(ids){const best=[],delen=[];
+  best.push(['LEESMIJ-voor-Claude.txt',`Dit is een melding uit de app Brood Opzet (Coop Vogelenzang), app-versie ${APP_BOUW}.
+Onderwerp: het scannen van de broodpakbon leest iets verkeerd.
+Claude: gebruik dit in de chat waar Brood Opzet wordt ontwikkeld (pakbon scannen: leesPagina, koppelRegels, leesAantal).
+Bakker: ${S.bakker||'onbekend'} · winkel: ${(typeof winkelNaam==='function'&&winkelNaam())||''}
+Aantal meldingen: ${ids.length}
+
+Per melding: melding-<datum>.txt (wat er gelezen is) en pakbon-<datum>.jpg (de foto).
+koppelingen.json: welke artikelnummers bij welke broodsoort horen.
+`]);
+  const ko={soorten:S.soorten.filter(s=>s.type==='vers'&&s.naam.trim()).map(s=>({id:s.id,naam:s.naam,artnr:artnrsVan(s),gesneden:s.gesneden})),pakbonNamen:S.pakbonNamen||{},negeer:S.pakbonNegeer||[]};
+  best.push(['koppelingen.json',JSON.stringify(ko,null,1)]);
+  for(const id of ids){const x=S.pbFouten[id];if(!x)continue;let tag=x.d,k=2;while(delen.includes(tag))tag=x.d+'-'+k++;delen.push(tag);
+    best.push([`melding-${tag}.txt`,leesfoutTekst(x)]);best.push([`melding-${tag}.json`,JSON.stringify(x,null,1)]);
+    const f=S.notfotos[id];if(typeof f==='string'&&f.startsWith('data:'))best.push([`pakbon-${tag}.jpg`,await dataUrlBytes(f)])}
+  const naam=ids.length===1?`brood-opzet-leesfout-pakbon-${S.pbFouten[ids[0]].d}.zip`:`brood-opzet-leesfouten-pakbon-${iso()}.zip`;
+  return new File([maakZip(best)],naam,{type:'application/zip'})}
+async function deelLeesfout(id){const ids=id==='alle'?Object.values(S.pbFouten).sort((a,b)=>a.t-b.t).map(x=>x.id):[id];if(!ids.length||!S.pbFouten[ids[0]])return;
+  try{await deelBestand(await leesfoutZip(ids))}catch(e){console.warn(e);toast('Delen lukte niet')}}
 /* scannen zonder internet: leesprogramma uit de map ocr/ naast de app (bewaard door de service worker) */
 let OCR_LOKAAL=null;
 async function ocrLokaal(){if(OCR_LOKAAL!==null)return OCR_LOKAAL;
