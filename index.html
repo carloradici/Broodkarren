@@ -1366,7 +1366,7 @@ function bestelBerekening(){
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const APP_VERSIE='10.0',APP_BOUW='10.9';
+const APP_VERSIE='10.0',APP_BOUW='10.9.1';
 const NIEUWS=[['🏪','Brood Opzet per winkel','De app werkt nu per winkel. Alles wat je al had, hoort bij je eigen winkel. Voor jou verandert er niets.'],
  ['🔑','Koppelen met een code','Een nieuwe telefoon koppel je voortaan met de koppelcode van de winkel, zonder wachtwoord. De beheerder vindt de code onder Meer.'],
  ['🌤️','Weer en bakker','De beheerder kiest bij Broodsoorten en instellingen de plaats voor het weer en de naam van de bakker.'],
@@ -3068,18 +3068,22 @@ function dervLijstenHtml(){
   const dagen=Object.keys(S.dervReg).filter(d=>regLijst(d).length).sort().reverse();
   return`<div class="kop"><div class="koprij"><h1>Dervinglijsten</h1>${info('derving')}</div><p>Opgeslagen lijsten om over te nemen in de kassa.</p></div>
    ${dagen.length?dagen.map(d=>`<div class="sectie"><div class="karkop"><b>${esc(datumTekst(d))} ${vanIso(d).getFullYear()}</b><span>${regLijst(d).filter(r=>!r.kassa).length?`${regLijst(d).filter(r=>!r.kassa).length} open`:'✓ alles verwerkt'}</span></div>${regLijst(d).slice().reverse().map(r=>lijstRij(d,r)).join('')}</div>`).join(''):'<p class="leeg">Nog geen opgeslagen lijsten. Vul derving in en tik op Lijst opslaan.</p>'}`}
+/* 10.9.1: soorten op 0 hoeven niet in de kassa en hoeven niet afgevinkt */
+function nulKassa(r){let n=0;for(const[sid,x]of Object.entries(r.items||{})){if(!S.soorten.some(y=>y.id===sid))continue;if(!conceptTot(x)&&!Object.values(x.hh||{}).some(v=>v&&(v.hele||v.halve)))n++}return n}
 function openKassa(id,d=dervDatum){
   const r=S.dervReg[d]?.[id];if(!r)return;bewerk={soort:'kassa',id,d};verwStap=false;
-  const regels=[];for(const[sid,x]of Object.entries(r.items)){const s=S.soorten.find(y=>y.id===sid);if(!s)continue;
+  let regels=[];for(const[sid,x]of Object.entries(r.items)){const s=S.soorten.find(y=>y.id===sid);if(!s)continue;
     if(x.hh&&s.type==='vers'&&s.gesneden==='on'){for(const[deel,lbl,plu]of[['hele','heel',s.plu],['halve','half',s.pluHalf]]){const per={};let tot=0;for(const[b2,v2]of Object.entries(x.hh)){if(v2[deel]){per[b2]=v2[deel];tot+=v2[deel]}}
       if(tot)regels.push({key:sid+':'+deel,naam:s.naam+' '+lbl,plu,tot,delen:BESTEMMING.filter(([k])=>per[k]).map(([k])=>`${per[k]} ${k==='weg'?'weg':k==='vb'?'VB':'TGTG'}`).join(' · ')})}}
     else regels.push({key:sid,naam:s.naam,plu:s.plu,tot:conceptTot(x),delen:BESTEMMING.filter(([k])=>x[k]).map(([k])=>`${fmt(x[k])} ${k==='weg'?'weg':k==='vb'?'VB':'TGTG'}`).join(' · ')||'0'})}
   toonSheet(`<div class="pkop"><button data-a="sluit">Sluiten</button><b>Dervinglijst</b><span style="width:60px"></span></div><div class="pinhoud">
    <p class="hulp">${esc(datumTekst(d))} · ${r.t?tijdTekst(r.t):'eerder ingevuld'} · ${esc(r.wie)}. Vink af wat je in de kassa hebt gezet.</p>
-   <div class="sectie" style="margin:0">${regels.map(g=>{const ok=!!r.kassaVink?.[g.key];
-     return`<div class="rij"><button class="regel ${ok?'klaar':''}" data-a="kvink" data-v="${esc(g.key)}"><div class="groei"><div class="naam">${esc(g.naam)}</div><div class="sub">${g.delen}</div></div><div class="kassaplu">${g.plu?esc(g.plu):'<span class="let" style="font-size:12px">geen PLU</span>'}</div><div class="kassaaantal">${fmt(g.tot)}</div><div class="vinkvak">${ok?'✓':''}</div></button></div>`}).join('')}</div>
+   ${(()=>{const nul=regels.filter(g=>!g.tot).length;regels=regels.filter(g=>g.tot);return nul&&!regels.length?`<p class="leeg">Alles staat op 0 – er hoeft niets in de kassa.</p>`:''})()}
+   ${regels.length?`<div class="sectie" style="margin:0">${regels.map(g=>{const ok=!!r.kassaVink?.[g.key];
+     return`<div class="rij"><button class="regel ${ok?'klaar':''}" data-a="kvink" data-v="${esc(g.key)}"><div class="groei"><div class="naam">${esc(g.naam)}</div><div class="sub">${g.delen}</div></div><div class="kassaplu">${g.plu?esc(g.plu):'<span class="let" style="font-size:12px">geen PLU</span>'}</div><div class="kassaaantal">${fmt(g.tot)}</div><div class="vinkvak">${ok?'✓':''}</div></button></div>`}).join('')}</div>`:''}
+   ${nulKassa(r)?`<p class="hulp" style="text-align:center">${nulKassa(r)} ${nulKassa(r)===1?'soort':'soorten'} op 0 – hoeven niet in de kassa</p>`:''}
    ${r.kassa?`<p class="hulp" style="text-align:center">✓ Verwerkt in kassa door ${esc(r.kassa.wie)} om ${tijdTekst(r.kassa.t)}</p>`:''}
-   <div class="knoppen"><button class="knop ${r.kassa?'rand':''} ${!r.kassa&&regels.length&&regels.every(g=>r.kassaVink?.[g.key])?'oplichten':''}" data-a="kassaok">${r.kassa?'Toch niet verwerkt':'Verwerkt in kassa'}</button></div>
+   <div class="knoppen"><button class="knop ${r.kassa?'rand':''} ${!r.kassa&&regels.every(g=>r.kassaVink?.[g.key])?'oplichten':''}" data-a="kassaok">${r.kassa?'Toch niet verwerkt':'Verwerkt in kassa'}</button></div>
    ${mag('derving')?`<button class="verwijder" data-a="kassaweg">Lijst verwijderen</button>`:''}</div>`);
 }
 
