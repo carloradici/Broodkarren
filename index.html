@@ -818,7 +818,8 @@ function bbSaneer(weg,vorig,laatst,sinds,nuSet){const B=S.bestelboeken;
   const rij=a=>vorig?.rijen?.find(r=>r.t==='a'&&r.art===a);
   for(const a of weg){if(B.san[a])continue;const r=rij(a)||{};B.san[a]={art:a,naam:r.naam||'',groep:r.groep||'',eh:r.eh||'',bst:r.bst||'',cons:r.cons||'',ink:r.ink||'',laatst:laatst||vorig?.naam||'',sinds,boeken:bbInBoeken(a),t:Date.now()}}}
 function bbSanSeed(){const B=S.bestelboeken;if(B.sanSeed||!BB)return;const nu=new Set(BB.rijen.filter(r=>r.t==='a').map(r=>r.art));let n=0;
-  for(const[a,x]of Object.entries(BB_SAN_SEED)){if(nu.has(a)||B.san[a])continue;if(!bbInBoeken(a).length&&!B.bekend[a])continue;B.san[a]={art:a,...x,laatst:'week 41',sinds:BB.naam,boeken:bbInBoeken(a),t:Date.now()};n++}
+  const wk41=Object.values(S.log||{}).some(l=>/^Bestelboek week 41 ingelezen/.test(l?.tekst||''));
+  for(const[a,x]of Object.entries(BB_SAN_SEED)){if(nu.has(a)||B.san[a])continue;if(!wk41&&!bbInBoeken(a).length&&!B.bekend[a])continue;B.san[a]={art:a,...x,laatst:'week 41',sinds:BB.naam,boeken:bbInBoeken(a),t:Date.now()};n++}
   if(n){B.sanSeed=1;bewaar()}}
 const bbUitAss=()=>bbArtikelen().filter(r=>!r.eigen&&/^\s*uit\s*ass/i.test(r.naam));
 function bbSanRij(x,gelezen){const prijs=[x.cons?'cons. € '+x.cons.replace('.',','):'',x.ink?'ink. € '+x.ink.replace('.',','):''].filter(Boolean).join(' · ');const nu=bbInBoeken(x.art);
@@ -1394,7 +1395,7 @@ function bestelBerekening(){
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const APP_VERSIE='10.0',APP_BOUW='10.10.1';
+const APP_VERSIE='10.0',APP_BOUW='10.10.2';
 const NIEUWS=[['🏪','Brood Opzet per winkel','De app werkt nu per winkel. Alles wat je al had, hoort bij je eigen winkel. Voor jou verandert er niets.'],
  ['🔑','Koppelen met een code','Een nieuwe telefoon koppel je voortaan met de koppelcode van de winkel, zonder wachtwoord. De beheerder vindt de code onder Meer.'],
  ['🌤️','Weer en bakker','De beheerder kiest bij Broodsoorten en instellingen de plaats voor het weer en de naam van de bakker.'],
