@@ -533,9 +533,9 @@ const DEFAULTS={"items": [{"id": "b1", "kar": 1, "groep": "", "naam": "Croissant
 const SUPA_URL='https://dmvutkvpnoeenybznskz.supabase.co',SUPA_KEY='sb_publishable_bWdFBTPWPSK9nLo3UDZn5w_6uvDQ_eu';
 const DAGEN=[['ma','Ma','maandag'],['di','Di','dinsdag'],['wo','Wo','woensdag'],['do','Do','donderdag'],['vr','Vr','vrijdag'],['za','Za','zaterdag'],['zo','Zo','zondag']];
 const GROEP={mv:'ma t/m vr',za:'zaterdagen',zo:'zondagen'};
-const TABS=[['lijst','Klaarzetten',null],['plan','Invullen','invullen'],['derving','Derving','derving'],['meer','Meer',null]];
-const RECHTEN=[['bestelboek','Bestelboeken samenstellen en printen'],['vinken','Klaarzetten: afvinken, aantallen aanpassen, oven'],['derving','Derving invullen'],['invullen','Planning, afwijkende dagen en advies'],['bestellen','Deegbestelling en voorraad tellen'],['rapport','Weekrapport bekijken'],['soorten','Broodsoorten, karren en bakmomenten beheren']];
-const STANDAARD_RECHTEN={vinken:true,derving:true,invullen:false,bestellen:false,rapport:false,soorten:false};
+const TABS=[['home','Home',null],['lijst','Klaarzetten',null],['plan','Invullen','invullen'],['derving','Derving','derving'],['meer','Meer',null]];
+const RECHTEN=[['uren','Uren klokken (als klokken voor medewerkers aan staat)'],['bestelboek','Bestelboeken samenstellen en printen'],['vinken','Klaarzetten: afvinken, aantallen aanpassen, oven'],['derving','Derving invullen'],['invullen','Planning, afwijkende dagen en advies'],['bestellen','Deegbestelling en voorraad tellen'],['rapport','Weekrapport bekijken'],['soorten','Broodsoorten, karren en bakmomenten beheren']];
+const STANDAARD_RECHTEN={uren:true,vinken:true,derving:true,invullen:false,bestellen:false,rapport:false,soorten:false};
 const WEEKDAGEN=[[1,'Ma'],[2,'Di'],[3,'Wo'],[4,'Do'],[5,'Vr'],[6,'Za'],[0,'Zo']];
 /* 10.0 meerdere winkels: welke winkel dit toestel toont; elke winkel heeft een eigen opslag op het toestel.
    De eerste winkel op een toestel houdt de oude namen, zodat bestaande gegevens blijven staan. */
@@ -597,7 +597,7 @@ function naarV6(S){
   delete S.sessie;delete S.laatsteActie;S.versie=6;return S;
 }
 function vulAan(S){
-  for(const k of['historie','derving','karOverride','afwijkend','notities','voorraad','vinkjes','status','avond','dervBest','aanpas','timers','log','fotos','snij','ontdooi','dervHH','bijbak','profielen','berichten','karTaak','afsluit','feestNee','notfotos','dervReg','levering','cadeau','pins','push','pbFouten','prijzen','pushTeam'])S[k]=isObj(S[k])?S[k]:{};
+  for(const k of['historie','derving','karOverride','afwijkend','notities','voorraad','vinkjes','status','avond','dervBest','aanpas','timers','log','fotos','snij','ontdooi','dervHH','bijbak','profielen','berichten','karTaak','afsluit','feestNee','notfotos','dervReg','levering','cadeau','pins','push','pbFouten','prijzen','pushTeam','uren'])S[k]=isObj(S[k])?S[k]:{};
   for(const k of['gebruikers','soorten','karren'])S[k]=Array.isArray(S[k])?S[k]:[];
   S.plan=isObj(S.plan)?S.plan:{};for(const k of['ma','di','wo','do','vr','za','zo'])S.plan[k]=isObj(S.plan[k])?S.plan[k]:{};
   S.leverdagen=Array.isArray(S.leverdagen)?S.leverdagen:[1,3,5];S.ovenMax=S.ovenMax||10;if(S.omschakel===undefined)S.omschakel=14;if(!Array.isArray(S.versDagen))S.versDagen=[1,2,3,4,5,6];if(!isObj(S.versUitz))S.versUitz={};if(!isObj(S.herinnering))S.herinnering={aan:true,uur:10,min:0};if(S.uitlogMin==null)S.uitlogMin=5;
@@ -1007,7 +1007,7 @@ function foutTekstKort(e){const m=String(e&&(e.message||e)||'onbekend');const st
 function meldFout(e,waar){const t=foutTekstKort(e);console.error(waar,e);try{L.laatsteFout={t:Date.now(),waar:waar||'',tekst:t,versie:APP_BOUW};bewaarL()}catch(x){}
   try{let el=document.getElementById('foutbalk');if(!el){el=document.createElement('div');el.id='foutbalk';document.body.appendChild(el)}
     el.innerHTML=`<b>Er ging iets mis${waar?' bij '+esc(waar):''}</b><div>${esc(t)}</div><button data-a="foutweg">Oké</button>`;el.classList.add('open')}catch(x){}}
-function veiligScherm(){try{return tab==='lijst'?lijstHtml():tab==='plan'?planHtml():tab==='derving'?dervingHtml():meerHtml()}
+function veiligScherm(){try{return tab==='home'?homeHtml():tab==='uren'?urenPaginaHtml():tab==='lijst'?lijstHtml():tab==='plan'?planHtml():tab==='derving'?dervingHtml():meerHtml()}
   catch(e){const waar=(tab==='meer'&&sub?'Meer → '+sub:tab);meldFout(e,waar);if(tab==='meer'&&sub){sub=null;try{return meerHtml()}catch(x){}}tab='meer';sub=null;try{return meerHtml()}catch(x){return'<p class="leeg">Er ging iets mis. Sluit de app en open hem opnieuw.</p>'}}}
 window.addEventListener('error',e=>{if(e&&e.error)meldFout(e.error,'')});
 window.addEventListener('unhandledrejection',e=>{const r=e&&e.reason;if(r&&!(r.name==='AbortError'||r.conflict))meldFout(r,'')});
@@ -1395,7 +1395,7 @@ function bestelBerekening(){
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const APP_VERSIE='10.0',APP_BOUW='10.10.2';
+const APP_VERSIE='10.0',APP_BOUW='10.12';
 const NIEUWS=[['🏪','Brood Opzet per winkel','De app werkt nu per winkel. Alles wat je al had, hoort bij je eigen winkel. Voor jou verandert er niets.'],
  ['🔑','Koppelen met een code','Een nieuwe telefoon koppel je voortaan met de koppelcode van de winkel, zonder wachtwoord. De beheerder vindt de code onder Meer.'],
  ['🌤️','Weer en bakker','De beheerder kiest bij Broodsoorten en instellingen de plaats voor het weer en de naam van de bakker.'],
@@ -1408,7 +1408,8 @@ const NIEUWS_OUD=[['🔑','Eigen pincode','Nieuwe medewerkers kiezen bij de eers
  ['✅','Duidelijke bevestiging','Na afvinken of opslaan zie je een groene melding. Bij een vreemd aantal vraagt de app "Klopt dit?".'],
  ['🎨','Kleur per kar','Elke kar kan een eigen kleur hebben, zodat je de lijst makkelijk bij de echte kar vindt.'],
  ['⇄','Snel wisselen','Werk je met meerdere mensen op één telefoon? Tik bovenin op je naam om te wisselen.']];
-function nieuwsNaStart(){setTimeout(()=>{if(!L.sessie||document.getElementById('sheet')?.classList.contains('open')||document.getElementById('tour')?.classList.contains('open'))return;const p=prof();if(p.rondleiding&&p.versieGezien!==APP_VERSIE)toonNieuws()},700)}
+function nieuwsNaStart(){setTimeout(()=>{if(!L.sessie||document.getElementById('sheet')?.classList.contains('open')||document.getElementById('tour')?.classList.contains('open'))return;const p=prof();if(p.updates&&p.rondleiding&&p.versieGezien!==APP_VERSIE)toonNieuws()},700)}
+const updatesTonen=()=>!!(L.sessie&&prof().updates);
 function toonNieuws(){const p=prof();if(!L.sessie||p.versieGezien===APP_VERSIE)return false;
   toonSheet(`<div class="pkop"><span style="width:70px"></span><b>Nieuw in versie ${APP_VERSIE}</b><button data-a="nieuwsklaar" style="font-weight:700">Top!</button></div><div class="pinhoud">
    <div class="sectie" style="margin:10px 0 0">${NIEUWS.map(([i,t,x])=>`<div class="rij inv"><div class="nieuwsicoon">${i}</div><div class="groei"><div class="naam">${t}</div><div class="sub">${x}</div></div></div>`).join('')}</div>
@@ -1495,7 +1496,7 @@ function maakDb(){
 }
 function splitsen(){
   const o={'beheer:gebruikers':{lijst:S.gebruikers},instellingen:{bakker:S.bakker||'',locatie:S.locatie||null,winkelLogo:S.winkelLogo||null,soorten:S.soorten,karren:S.karren,momenten:S.momenten,ovenMax:S.ovenMax,leverdagen:S.leverdagen,programmas:S.programmas,omschakel:S.omschakel??null,versDagen:S.versDagen,versUitz:S.versUitz,pakbonNegeer:S.pakbonNegeer||[],pakbonNamen:S.pakbonNamen||{},pakbonCijfers:S.pakbonCijfers||{},herinnering:S.herinnering,uitlogMin:S.uitlogMin},
-    plan:{plan:S.plan,karOverride:S.karOverride,feestNee:S.feestNee},afwijkend:S.afwijkend,voorraad:S.voorraad,profielen:S.profielen,berichten:S.berichten,pins:S.pins,materiaal:S.materiaal,pakbonfouten:S.pbFouten,pushteam:S.pushTeam};
+    plan:{plan:S.plan,karOverride:S.karOverride,feestNee:S.feestNee},afwijkend:S.afwijkend,voorraad:S.voorraad,profielen:S.profielen,berichten:S.berichten,pins:S.pins,materiaal:S.materiaal,pakbonfouten:S.pbFouten,pushteam:S.pushTeam,...(Object.keys(S.uren||{}).length?{uren:S.uren}:{})};
   const dagen=new Set();for(const k of DAGVELDEN)for(const d of Object.keys(S[k]))dagen.add(d);
   for(const d of dagen){const x={};for(const k of DAGVELDEN)if(S[k][d]!==undefined)x[k]=S[k][d];o['dag:'+d]=x}
   for(const[id,l]of Object.entries(S.log)){const k='log:'+iso(new Date(l.t));(o[k]=o[k]||{})[id]=l}
@@ -1520,6 +1521,7 @@ function pasToe(k,v){
   else if(k==='voorraad')S.voorraad=v;
   else if(k==='profielen')S.profielen=v;
   else if(k==='berichten')S.berichten=v;
+  else if(k==='uren')S.uren=v;
   else if(k==='pins')S.pins=v;
   else if(k==='materiaal')S.materiaal=vulMateriaal(v);
   else if(k==='prive:push')S.push=v;
@@ -1646,7 +1648,7 @@ async function koppelStart(){
 window.addEventListener('online',()=>{if(L.gekoppeld&&db)sync()});
 
 /* ================= toestand scherm ================= */
-let tab='lijst',sub=null,datum=iso(),moment=S.momenten[0].id,planKeuze=planKeyVoor(iso()),open={},dervDatum=iso(),
+let tab='home',sub=null,datum=iso(),moment=S.momenten[0].id,planKeuze=planKeyVoor(iso()),open={},dervDatum=iso(),
     bewerk=null,verwStap=false,loginKeuze=null,ovenModus=false,ovenKeuze={},werk=null,rapWeek=null,afwStap=null,best='weg',koppelFout='',
     ontDatum=plusDagen(iso(),1),afwForm={datum:plusDagen(iso(),1),naam:'',start:'kopie'},uitlegOpen=null,volgVandaag=true;
 function versGeleverd(d){if(S.versUitz&&d in S.versUitz)return!!S.versUitz[d];return(S.versDagen||[1,2,3,4,5,6]).includes(vanIso(d).getDay())}
@@ -1661,6 +1663,7 @@ function render(){
   const m=document.getElementById('scherm');pasThemaToe();_render();const merk=!!m.querySelector('.merkscherm');document.getElementById('app').classList.toggle('merkmodus',merk);
   if(tab==='lijst'&&zoekOpen)zoekFilter();
   if(typeof terugBewaak==='function')setTimeout(terugBewaak,0);
+  try{toonUpdateBalk()}catch(e){}
   const k=m.querySelector('.kop');if(k&&!merk){k.insertAdjacentHTML('afterbegin',`<img class="koplogo" src="${logoSrc()}" alt="${esc(winkelNaam())}">${isAdmin()||ongelezenM()?(()=>{const n=belItems().length;return`<button class="belknop" data-a="bel" aria-label="Meldingen">🔔${n?`<span class="belgetal">${n}</span>`:''}</button>`})():''}${ik()&&S.gebruikers.filter(g=>g.rol==='admin'||g.actief!==false).length>1?`<button class="wisselknop ${isAdmin()||ongelezenM()?'metbel':''}" data-a="wissel">${prof().emoji||'👤'} ${esc((ik().naam||'').split(' ')[0])} ⇄</button>`:''}`);const t=m.querySelector(':scope > .terug');if(t)k.prepend(t)}
 }
 function _render(){
@@ -1674,11 +1677,12 @@ function _render(){
   if(syncStatus==='start'&&!S.gebruikers.length){m.innerHTML=`<div class="login"><h1>Verbinden…</h1><p>Gegevens worden opgehaald.</p></div>`;nav.innerHTML='';return}
   if(!S.gebruikers.some(g=>g.rol==='admin')){m.innerHTML=setupHtml();nav.innerHTML='';return}
   const g=ik();if(!g||(g.rol!=='admin'&&g.actief===false)){if(L.sessie){L.sessie=null;bewaarL()}m.innerHTML=loginHtml();nav.innerHTML='';return}
-  const t=TABS.find(x=>x[0]===tab);if(!t||(t[2]&&!mag(t[2])))tab='lijst';
+  const t=TABS.find(x=>x[0]===tab);if(tab==='uren'?!urenMag():(!t||(t[2]&&!mag(t[2]))))tab='home';
   m.innerHTML=veiligScherm();
-  if(tab==='lijst'){const bk=chatBalkKlaarzetten();if(bk){const k=m.querySelector('.kop');if(k)k.insertAdjacentHTML('afterend',bk);else m.insertAdjacentHTML('afterbegin',bk)}}
+  if(tab==='lijst'||tab==='home'){const bk=chatBalkKlaarzetten();if(bk){const k=m.querySelector('.kop');if(k)k.insertAdjacentHTML('afterend',bk);else m.insertAdjacentHTML('afterbegin',bk)}}
+  if(['lijst','plan','derving'].includes(tab)||(tab==='uren'&&urenView==='klok'))m.insertAdjacentHTML('afterbegin','<button class="terug" data-a="tab" data-v="home">‹ Home</button>');
   {const wb=winkelBalk();if(wb)m.insertAdjacentHTML('afterbegin',wb)}
-  nav.innerHTML=TABS.filter(([k,l,r])=>!r||mag(r)).map(([k,l,r])=>{const ok=true;return`<button data-a="${ok?'tab':'slot'}" data-v="${k}" class="${tab===k?'aan':''} ${ok?'':'op-slot'}">${ok?'':SLOT+' '}${l}${k==='meer'&&chatTotaal()?'<span class="tabbol"></span>':''}</button>`}).join('');
+  nav.innerHTML=TABS.filter(([k,l,r])=>k==='home'||k==='meer').map(([k,l,r])=>{const ok=true;return`<button data-a="${ok?'tab':'slot'}" data-v="${k}" class="${tab===k||(k==='home'&&tab!=='meer')?'aan':''} ${ok?'':'op-slot'}">${ok?'':SLOT+' '}${l}${k==='meer'&&chatTotaal()?'<span class="tabbol"></span>':''}</button>`}).join('');
   if(chatId&&document.getElementById('chatOv')?.classList.contains('open'))chatVernieuw();
   if(werk)renderWerk();
 }
@@ -2239,10 +2243,11 @@ function instellingenHtml(){const p=prof();
    <div class="kaartje"><h3>Weergave</h3>${seg('thema',[['auto','Automatisch'],['licht','Licht'],['donker','Donker']])}
    <div class="hulp" style="margin-top:14px">Tekstgrootte</div>${seg('tekst',[['normaal','Normaal'],['groot','Groot'],['xl','Extra groot']])}</div>
    <div class="kaartje"><h3>Lijsten</h3>${sw('compact','Compacte lijst')}${sw('fotos',"Foto's tonen")}${sw('patroon','Achtergrondpatroon')}${sw('plu','PLU-nummers tonen')}</div>
+   <div class="kaartje"><h3>Updates</h3>${sw('updates','Updates tonen')}<div class="sub" style="margin-top:6px">${p.updates?'Je ziet wat er nieuw is na een update, en een balk als er een nieuwe versie klaarstaat.':'Uit: de app werkt zichzelf stil bij als hij op de achtergrond staat. Je krijgt geen meldingen over nieuwe versies.'}</div></div>
    <div class="kaartje"><h3>Persoonlijk</h3><div class="hulp" style="margin:0 0 6px">Jouw emoji</div>
    <div class="emojis">${['',...EMOJI].map(e=>`<button class="emojiknop ${p.emoji===e?'aan':''}" data-a="prof" data-k="emoji" data-v="${e}">${e||'geen'}</button>`).join('')}</div>
    <div class="hulp" style="margin:14px 0 6px">Accentkleur</div><div class="emojis">${ACCENTEN.map(([k,l,c])=>`<button class="kleurknop ${p.accent===k?'aan':''}" data-a="prof" data-k="accent" data-v="${k}"><i style="background:${c}"></i>${l}</button>`).join('')}</div>
-   <div class="hulp" style="margin-top:14px">Startpagina na inloggen</div><div class="segment" style="margin:8px 0 0">${[['slim','Slim'],['lijst','Klaarzetten'],['derving','Derving'],['plan','Invullen']].map(([v,l])=>`<button data-a="prof" data-k="start" data-v="${v}" class="${(p.start||'slim')===v?'aan':''}">${l}</button>`).join('')}</div>
+   <div class="hulp" style="margin-top:14px">Startpagina na inloggen</div><div class="segment" style="margin:8px 0 0">${[['home','Home'],['slim','Slim'],['lijst','Klaarzetten'],['derving','Derving'],['plan','Invullen']].map(([v,l])=>`<button data-a="prof" data-k="startp" data-v="${v}" class="${(p.startp||'home')===v?'aan':''}">${l}</button>`).join('')}</div>
    ${(p.start||'slim')==='slim'?`<div class="hulp" style="margin-top:6px">Slim: overdag Klaarzetten (na de levertijd meteen bij de levering), 's avonds Derving vanaf <select class="veld" id="dervUur" style="width:86px;display:inline-block;padding:4px 8px">${[12,13,14,15,16,17,18,19,20,21].map(u=>`<option value="${u}" ${u===(p.dervUur??17)?'selected':''}>${u}:00</option>`).join('')}</select></div>`:''}
    ${S.momenten.length>1?`<div class="hulp" style="margin-top:14px">Standaard bakmoment</div>${seg('moment',[['','Geen'],...S.momenten.map(m=>[m.id,esc(m.naam)])])}`:''}</div>
    ${isAdmin()&&kanBeheren()?`<div class="kaartje"><h3>Face ID</h3>${!faceKan()?`<p class="hulp">${IS_ANDROID?'Inloggen met Face ID kan alleen op de iPhone van de beheerder.':'Face ID wordt hier niet ondersteund. Open Brood Opzet vanaf je beginscherm op je iPhone.'}</p>`:L.faceid&&L.faceid.uid===L.sessie?'<div class="sub">✓ Aan op dit toestel. Op het inlogscherm staat de knop Inloggen met Face ID.</div><div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:8px"><button class="knop rand klein" data-a="faceuit">Face ID uitzetten</button></div>':'<div class="sub">Log op dit toestel in met Face ID in plaats van je pincode. Alleen voor jou, alleen op deze telefoon.</div><div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:8px"><button class="knop klein" data-a="faceaan">Face ID aanzetten</button></div>'}</div>`:''}
@@ -2284,7 +2289,7 @@ function vulMateriaal(m){m=isObj(m)?m:{};if(!Array.isArray(m.lijst))m.lijst=['Br
 const matNaam=id=>S.materiaal.lijst.find(x=>x.id===id)?.naam||S.materiaal.los[id]?.naam||'?';
 function matGemeld(){return[...Object.entries(S.materiaal.meld).map(([id,x])=>({id,naam:matNaam(id),...x})),...Object.values(S.materiaal.los).map(x=>({...x,los:true}))].filter(x=>x.staat)}
 const MAT_LABEL={bijna:['Bijna op','aangepast'],op:['Op!','rood'],besteld:['Besteld','schap']};
-const MEER_GROEP={berichten:'dagelijks',vraag:'dagelijks',materiaal:'dagelijks',notities:'dagelijks',dervlijsten:'dagelijks',ontdooi:'dagelijks',pakbonnen:'dagelijks',afsluiten:'dagelijks',plu:'dagelijks',
+const MEER_GROEP={mijnuren:'dagelijks',uren:'beheer',berichten:'dagelijks',vraag:'dagelijks',materiaal:'dagelijks',notities:'dagelijks',dervlijsten:'dagelijks',ontdooi:'dagelijks',pakbonnen:'dagelijks',afsluiten:'dagelijks',plu:'dagelijks',
   afwijkend:'planning',bestel:'planning',bestelboeken:'planning',rapport:'rapporten',nieuw:'rapporten',export:'rapporten',gedaan:'rapporten',log:'rapporten',
   soorten:'instellingen',programmas:'instellingen',team:'instellingen',instellingen:'instellingen',klaar:'beheer',qrwinkel:'beheer',cadeau:'beheer',push:'beheer',leesfouten:'beheer',weekoverzicht:'beheer',besteladvies:'beheer',prijzen:'beheer',backup:'beheer',winkels:'beheer',winkel:'beheer',facturen:'beheer',abonnement:'beheer',aanbieder:'beheer',uitleg:'hulp'};
 const GROEPEN=[['dagelijks','Dagelijks'],['planning','Planning'],['rapporten','Rapporten'],['instellingen','Instellingen'],['beheer','Beheer – alleen voor jou'],['hulp','Hulp']];
@@ -2293,6 +2298,7 @@ function meerLijstHtml(items){
     ['cadeau','🎁 Cadeaubonnen',`${cadeauTellers().uit} uitgegeven · ${euro(cadeauTellers().open)} openstaand`,()=>true],['push','🔔 Pushmeldingen',pushStatus()==='granted'&&S.push.subs?.length?'Staan aan':'Meldingen op je telefoon',()=>true],['leesfouten','📷 Leesfouten pakbon',`${Object.keys(S.pbFouten).length} gemeld`,()=>true],['weekoverzicht','📊 Weekoverzicht','Derving, verschillen met de bakker, advies',()=>true],['besteladvies','🧮 Bestel-advies','Per weekdag, op basis van derving',()=>true],['prijzen','💶 Inkoopprijzen',"Derving in euro's",()=>true],['backup','💾 Back-up','Elke nacht een kopie op de server',()=>true],
     ...(isEigenaar()?[['winkels','🏪 Winkels',`${(WK.lijst||[]).length} ${(WK.lijst||[]).length===1?'winkel':'winkels'} · wisselen, toestellen koppelen, overzicht`,()=>true]]:WINKEL&&WINKEL.rol==='bedrijfsleider'?[['winkel','🏪 Winkel en toestellen','Koppelcode voor de toestellen van de winkel',()=>true]]:[]),
     ...(isEigenaar()?[['abonnement','⭐ Abonnement',`Pakket ${PAKKET_NAAM[WINKEL.pakket]||''}${WINKEL.proef_pakket&&WINKEL.proef_tot>=iso()?' · proef '+PAKKET_NAAM[WINKEL.proef_pakket]:''}`,()=>true]]:[]),
+    ...(isAdmin()?[['uren','⏱ Urenregistratie',(()=>{const n=urenNu().length,c=Object.values(isObj(S.uren?.corr)?S.uren.corr:{}).filter(x=>x.status==='open').length;return[n?`${n} nu ingeklokt`:'',c?`${c} correctie${c===1?'':'s'}`:''].filter(Boolean).join(' · ')||(urenInst().iedereen?'Overzicht per dag, week of maand':'Overzicht per dag, week of maand · testfase')})(),()=>true]]:[]),
     ...(facturenMag()?[['facturen','🧾 Facturen',(()=>{const o=Object.values(S.facturen.lijst).filter(f=>f.status==='verstuurd'||f.status==='afgerond');return o.length?`${o.length} open · ${fEuro(o.reduce((t,f)=>t+factTotalen(f).tot,0))}`:'Facturen maken en bijhouden'})(),()=>true]]:[]),
     ...(isAanbieder()?[['aanbieder','🧑‍💼 Brood Opzet beheer',`Ondernemers, pakketten, uitnodigingen${L.aanvragen?` · ${L.aanvragen} ${L.aanvragen===1?'aanvraag':'aanvragen'}`:''}`,()=>true]]:[])];
   /* 10.0: functies buiten het pakket met een slotje */
@@ -2317,7 +2323,7 @@ function belItems(){if(!isAdmin()){const o=ongelezenM();return o?[{i:'💬',t:`$
   {const pf=Object.values(S.pbFouten).filter(x=>x.t>(L.pfGezien||0)).length;if(pf&&kanBeheren()&&heeft('scan'))l.push({i:'📷',t:`${pf} ${pf===1?'leesfout':'leesfouten'} pakbon gemeld`,a:'sub',v:'leesfouten'})}
   {const p=bakkerPatronen();if(p.length)l.push({i:'⚖️',t:`Bakker levert vaker te weinig: ${p.map(x=>`${x.s.naam} (${x.keer}×)`).join(', ')}`,a:'sub',v:'pakbonnen'})}
   if(h>=19&&!S.afsluit[iso()])l.push({i:'🌙',t:'Dag nog niet afgesloten',a:'sub',v:'afsluiten'});
-  if(prof().versieGezien!==APP_VERSIE)l.push({i:'✨',t:`Nieuw in versie ${APP_VERSIE}`,a:'nieuwsnu'});
+  if(prof().updates&&prof().versieGezien!==APP_VERSIE)l.push({i:'✨',t:`Nieuw in versie ${APP_VERSIE}`,a:'nieuwsnu'});
   return l}
 function openBel(){const l=belItems(),P=prof();
   toonSheet(`<div class="pkop"><span style="width:60px"></span><b>Meldingen</b><button data-a="sluit" style="font-weight:700">Sluiten</button></div><div class="pinhoud">
@@ -2709,6 +2715,193 @@ function openKarTaak(nr){
 }
 
 /* ---------- berichten aan beheerder ---------- */
+
+
+/* ================= 10.12 urenregistratie (per medewerker, zonder locatie) ================= */
+/* S.uren = {_inst:{iedereen}, namen:{id:{id,naam,t,weg,koppel}}, d:{uid:{dienstId:{id,in,uit,p:{pid:{van,tot}},pm,not,wie,gew:{}}}},
+   corr:{}, goed:{'uid|maandag':{wie,t}}}. uid = gebruiker-id of 'n_'+naam-id (iemand zonder account). Alles maps. */
+let urenPer='week',urenDatum=null,urenOpenP={},urenBusy=false,urenView='klok';
+function urenInst(){const i=isObj(S.uren?._inst)?S.uren._inst:{};return{iedereen:!!i.iedereen}}
+const urenMag=()=>!!ik()&&(isAdmin()||(urenInst().iedereen&&mag('uren')));
+const urenVan=uid=>isObj(S.uren?.d?.[uid])?S.uren.d[uid]:{};
+function urenBasis(){if(!isObj(S.uren))S.uren={};return S.uren}
+function urenSchrijf(uid){const u=urenBasis();if(!isObj(u.d))u.d={};if(!isObj(u.d[uid]))u.d[uid]={};return u.d[uid]}
+const urenNamen=()=>isObj(S.uren?.namen)?S.uren.namen:{};
+function urenNaam(uid){if(uid.startsWith('n_'))return urenNamen()[uid.slice(2)]?.naam||'?';return S.gebruikers.find(g=>g.id===uid)?.naam||'?'}
+const urenExtern=uid=>uid.startsWith('n_');
+function urenMensen(alles){const l=S.gebruikers.filter(g=>g.actief!==false||(alles&&urenDiensten(g.id).length)).map(g=>({uid:g.id,naam:g.naam,extern:false}));
+  for(const n of Object.values(urenNamen()))if(isObj(n)&&n.naam&&(!n.weg||(alles&&urenDiensten('n_'+n.id).length)))l.push({uid:'n_'+n.id,naam:n.naam,extern:true,weg:!!n.weg});
+  return l.sort((a,c)=>a.naam.localeCompare(c.naam,'nl'))}
+const urenDiensten=uid=>Object.values(urenVan(uid)).filter(x=>isObj(x)&&x.in);
+const urenLopend=uid=>urenDiensten(uid).find(x=>!x.uit);
+function urenPauze(x,tot){const eind=x.uit||tot||Date.now();if(x.pm!=null)return{ms:x.pm*60000,open:null};let ms=0,open=null;
+  for(const p of Object.values(isObj(x.p)?x.p:{})){if(!isObj(p)||!p.van)continue;if(p.tot)ms+=Math.max(0,p.tot-p.van);else{open=p;ms+=Math.max(0,eind-p.van)}}return{ms,open}}
+const urenNetto=x=>{const e=x.uit||Date.now();return Math.max(0,e-x.in-urenPauze(x,e).ms)};
+const urenDuur=ms=>{const m=Math.round(ms/60000);return`${Math.floor(m/60)}:${String(m%60).padStart(2,'0')}`};
+const urenTijd=t=>tijdTekst(t);
+function urenPauzeFout(x){if(!x.uit)return'';const n=urenNetto(x),p=urenPauze(x).ms;if(n>10*3600e3&&p<45*60000)return'Meer dan 10 uur gewerkt met minder dan 45 min pauze';if(n>5.5*3600e3&&p<30*60000)return'Meer dan 5,5 uur gewerkt met minder dan 30 min pauze';return''}
+const urenGoedKey=(uid,d)=>uid+'|'+maandag(d);
+const urenGoed=(uid,d)=>isObj(S.uren?.goed)?S.uren.goed[urenGoedKey(uid,d)]:null;
+const urenId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const urenNu=()=>urenMensen(true).filter(p=>urenLopend(p.uid));
+/* ---------- klokken ---------- */
+function urenKlok(actie,uid){const u=ik();if(!u||!urenMag()||urenBusy||!uid)return;urenBusy=true;setTimeout(()=>urenBusy=false,800);const nu=Date.now(),ds=urenSchrijf(uid),x=urenLopend(uid),naam=urenNaam(uid);
+  if(actie==='in'){if(x)return;const id=urenId();ds[id]={id,in:nu,p:{},wie:u.naam};log(`${naam} ingeklokt`);bewaar();render();bevestig(`✓ ${naam} ingeklokt om ${urenTijd(nu)}`);return}
+  if(!x)return;
+  if(actie==='pauze'){const p=urenPauze(x).open;if(p){p.tot=nu;log(`${naam}: pauze klaar`);bevestig(`✓ ${naam} weer aan het werk`)}else{if(!isObj(x.p))x.p={};x.p[urenId()]={van:nu};log(`${naam}: pauze`);bevestig(`☕ Pauze ${naam}`)}bewaar();render();return}
+  if(actie==='uit'){const p=urenPauze(x).open;if(p)p.tot=nu;x.uit=nu;log(`${naam} uitgeklokt`);bewaar();render();const f=urenPauzeFout(x);bevestig(`✓ ${naam} uitgeklokt · ${urenDuur(urenNetto(x))} gewerkt`);if(f)setTimeout(()=>toast('⚠️ '+f),1800)}}
+/* ---------- periode ---------- */
+function urenBereik(){const d=urenDatum||iso();
+  if(urenPer==='dag')return{van:d,tot:d,label:dagNaamLang(d),kort:'dag'};
+  if(urenPer==='maand'){const x=vanIso(d),van=iso(new Date(x.getFullYear(),x.getMonth(),1)),tot=iso(new Date(x.getFullYear(),x.getMonth()+1,0));return{van,tot,label:x.toLocaleDateString('nl-NL',{month:'long',year:'numeric'}),kort:'maand'}}
+  const w=maandag(d);return{van:w,tot:plusDagen(w,6),label:`Week ${weeknr(w)}`,sub:`${datumTekst(w)} – ${datumTekst(plusDagen(w,6))}`,kort:'week'}}
+function urenSchuif(r){const d=urenDatum||iso();if(urenPer==='dag')urenDatum=plusDagen(d,r);else if(urenPer==='week')urenDatum=plusDagen(d,7*r);else{const x=vanIso(d);urenDatum=iso(new Date(x.getFullYear(),x.getMonth()+r,1))}}
+function urenIn(uid,van,tot){return urenDiensten(uid).filter(x=>{const d=iso(new Date(x.in));return d>=van&&d<=tot}).sort((a,c)=>a.in-c.in)}
+/* ---------- regels ---------- */
+function urenRij(uid,x,beheer){const d=iso(new Date(x.in)),p=urenPauze(x),f=urenPauzeFout(x),goed=urenGoed(uid,d),gew=isObj(x.gew)?Object.values(x.gew):[];
+  const tags=[f?'⚠️ '+f:'',gew.length?'✎ aangepast':'',goed?'✓ goedgekeurd':''].filter(Boolean);
+  return`<div class="rij inv" style="flex-wrap:wrap"><div class="groei"><div class="naam" style="font-size:16px">${esc(datumTekst(d))} · ${urenTijd(x.in)}–${x.uit?urenTijd(x.uit)+(iso(new Date(x.uit))!==d?' (+1)':''):'nu'}</div>
+   <div class="sub">${x.uit?'':'<b>loopt nog</b> · '}pauze ${urenDuur(p.ms)} · <b>${urenDuur(urenNetto(x))} gewerkt</b>${x.not?' · '+esc(x.not):''}</div>${tags.length?`<div class="sub ${f?'oranjetekst':''}">${tags.map(esc).join(' · ')}</div>`:''}</div>
+   ${beheer?`<button class="knop rand klein" data-u="bewerk" data-v="${esc(uid)}|${esc(x.id)}">Bewerken</button>`:''}</div>`}
+/* ---------- hoofdpagina Uren: klokken per medewerker ---------- */
+function urenKlokRij(p){const x=urenLopend(p.uid),open=urenOpenP[p.uid],adm=isAdmin(),zelf=ik()?.id===p.uid;let st,kn;
+  if(!x){const vd=urenDiensten(p.uid).filter(d=>iso(new Date(d.in))===iso()&&d.uit),tot=vd.reduce((t,d)=>t+urenNetto(d),0);
+    st=tot?`vandaag ${urenDuur(tot)} gewerkt`:'niet ingeklokt';kn=`<button class="knop klein" data-u="in" data-v="${esc(p.uid)}">▶︎ Inklokken</button>`}
+  else{const pa=urenPauze(x),lang=Date.now()-x.in>10*3600e3;
+    st=pa.open?`<b>☕ pauze sinds ${urenTijd(pa.open.van)}</b> · ${urenDuur(urenNetto(x))}`:`<b>werkt sinds ${urenTijd(x.in)}</b> (${urenDuur(urenNetto(x))})${pa.ms?` · pauze ${urenDuur(pa.ms)}`:''}`;
+    if(lang)st+=`<div style="color:var(--rood);font-weight:700">Vergeten uit te klokken? Ingeklokt sinds ${esc(datumTekst(iso(new Date(x.in))))} ${urenTijd(x.in)}</div>`;
+    const uitK=afwStap==='uurUit:'+p.uid;
+    kn=`<button class="knop klein ${pa.open?'':'rand'}" data-u="pauze" data-v="${esc(p.uid)}">${pa.open?'Pauze klaar':'☕ Pauze'}</button><button class="knop klein ${uitK?'rood':'rand'}" data-u="uit" data-v="${esc(p.uid)}">${uitK?'Zeker?':'⏹ Uitklokken'}</button>`}
+  const w=maandag(iso()),l=open?urenIn(p.uid,w,plusDagen(w,6)):[];
+  return`<div class="sectie uurrij ${x?'aanwerk':''}"><div class="rij inv" style="flex-wrap:wrap;gap:8px"><button class="groei uurnaam" data-u="persoon" data-v="${esc(p.uid)}"><div class="naam">${esc(p.naam)} <span class="pijltje">${open?'▴':'▾'}</span></div><div class="sub">${p.extern?'geen account · ':''}${st}</div></button><div class="knoppen" style="padding:0;gap:6px;flex-wrap:nowrap">${kn}</div></div>
+   ${open?`<div class="meerinhoud"><div class="hulp" style="margin:6px 14px 0">Deze week: <b>${urenDuur(l.reduce((t,y)=>t+urenNetto(y),0))}</b></div>${l.map(y=>urenRij(p.uid,y,adm)).join('')||'<p class="leeg" style="margin:10px">Nog geen diensten deze week.</p>'}
+    ${adm?`<div class="knoppen" style="justify-content:flex-start;gap:6px;flex-wrap:wrap"><button class="knop rand klein" data-u="nieuw" data-v="${esc(p.uid)}">+ Dienst toevoegen</button>${p.extern?`<button class="knop rand klein" data-u="koppel" data-v="${esc(p.uid)}">Koppel aan account</button><button class="knop rand klein" data-u="naamweg" data-v="${esc(p.uid)}">${afwStap==='naamweg:'+p.uid?'Zeker? Tik nogmaals':'Naam weghalen'}</button>`:''}</div>`:''}</div>`:''}</div>`}
+function urenPaginaHtml(){if(urenView==='overzicht'&&isAdmin())return`<button class="terug" data-u="view" data-v="klok">‹ Uren</button>`+urenBeheerHtml();
+  const mensen=urenMensen(false),nu=mensen.filter(p=>urenLopend(p.uid)).length,i=urenInst();
+  return`<div class="kop"><div class="koprij"><div><h1>Uren</h1><p>${nu?`Nu aan het werk: <b>${nu}</b>`:'Niemand ingeklokt'}${isAdmin()&&!i.iedereen?' · testfase: alleen jij klokt':''}</p></div>${isAdmin()?`<button class="knop wit klein" data-u="view" data-v="overzicht">Overzicht</button>`:''}</div></div>
+   ${mensen.map(urenKlokRij).join('')}
+   ${isAdmin()?`<div class="knoppen" style="justify-content:flex-start"><button class="knop rand" data-u="andere">+ Andere naam</button></div><p class="hulp" style="margin:6px 18px">Voor iemand die niet in de app staat: vul een naam in en de klok start. De naam blijft daarna in de lijst staan.</p>`:''}`}
+/* ---------- overzicht (dag / week / maand) ---------- */
+function urenBeheerHtml(){if(!isAdmin())return'';const i=urenInst(),b=urenBereik();
+  const mensen=urenMensen(true).filter(p=>!p.weg||urenIn(p.uid,b.van,b.tot).length);
+  const corr=Object.values(isObj(S.uren?.corr)?S.uren.corr:{}).filter(c=>c.status==='open').sort((a,c)=>a.t-c.t);
+  let h=`<div class="kop"><div class="koprij"><h1>Urenoverzicht</h1></div><p>Diensten en pauzes per medewerker.</p></div>
+   <div class="segment">${[['dag','Dag'],['week','Week'],['maand','Maand']].map(([k,l])=>`<button data-u="per" data-v="${k}" class="${urenPer===k?'aan':''}">${l}</button>`).join('')}</div>
+   <div class="datumrij"><button data-u="schuif" data-v="-1">‹</button><div style="flex:1;text-align:center;font-weight:800">${esc(b.label)}${b.sub?`<div class="sub" style="font-weight:400">${esc(b.sub)}</div>`:''}</div><button data-u="schuif" data-v="1">›</button></div>`;
+  if(corr.length)h+=`<div class="sectie"><div class="karkop"><b>Correctieverzoeken (${corr.length})</b></div>${corr.map(c=>`<div class="rij inv" style="flex-wrap:wrap"><div class="groei"><div class="naam" style="font-size:16px">${esc(c.naam)} · ${esc(datumTekst(c.d))} ${esc(c.van)}–${esc(c.tot)}</div><div class="sub">pauze ${c.pauze} min${c.not?' · “'+esc(c.not)+'”':''}</div></div><div class="knoppen" style="padding:6px 0 0;gap:6px"><button class="knop klein" data-u="corrok" data-v="${esc(c.id)}">Goedkeuren</button><button class="knop rand klein" data-u="corrnee" data-v="${esc(c.id)}">Afwijzen</button></div></div>`).join('')}</div>`;
+  let totaal=0,aantal=0;
+  for(const p of mensen){const l=urenIn(p.uid,b.van,b.tot),tot=l.reduce((t,x)=>t+urenNetto(x),0);totaal+=tot;if(l.length)aantal++;
+    if(urenPer==='dag'){if(!l.length)continue;
+      h+=`<div class="sectie"><div class="karkop"><b>${esc(p.naam)}</b>${p.extern?' <span class="sub">geen account</span>':''}<span class="bbtel" style="margin-left:auto">${urenDuur(tot)}</span></div>${l.map(x=>urenRij(p.uid,x,true)).join('')}</div>`;continue}
+    if(urenPer==='maand'&&!l.length)continue;
+    const goed=urenPer==='week'&&urenGoed(p.uid,b.van),open=urenOpenP['o'+p.uid],fout=l.some(x=>urenPauzeFout(x));
+    h+=`<div class="sectie menu meergroep ${open?'open':''}"><div class="rijflex"><button class="groepkop" data-u="opersoon" data-v="${esc(p.uid)}" style="flex:1"><b>${esc(p.naam)}${p.extern?' <small style="font-weight:400">· geen account</small>':''}${fout?' ⚠️':''}</b><span class="bbtel">${urenDuur(tot)}${goed?' ✓':''} ${open?'▴':'▾'}</span></button></div>
+     ${open?`<div class="meerinhoud">${l.map(x=>urenRij(p.uid,x,true)).join('')||'<p class="leeg" style="margin:10px">Geen diensten.</p>'}
+      <div class="knoppen" style="justify-content:flex-start;gap:6px;flex-wrap:wrap"><button class="knop rand klein" data-u="nieuw" data-v="${esc(p.uid)}">+ Dienst toevoegen</button>${urenPer==='week'&&l.length?`<button class="knop ${goed?'rand':''} klein" data-u="goed" data-v="${esc(p.uid)}">${goed?'Goedkeuring intrekken':'✓ Week goedkeuren'}</button>`:''}${p.extern?`<button class="knop rand klein" data-u="koppel" data-v="${esc(p.uid)}">Koppel aan account</button>`:''}</div>${goed?`<p class="hulp">Goedgekeurd door ${esc(goed.wie)} op ${esc(datumTekst(iso(new Date(goed.t))))}</p>`:''}</div>`:''}</div>`}
+  if(urenPer==='dag'&&!aantal)h+=`<p class="leeg">Geen diensten op deze dag.</p>`;
+  if(urenPer==='maand'&&!aantal)h+=`<p class="leeg">Geen diensten in deze maand.</p>`;
+  if(aantal)h+=`<div class="kaartje"><div class="naam">Totaal ${esc(b.kort==='dag'?'deze dag':b.kort==='week'?'deze week':'deze maand')}: ${urenDuur(totaal)}</div><div class="sub">${aantal} ${aantal===1?'medewerker':'medewerkers'}</div></div>`;
+  h+=`<div class="knoppen" style="flex-wrap:wrap"><button class="knop" data-u="export">📊 Exporteer ${esc(b.kort)}</button></div>
+   <div class="kaartje"><label class="schakel" style="margin:0;color:var(--tekst);font-weight:700">Klokken voor medewerkers<input type="checkbox" data-u="iedereen" ${i.iedereen?'checked':''}></label>
+    <div class="sub" style="margin-top:6px">${i.iedereen?'Iedereen met het recht “Uren klokken” ziet de tegel Uren op Home en kan klokken.':'Uit: alleen jij ziet Uren. Zet aan als je klaar bent met testen.'}</div></div>
+   <p class="hulp">Pauzecontrole volgens de standaardregels van de Arbeidstijdenwet voor volwassenen: meer dan 5,5 uur werk → 30 min pauze, meer dan 10 uur → 45 min. Controleer zelf of jullie cao iets anders zegt.</p>`;
+  return h}
+/* ---------- bewerken ---------- */
+const hhmm=t=>{const d=new Date(t);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
+function urenTijdstip(d,hm){const[h,m]=String(hm||'').split(':').map(Number);if(!isFinite(h)||!isFinite(m))return NaN;const x=vanIso(d);x.setHours(h,m,0,0);return x.getTime()}
+function urenFormulier(titel,actie,v,x,extra){const d=x?iso(new Date(x.in)):(urenView==='overzicht'||sub==='uren')&&urenPer==='dag'?(urenDatum||iso()):iso(),p=x?Math.round(urenPauze(x).ms/60000):30;
+  toonSheet(`<div class="pkop"><button data-a="sluit">Annuleren</button><b>${esc(titel)}</b><button data-u="${actie}" data-v="${esc(v)}" style="font-weight:700">Bewaren</button></div><div class="pinhoud">
+   <label>Datum</label><input class="veld" type="date" id="uD" value="${d}" max="${iso()}" style="width:190px">
+   <div class="minmax"><div><label>Begin</label><input class="veld" type="time" id="uVan" value="${x?hhmm(x.in):'08:00'}"></div><div><label>Einde</label><input class="veld" type="time" id="uTot" value="${x?.uit?hhmm(x.uit):x?'':'16:30'}"></div></div>
+   <label>Pauze (minuten)</label><input class="veld" id="uP" inputmode="numeric" value="${p}" style="width:110px">
+   <label>Opmerking</label><input class="veld" id="uNot" maxlength="200" value="${esc(x?.not||'')}" placeholder="Bijv. vergeten uit te klokken">
+   <div class="fout" id="fout"></div>${extra||''}</div>`)}
+function urenLees(){const d=document.getElementById('uD').value,van=document.getElementById('uVan').value,tot=document.getElementById('uTot').value,p=parseInt(document.getElementById('uP').value,10),not=document.getElementById('uNot').value.trim();
+  const fout=t=>{document.getElementById('fout').textContent=t;return null};if(!d)return fout('Kies een datum.');const a=urenTijdstip(d,van);if(!isFinite(a))return fout('Vul een begintijd in.');
+  let b=tot?urenTijdstip(d,tot):null;if(tot&&!isFinite(b))return fout('Eindtijd klopt niet.');if(b!=null&&b<=a)b+=864e5;if(b!=null&&b-a>16*3600e3)return fout('Een dienst kan niet langer dan 16 uur zijn.');
+  if(!isFinite(p)||p<0)return fout('Vul de pauze in minuten in (0 mag).');if(b!=null&&p*60000>=b-a)return fout('De pauze is langer dan de dienst.');return{d,van,tot,a,b,p,not}}
+/* ---------- export ---------- */
+async function urenExport(){const b=urenBereik();
+  if(!window.XLSX){toast('Excel-onderdeel laden…');try{await laadXlsx()}catch(e){toast('Excel kon niet laden, controleer je internet');return}}
+  const rijen=[['Medewerker','Account','Datum','Dag','Begin','Einde','Pauze','Gewerkt','Gewerkt (decimaal)','Opmerking','Aangepast','Goedgekeurd']],som=[['Medewerker','Account','Diensten','Gewerkt','Gewerkt (decimaal)','Waarschuwingen']];
+  for(const p of urenMensen(true)){const l=urenIn(p.uid,b.van,b.tot).filter(x=>x.uit);if(!l.length)continue;let t=0,wn=0;
+    for(const x of l){const d=iso(new Date(x.in)),n=urenNetto(x);t+=n;if(urenPauzeFout(x))wn++;rijen.push([p.naam,p.extern?'geen account':'ja',d,vanIso(d).toLocaleDateString('nl-NL',{weekday:'short'}),hhmm(x.in),hhmm(x.uit),urenDuur(urenPauze(x).ms),urenDuur(n),Math.round(n/36e3)/100,x.not||'',isObj(x.gew)&&Object.keys(x.gew).length?'ja':'',urenGoed(p.uid,d)?'ja':''])}
+    som.push([p.naam,p.extern?'geen account':'ja',l.length,urenDuur(t),Math.round(t/36e3)/100,wn])}
+  if(rijen.length===1){toast('Geen afgesloten diensten in deze periode');return}
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(som),'Totalen');XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rijen),'Diensten');
+  const naam=`uren-${b.kort==='dag'?b.van:b.kort==='week'?'week-'+weeknr(b.van)+'-'+b.van.slice(0,4):b.van.slice(0,7)}.xlsx`,buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+  deelBestand(new File([buf],naam,{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}))}
+/* ---------- klikken ---------- */
+document.addEventListener('click',e=>{const el=e.target.closest('[data-u]');if(!el||el.tagName==='INPUT')return;L.laatsteActie=Date.now();const c=el.dataset.u,v=el.dataset.v||'';const u=ik();if(!u)return;
+  try{switch(c){
+  case'in':case'pauze':afwStap=null;urenKlok(c,v);return;
+  case'uit':if(afwStap!=='uurUit:'+v){afwStap='uurUit:'+v;render();setTimeout(()=>{if(afwStap==='uurUit:'+v){afwStap=null;render()}},5000);return}afwStap=null;urenKlok('uit',v);return;
+  case'view':plekBewaar();urenView=v==='overzicht'?'overzicht':'klok';render();plekTerug(urenView==='overzicht');return;
+  case'per':urenPer=v;render();return;
+  case'schuif':urenSchuif(+v);render();return;
+  case'persoon':urenOpenP[v]=!urenOpenP[v];render();return;
+  case'opersoon':urenOpenP['o'+v]=!urenOpenP['o'+v];render();return;
+  case'andere':{if(!isAdmin())return;toonSheet(`<div class="pkop"><button data-a="sluit">Annuleren</button><b>Andere naam</b><button data-u="anderestart" style="font-weight:700">Start klok</button></div><div class="pinhoud">
+    <label>Naam</label><input class="veld" id="uNaam" maxlength="40" placeholder="Bijv. Carlo" autocomplete="off"><div class="fout" id="fout"></div><p class="hulp">De klok start meteen. Daarna staat de naam in de lijst, zodat je de volgende keer gewoon op de naam tikt.</p></div>`);setTimeout(()=>document.getElementById('uNaam')?.focus(),200);return}
+  case'anderestart':{if(!isAdmin())return;const n=(document.getElementById('uNaam')?.value||'').trim().replace(/\s+/g,' ');if(!n){document.getElementById('fout').textContent='Vul een naam in.';return}
+    if(S.gebruikers.some(g=>g.actief!==false&&g.naam.toLowerCase()===n.toLowerCase())){document.getElementById('fout').textContent=`${n} staat al in de app. Tik op de naam in de lijst.`;return}
+    const ub=urenBasis();if(!isObj(ub.namen))ub.namen={};let x=Object.values(ub.namen).find(y=>isObj(y)&&y.naam.toLowerCase()===n.toLowerCase());
+    if(x){if(x.weg)delete x.weg}else{const id=urenId();x=ub.namen[id]={id,naam:n.slice(0,40),t:Date.now()};log(`Naam ${n} toegevoegd voor uren`)}
+    sluit();const uid='n_'+x.id;if(urenLopend(uid)){bewaar();render();toast(`${x.naam} is al ingeklokt`);return}urenKlok('in',uid);return}
+  case'naamweg':{if(!isAdmin()||!urenExtern(v))return;if(afwStap!=='naamweg:'+v){afwStap='naamweg:'+v;render();return}afwStap=null;const x=urenNamen()[v.slice(2)];if(!x)return;
+    if(urenLopend(v)){toast('Klok eerst uit');return}x.weg=true;delete urenOpenP[v];log(`Naam ${x.naam} weggehaald bij uren`);bewaar();render();toast('Weggehaald. De uren blijven in het overzicht.');return}
+  case'koppel':{if(!isAdmin()||!urenExtern(v))return;const g=S.gebruikers.filter(x=>x.actief!==false).sort((a,b2)=>a.naam.localeCompare(b2.naam,'nl'));
+    toonSheet(`<div class="pkop"><button data-a="sluit">Annuleren</button><b>Koppel ${esc(urenNaam(v))}</b><span style="width:70px"></span></div><div class="pinhoud"><p class="hulp">Kies het account. Alle uren van ${esc(urenNaam(v))} gaan naar dat account.</p>
+     ${g.map(x=>`<button class="rij inv" style="width:100%;text-align:left" data-u="koppelok" data-v="${esc(v)}|${esc(x.id)}"><div class="groei"><div class="naam">${esc(x.naam)}</div></div><span>›</span></button>`).join('')}</div>`);return}
+  case'koppelok':{if(!isAdmin())return;const[van,naar]=v.split('|');if(!urenExtern(van)||!S.gebruikers.some(g=>g.id===naar))return;const ub=urenBasis(),x=urenNamen()[van.slice(2)];
+    if(urenLopend(van)&&urenLopend(naar)){toast('Beide zijn nu ingeklokt. Klok er eerst één uit.');return}
+    const bron=urenVan(van),doel=urenSchrijf(naar);for(const[id,dn]of Object.entries(bron))doel[id]=dn;if(isObj(ub.d))delete ub.d[van];
+    if(isObj(ub.goed))for(const k of Object.keys(ub.goed))if(k.startsWith(van+'|')){const nk=naar+k.slice(van.length);if(!ub.goed[nk])ub.goed[nk]=ub.goed[k];delete ub.goed[k]}
+    if(x){x.weg=true;x.koppel=naar}log(`Uren van ${x?.naam||'?'} gekoppeld aan ${urenNaam(naar)}`);bewaar();sluit();render();toast('Gekoppeld');return}
+  case'nieuw':{if(!isAdmin())return;urenFormulier('Dienst toevoegen · '+urenNaam(v),'bewaarnieuw',v,null);return}
+  case'bewaarnieuw':{if(!isAdmin())return;const r=urenLees();if(!r)return;const ds=urenSchrijf(v),id=urenId();ds[id]={id,in:r.a,uit:r.b??null,pm:r.p,p:{},not:r.not,gew:{[urenId()]:{wie:u.naam,t:Date.now(),wat:'toegevoegd'}}};
+    log(`Dienst toegevoegd voor ${urenNaam(v)} (${datumTekst(r.d)})`);bewaar();sluit();render();toast('Dienst toegevoegd');return}
+  case'bewerk':{if(!isAdmin())return;const[uid,id]=v.split('|'),x=urenVan(uid)[id];if(!x)return;urenFormulier('Dienst bewerken · '+urenNaam(uid),'bewaarbewerk',v,x,`<div class="knoppen" style="justify-content:flex-start;padding:12px 0 0"><button class="knop rand rood klein" data-u="dienstweg" data-v="${esc(v)}">Dienst verwijderen</button></div>${isObj(x.gew)&&Object.keys(x.gew).length?`<p class="hulp">${Object.values(x.gew).sort((a,b2)=>a.t-b2.t).map(g=>`${esc(g.wat)} door ${esc(g.wie)} op ${esc(datumTekst(iso(new Date(g.t))))} ${tijdTekst(g.t)}`).join('<br>')}</p>`:''}`);return}
+  case'bewaarbewerk':{if(!isAdmin())return;const[uid,id]=v.split('|'),x=urenVan(uid)[id];if(!x)return;const r=urenLees();if(!r)return;
+    x.in=r.a;x.uit=r.b??null;x.pm=r.p;x.not=r.not;if(!isObj(x.gew))x.gew={};x.gew[urenId()]={wie:u.naam,t:Date.now(),wat:'aangepast'};log(`Dienst van ${urenNaam(uid)} aangepast (${datumTekst(r.d)})`);bewaar();sluit();render();toast('Opgeslagen');return}
+  case'dienstweg':{if(!isAdmin())return;if(afwStap!=='dienstweg'){afwStap='dienstweg';el.textContent='Zeker? Tik nogmaals';return}afwStap=null;
+    const[uid,id]=v.split('|');delete urenSchrijf(uid)[id];log(`Dienst van ${urenNaam(uid)} verwijderd`);bewaar();sluit();render();toast('Verwijderd');return}
+  case'corrok':case'corrnee':{if(!isAdmin())return;const k=S.uren?.corr?.[v];if(!k||k.status!=='open')return;
+    if(c==='corrok'){const ds=urenSchrijf(k.uid),a=urenTijdstip(k.d,k.van);let b=urenTijdstip(k.d,k.tot);if(b<=a)b+=864e5;const did=k.dienst&&ds[k.dienst]?k.dienst:urenId();if(!ds[did])ds[did]={id:did,p:{}};const x=ds[did];
+      x.in=a;x.uit=b;x.pm=k.pauze;if(k.not)x.not=k.not;if(!isObj(x.gew))x.gew={};x.gew[urenId()]={wie:u.naam,t:Date.now(),wat:'correctie van '+k.naam+' goedgekeurd'};k.status='ok'}
+    else k.status='nee';k.af={wie:u.naam,t:Date.now()};log(`Correctie uren van ${k.naam} ${c==='corrok'?'goedgekeurd':'afgewezen'}`);bewaar();render();return}
+  case'goed':{if(!isAdmin())return;const w=urenBereik().van,k=urenGoedKey(v,w),ub=urenBasis();if(!isObj(ub.goed))ub.goed={};if(ub.goed[k])delete ub.goed[k];else ub.goed[k]={wie:u.naam,t:Date.now()};
+    log(`Uren week ${weeknr(w)} van ${urenNaam(v)} ${ub.goed[k]?'goedgekeurd':'goedkeuring ingetrokken'}`);bewaar();render();return}
+  case'export':if(!isAdmin())return;urenExport();return;
+  }}catch(x){meldFout(x,'Uren')}});
+document.addEventListener('change',e=>{if(e.target.dataset?.u==='iedereen'&&isAdmin()){const ub=urenBasis();if(!isObj(ub._inst))ub._inst={};ub._inst.iedereen=e.target.checked;log(`Klokken voor medewerkers ${e.target.checked?'aan':'uit'}`);bewaar();render()}});
+/* lopende tijden bijhouden */
+setInterval(()=>{try{if(tab==='uren'&&urenView==='klok'&&urenNu().length&&!document.querySelector('#sheet.open')&&!(document.activeElement&&document.activeElement.matches('input,textarea'))&&!String(afwStap||'').startsWith('uurUit'))render()}catch(e){}},30000);
+/* ================= 10.12 Home ================= */
+function homeKlaar(){try{const d=iso(),sec=maakLijst(d,moment),vers=versRegels(d,moment),v=S.vinkjes[d]?.[moment]||{},alle=[...sec.flatMap(x=>x.regels),...vers];return{n:alle.length,k:alle.filter(r=>v[r.s.id]).length}}catch(e){return{n:0,k:0}}}
+function homeHtml(){const uur=new Date().getHours(),groet=uur<12?'Goedemorgen':uur<18?'Goedemiddag':'Goedenavond',naam=(ik()?.naam||'').split(' ')[0],t=[];
+  {const{n,k}=homeKlaar();t.push(['tab','lijst','🥖','Klaarzetten',n?(k===n?'✓ Alles klaar':`nog ${n-k} te gaan`):'Niets klaar te zetten',n&&k<n])}
+  if(mag('invullen'))t.push(['tab','plan','📝','Invullen','Planning en bestellen',false]);
+  if(mag('derving')){const od=S.soorten.filter(s=>s.type==='vers'&&s.naam.trim()&&gezetOverDatum(iso(),s)>0).length,klaar=!!S.historie[iso()];
+    t.push(['tab','derving','🗑','Derving',klaar?'✓ Lijst van vandaag opgeslagen':od?`${od} over datum vandaag`:'Derving invullen',!klaar&&od>0])}
+  if(urenMag()){const n=urenNu().length;t.push(['tab','uren','⏱','Uren',n?`${n} aan het werk`:'Niemand ingeklokt',false])}
+  {const o=chatTotaal();t.push(['sub2','berichten','💬','Chat',o?`${o} ongelezen`:'Berichten',o>0])}
+  return`<div class="kop"><div class="koprij"><div><div class="groet">${groet}</div><h1>${esc(naam)} ${esc(prof().emoji||'👋')}</h1><p>${esc(dagNaamLang(iso()))}</p></div></div></div>
+   ${installHtml()}<div class="hometegels">${t.map(([a,v,ic,l,s,wl])=>`<button class="hometegel ${wl?'let':''}" data-a="${a}" data-v="${v}"><span class="hti">${ic}</span><b>${l}</b><span class="hts">${esc(s)}</span></button>`).join('')}</div>`}
+(function(){const st=document.createElement('style');st.textContent=`.hometegels{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:6px 16px 16px}
+.hometegel{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-height:118px;padding:14px;border-radius:16px;background:var(--kaart);border:1px solid var(--lijn);color:var(--tekst);text-align:left;font-size:17px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.hometegel .hti{font-size:30px;line-height:1}.hometegel b{font-size:18px;margin-top:4px}.hometegel .hts{font-size:14px;color:var(--grijs)}
+.hometegel.let{border:2px solid var(--oranje)}.hometegel.let .hts{color:var(--oranje);font-weight:700}
+.hometegel:active{transform:scale(.98)}
+.uurrij .uurnaam{background:none;border:0;padding:0;text-align:left;color:inherit;font:inherit;min-width:140px}
+.uurrij.aanwerk{border-left:4px solid var(--groen,#2e9e44)}
+.uurrij .pijltje{font-size:12px;color:var(--grijs)}
+.knop.wit{background:#fff;color:var(--oranje);border:0}`;document.head.appendChild(st)})();
+/* ================= 10.12 plek op de pagina onthouden ================= */
+const schermPlek={};
+const schermSleutel=()=>tab==='meer'?'meer|'+(sub||''):tab==='uren'?'uren|'+urenView:tab;
+function plekBewaar(){const m=document.getElementById('scherm');if(m)schermPlek[schermSleutel()]=m.scrollTop}
+function plekTerug(nul){const m=document.getElementById('scherm');if(!m)return;m.scrollTop=nul?0:(schermPlek[schermSleutel()]||0)}
 
 /* ================= 10.10 chat ================= */
 /* Gesprekken staan in S.berichten (sleutel 'berichten'). Soorten: privé (medewerker ↔ beheer), 'team' en mededelingen ('med').
@@ -3447,6 +3640,7 @@ function meerHtml(){
   if(sub==='winkel'&&WINKEL&&kanBeheren()&&isAdmin())return terug+winkelHtml();
   if(sub==='abonnement'&&isEigenaar()&&isAdmin())return terug+abonnementHtml();
   if(sub==='facturen'&&facturenMag())return terug+facturenHtml();
+  if(sub==='uren'&&isAdmin())return terug+urenBeheerHtml();
   if(sub==='bestelboeken'&&bbMag())return terug+bestelboekenHtml();
   if(sub==='bbkies'&&bbMag())return`<button class="terug" data-a="sub" data-v="bestelboeken">‹ Bestelboeken</button>`+bbKiesHtml();
   if(sub==='bbsan'&&bbMag())return`<button class="terug" data-a="sub" data-v="bestelboeken">‹ Bestelboeken</button>`+bbSanHtml();
@@ -3796,7 +3990,7 @@ function verschuif(r){const a=S.soorten,i=a.findIndex(x=>x.id===bewerk.id);if(i<
 
 /* ================= 9.13: gebruiksgemak ================= */
 /* slimme startpagina: ochtend Klaarzetten, na de levertijd naar de levering, 's avonds Derving */
-function startTab(P){const st=P.start||'slim';if(st!=='slim')return st;const h=new Date().getHours();if(mag('derving')&&h>=(P.dervUur??17))return'derving';return'lijst'}
+function startTab(P){const st=P.startp||'home';if(st!=='slim')return st;const h=new Date().getHours();if(mag('derving')&&h>=(P.dervUur??17))return'derving';return'lijst'}
 function naarLevering(){const h=S.herinnering||{},nu=new Date(),na=nu.getHours()*60+nu.getMinutes()>=(h.uur??10)*60+(h.min||0);
   if(tab==='lijst'&&mag('vinken')&&datum===iso()&&na&&versGeleverd(iso())&&!S.levering[iso()]&&S.soorten.some(x=>x.type==='vers'&&x.naam.trim()))setTimeout(()=>document.querySelector('.levmelding')?.scrollIntoView({block:'center',behavior:'smooth'}),350)}
 /* groot cijferblok + doortellen (levering en derving) */
@@ -3853,15 +4047,16 @@ const kanTrillen=()=>IS_ANDROID&&typeof navigator.vibrate==='function';
 function tril(){try{if(kanTrillen()&&prof().tril)navigator.vibrate(30)}catch(e){}}
 /* terugknop van Android: eerst venster dicht, dan terug naar Meer/Klaarzetten, pas dan de app uit */
 let terugWacht=false;
-function opDiepte(){return!!(blok||document.getElementById('sheet')?.classList.contains('open')||werk||document.getElementById('tour')?.classList.contains('open')||sub||(L.sessie&&tab!==startTab(prof())&&tab!=='lijst'))}
+function opDiepte(){return!!(blok||document.getElementById('sheet')?.classList.contains('open')||werk||document.getElementById('tour')?.classList.contains('open')||sub||(L.sessie&&tab!=='home'))}
 function terugBewaak(){if(!IS_ANDROID||terugWacht||!L.sessie)return;if(opDiepte()){try{history.pushState({bo:1},'');terugWacht=true}catch(e){}}}
 function terugStap(){
   if(blok){const derv=!!blokEl()?.dataset.cderv;sluitBlok();if(derv)render();return true}
   if(document.getElementById('tour')?.classList.contains('open'))return false;
   if(document.getElementById('sheet')?.classList.contains('open')){sluit();render();return true}
   if(werk){werk=null;document.getElementById('werk').classList.remove('open');render();return true}
-  if(sub){sub=null;render();return true}
-  if(tab!=='lijst'&&tab!==startTab(prof())){tab=startTab(prof());render();return true}
+  if(sub){sub=null;render();plekTerug();return true}
+  if(tab==='uren'&&urenView==='overzicht'){urenView='klok';render();plekTerug();return true}
+  if(tab!=='home'){plekBewaar();tab='home';render();plekTerug();return true}
   return false}
 window.addEventListener('popstate',()=>{if(!IS_ANDROID)return;const was=terugWacht;terugWacht=false;if(!was)return;if(terugStap())setTimeout(terugBewaak,0);else history.back()});
 /* toetsenbord open: menubalk onderin verbergen (Android) */
@@ -3874,10 +4069,10 @@ const kanUpdaten=()=>location.protocol.startsWith('http')&&'serviceWorker'in nav
 async function zoekUpdate(stil){if(!kanUpdaten()||!navigator.onLine)return null;
   try{const t=await (await fetch('index.html?v='+Date.now(),{cache:'no-store'})).text(),m=t.match(/APP_BOUW='([^']+)'/);const b=m?m[1]:null;
     nieuweBouw=b&&b!==APP_BOUW?b:null;toonUpdateBalk();return nieuweBouw}catch(e){return null}}
-function toonUpdateBalk(){let el=document.getElementById('updatebalk');if(!nieuweBouw){if(el)el.remove();return}
+function toonUpdateBalk(){let el=document.getElementById('updatebalk');if(!nieuweBouw||!updatesTonen()){if(el)el.remove();return}
   if(!el){el=document.createElement('button');el.id='updatebalk';el.className='updatebalk';el.dataset.a='bijwerken';document.getElementById('app')?.prepend(el)}
   el.textContent=`🔄 Nieuwe versie ${nieuweBouw} beschikbaar – tik om bij te werken`}
-async function werkBij(){if(updateBezig)return;updateBezig=true;toast('Bijwerken…');bewaarNu();
+async function werkBij(stil){if(updateBezig)return;updateBezig=true;if(!stil)toast('Bijwerken…');bewaarNu();
   try{const reg=await navigator.serviceWorker.getRegistration();if(reg){await reg.update();const w=reg.installing||reg.waiting;
       if(w&&w.state!=='activated')await new Promise(ok=>{const t=setTimeout(ok,8000);w.addEventListener('statechange',()=>{if(w.state==='activated'){clearTimeout(t);ok()}})})}}catch(e){}
   setTimeout(()=>location.reload(),300)}
@@ -4060,9 +4255,9 @@ document.addEventListener('click',async e=>{
   case'gopslaan':gebruikerOpslaan();return;
   case'gweg':if(!kanBeheren())return;if(!verwStap){verwStap=true;b.textContent='Tik nogmaals om te verwijderen';return}
     log(`Medewerker ${bewerk.naam} verwijderd`);S.gebruikers=S.gebruikers.filter(x=>x.id!==bewerk.id);bewaar();sluit();render();return;
-  case'tab':if(v==='plan'&&tab!=='plan')planKeuze=planKeyVoor(iso());tab=v;if(v==='meer')sub=null;ovenModus=false;render();m.scrollTop=0;return;
-  case'sub':if(v==='backup')bkLijst=null;if(v==='aanbieder')aanb=null;if(v==='winkels'||v==='winkel')wkInfo=null;sub=v||null;render();m.scrollTop=0;return;
-  case'sub2':tab='meer';sub=v;render();m.scrollTop=0;return;
+  case'tab':{if(v==='plan'&&tab!=='plan')planKeuze=planKeyVoor(iso());const zelfde=tab===v&&!(v==='meer'&&sub)&&!(v==='uren'&&urenView!=='klok');plekBewaar();tab=v;if(v==='meer')sub=null;if(v==='uren')urenView='klok';ovenModus=false;render();plekTerug(zelfde);return}
+  case'sub':if(v==='backup')bkLijst=null;if(v==='aanbieder')aanb=null;if(v==='winkels'||v==='winkel')wkInfo=null;plekBewaar();sub=v||null;render();plekTerug(!!sub);return;
+  case'sub2':plekBewaar();tab='meer';sub=v;render();plekTerug(true);return;
   case'moment':moment=v;ovenKeuze={};render();return;
   case'datum':datum=plusDagen(datum,+v);volgVandaag=datum===standaardDatum();ovenKeuze={};ovenModus=ovenModus&&datum<=iso();render();return;
   case'vandaag':datum=iso();volgVandaag=!naOmschakel();ovenKeuze={};render();return;
@@ -4436,7 +4631,7 @@ document.addEventListener('change',e=>{
 document.addEventListener('keydown',e=>{if(blok){if(/^[0-9]$/.test(e.key)){blokToets(e.key);return}if(e.key==='Backspace'){blokToets('wis');return}if(e.key==='Enter'){blokToets('volgende');return}}if(document.querySelector('.cijferblok')&&!/INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||'')){if(/^[0-9]$/.test(e.key)){document.querySelector(`.cijferblok [data-v="${e.key}"]`)?.click();return}if(e.key==='Backspace'){document.querySelector('.cijferblok .wis')?.click();return}}if(e.key!=='Enter')return;
   if(e.target.id==='notitieIn'){document.querySelector('[data-a=notitie]')?.click();return}
   const b=document.querySelector('[data-a=login],[data-a=setup],[data-a=koppel],[data-a=koppelcode],[data-a=uitnodigingstart]');if(b)b.click()});
-document.addEventListener('visibilitychange',()=>{if(document.hidden){if(L.sessie){L.wegSinds=Date.now();bewaarL()}bewaarNu();return}const was=!!L.sessie;weerLaden();volgHash();zoekUpdate(true);if(volgVandaag)datum=standaardDatum();controleerSessie();if(was&&!L.sessie){werk=null;document.getElementById('werk').classList.remove('open');sluit();sluitBlok()}if(L.gekoppeld&&db)sync();if(WINKEL&&db?.rpc&&Date.now()-(L.winkelsT||0)>36e5){L.winkelsT=Date.now();vernieuwWinkels().then(()=>renderZacht())}render();nieuwsNaStart()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){if(L.sessie){L.wegSinds=Date.now();bewaarL()}bewaarNu();if(nieuweBouw&&!updatesTonen()&&kanUpdaten())setTimeout(()=>{if(document.hidden)werkBij(true)},1500);return}const was=!!L.sessie;weerLaden();volgHash();zoekUpdate(true);if(volgVandaag)datum=standaardDatum();controleerSessie();if(was&&!L.sessie){werk=null;document.getElementById('werk').classList.remove('open');sluit();sluitBlok()}if(L.gekoppeld&&db)sync();if(WINKEL&&db?.rpc&&Date.now()-(L.winkelsT||0)>36e5){L.winkelsT=Date.now();vernieuwWinkels().then(()=>renderZacht())}render();nieuwsNaStart()});
 window.addEventListener('pagehide',()=>{if(L.sessie){L.wegSinds=Date.now();bewaarL()}});
 setInterval(()=>{const was=!!L.sessie;controleerSessie();if(was&&!L.sessie){werk=null;document.getElementById('werk').classList.remove('open');sluit();render()}},60000);
 
@@ -4460,6 +4655,7 @@ setTimeout(()=>{if(L.sessie&&mag('vinken'))ocrVoorbereiden()},15000);
 db=maakDb();
 if(L.modus==='lokaal')syncStatus='lokaal';
 else if(L.gekoppeld)syncStatus=db?'start':'offline';
+if(L.sessie&&ik())tab=startTab(prof());
 render();nieuwsNaStart();
 (async()=>{
   if(L.modus==='lokaal'||!db)return;
