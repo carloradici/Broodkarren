@@ -607,7 +607,7 @@ function vulAan(S){
     if(!S.programmas[id])S.programmas[id]={id,naam:n,temp:x.temp||null,baktijd:x.baktijd||null,notitie:''};x.programmaId=id}}
   syncProgVelden(S);
   S.materiaal=vulMateriaal(S.materiaal);
-  S.facturen=vulFacturen(S.facturen);
+  S.facturen=vulFacturen(S.facturen);S.betalen=vulBetalen(S.betalen);
   S.bestelboeken=vulBestelboeken(S.bestelboeken);
   S.versie=6;return S;
 }
@@ -1395,7 +1395,7 @@ function bestelBerekening(){
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const APP_VERSIE='10.0',APP_BOUW='10.13';
+const APP_VERSIE='10.0',APP_BOUW='10.14';
 const NIEUWS=[['🏪','Brood Opzet per winkel','De app werkt nu per winkel. Alles wat je al had, hoort bij je eigen winkel. Voor jou verandert er niets.'],
  ['🔑','Koppelen met een code','Een nieuwe telefoon koppel je voortaan met de koppelcode van de winkel, zonder wachtwoord. De beheerder vindt de code onder Meer.'],
  ['🌤️','Weer en bakker','De beheerder kiest bij Broodsoorten en instellingen de plaats voor het weer en de naam van de bakker.'],
@@ -1506,6 +1506,7 @@ function splitsen(){
   if(kanBeheren()&&heeft('push')&&(S.push.subs?.length||S.push.stil))o['prive:push']=S.push;
   if(kanBeheren()&&heeft('euro')&&Object.keys(S.prijzen).length)o['prive:prijzen']=S.prijzen;
   if(kanBeheren()&&(isAanbieder()||L.modus==='lokaal'))o['prive:facturen']=S.facturen;
+  if(betalenMag()&&(Object.keys(S.betalen.f).length||S.betalen.eig))o['prive:betalen']=S.betalen;
   if(Object.keys(S.bestelboeken.boeken).length||S.bestelboeken.editie.naam||Object.keys(S.bestelboeken.eigen).length)o.bestelboeken=S.bestelboeken;
   /* 10.0: wat niet in het pakket zit, gaat niet naar de server */
   if(!heeft('deeg'))delete o.voorraad;if(!heeft('push'))delete o.pushteam;
@@ -1527,6 +1528,7 @@ function pasToe(k,v){
   else if(k==='prive:push')S.push=v;
   else if(k==='prive:prijzen')S.prijzen=v;
   else if(k==='prive:facturen')S.facturen=vulFacturen(v);
+  else if(k==='prive:betalen')S.betalen=vulBetalen(v);
   else if(k==='bestelboeken')S.bestelboeken=vulBestelboeken(v);
   else if(k==='pakbonfouten')S.pbFouten=v;
   else if(k==='pushteam')S.pushTeam=v;
@@ -2291,7 +2293,7 @@ function matGemeld(){return[...Object.entries(S.materiaal.meld).map(([id,x])=>({
 const MAT_LABEL={bijna:['Bijna op','aangepast'],op:['Op!','rood'],besteld:['Besteld','schap']};
 const MEER_GROEP={mijnuren:'dagelijks',uren:'beheer',berichten:'dagelijks',vraag:'dagelijks',materiaal:'dagelijks',notities:'dagelijks',dervlijsten:'dagelijks',ontdooi:'dagelijks',pakbonnen:'dagelijks',afsluiten:'dagelijks',plu:'dagelijks',
   afwijkend:'planning',bestel:'planning',bestelboeken:'planning',rapport:'rapporten',nieuw:'rapporten',export:'rapporten',gedaan:'rapporten',log:'rapporten',
-  soorten:'instellingen',programmas:'instellingen',team:'instellingen',instellingen:'instellingen',klaar:'beheer',qrwinkel:'beheer',cadeau:'beheer',push:'beheer',leesfouten:'beheer',weekoverzicht:'beheer',besteladvies:'beheer',prijzen:'beheer',backup:'beheer',winkels:'beheer',winkel:'beheer',facturen:'beheer',abonnement:'beheer',aanbieder:'beheer',uitleg:'hulp'};
+  soorten:'instellingen',programmas:'instellingen',team:'instellingen',instellingen:'instellingen',klaar:'beheer',qrwinkel:'beheer',cadeau:'beheer',push:'beheer',leesfouten:'beheer',weekoverzicht:'beheer',besteladvies:'beheer',prijzen:'beheer',backup:'beheer',winkels:'beheer',winkel:'beheer',facturen:'beheer',tebetalen:'beheer',abonnement:'beheer',aanbieder:'beheer',uitleg:'hulp'};
 const GROEPEN=[['dagelijks','Dagelijks'],['planning','Planning'],['rapporten','Rapporten'],['instellingen','Instellingen'],['beheer','Beheer – alleen voor jou'],['hulp','Hulp']];
 function meerLijstHtml(items){
   if(isAdmin()&&kanBeheren())items=[...items,['klaar','✅ Klaar voor gebruik',"Wat nog ontbreekt: foto's, PLU, programma's, pincodes",()=>true],['qrwinkel','📱 QR-code voor de winkel','A4 om op te hangen bij de broodafdeling',()=>true,null,'qrwinkel'],
@@ -2299,6 +2301,7 @@ function meerLijstHtml(items){
     ...(isEigenaar()?[['winkels','🏪 Winkels',`${(WK.lijst||[]).length} ${(WK.lijst||[]).length===1?'winkel':'winkels'} · wisselen, toestellen koppelen, overzicht`,()=>true]]:WINKEL&&WINKEL.rol==='bedrijfsleider'?[['winkel','🏪 Winkel en toestellen','Koppelcode voor de toestellen van de winkel',()=>true]]:[]),
     ...(isEigenaar()?[['abonnement','⭐ Abonnement',`Pakket ${PAKKET_NAAM[WINKEL.pakket]||''}${WINKEL.proef_pakket&&WINKEL.proef_tot>=iso()?' · proef '+PAKKET_NAAM[WINKEL.proef_pakket]:''}`,()=>true]]:[]),
     ...(isAdmin()?[['uren','⏱ Urenregistratie',(()=>{const n=urenNu().length,c=Object.values(isObj(S.uren?.corr)?S.uren.corr:{}).filter(x=>x.status==='open').length;return[n?`${n} nu ingeklokt`:'',c?`${c} correctie${c===1?'':'s'}`:''].filter(Boolean).join(' · ')||(urenInst().iedereen?'Overzicht per dag, week of maand':'Overzicht per dag, week of maand · testfase')})(),()=>true]]:[]),
+    ...(betalenMag()?[['tebetalen','💶 Te betalen',(()=>{const o=tbOpen(),l=o.filter(tbTeLaat).length;return o.length?`${o.length} open · ${fEuro(o.reduce((t,x)=>t+tbRest(x),0))}${l?` · ${l} te laat`:''}`:'Inkoopfacturen bijhouden'})(),()=>true]]:[]),
     ...(facturenMag()?[['facturen','🧾 Facturen',(()=>{const o=Object.values(S.facturen.lijst).filter(f=>f.status==='verstuurd'||f.status==='afgerond');return o.length?`${o.length} open · ${fEuro(o.reduce((t,f)=>t+factTotalen(f).tot,0))}`:'Facturen maken en bijhouden'})(),()=>true]]:[]),
     ...(isAanbieder()?[['aanbieder','🧑‍💼 Brood Opzet beheer',`Ondernemers, pakketten, uitnodigingen${L.aanvragen?` · ${L.aanvragen} ${L.aanvragen===1?'aanvraag':'aanvragen'}`:''}`,()=>true]]:[])];
   /* 10.0: functies buiten het pakket met een slotje */
@@ -2902,6 +2905,120 @@ const schermPlek={};
 const schermSleutel=()=>tab==='meer'?'meer|'+(sub||''):tab==='uren'?'uren|'+urenView:tab;
 function plekBewaar(){const m=document.getElementById('scherm');if(m)schermPlek[schermSleutel()]=m.scrollTop}
 function plekTerug(nul){const m=document.getElementById('scherm');if(!m)return;m.scrollTop=nul?0:(schermPlek[schermSleutel()]||0)}
+
+
+/* ================= 10.14 Te betalen (inkoopfacturen, alleen voor de eigenaar) ================= */
+/* S.betalen={eig:uid,f:{id:{id,lev,nr,fdat,verval,tot(centen),not,inc:{bureau,kosten,t}|null,bet:{pid:{b,d,vol}},betaald:iso|null,t}}} */
+let tbTab='open',tbZoek='',tbStap=null;
+function vulBetalen(b){b=isObj(b)?b:{};if(!isObj(b.f))b.f={};for(const[id,x]of Object.entries(b.f)){if(!isObj(x)){delete b.f[id];continue}if(!x.id)x.id=id;if(!isObj(x.bet))x.bet={}}return b}
+const betalenMag=()=>isAdmin()&&kanBeheren()&&(!S.betalen?.eig||S.betalen.eig===L.sessie);
+const tbD=d=>d?String(d).split('-').reverse().join('-'):'';
+const tbInc=x=>isObj(x.inc)&&x.inc.aan!==false?x.inc:null;
+const tbTotaal=x=>(+x.tot||0)+(tbInc(x)?+tbInc(x).kosten||0:0);
+const tbBetaaldSom=x=>Object.values(x.bet||{}).reduce((t,p)=>t+(+p.b||0),0);
+const tbRest=x=>Math.max(0,tbTotaal(x)-tbBetaaldSom(x));
+const tbIsBetaald=x=>!!x.betaald;
+const tbTeLaat=x=>!tbIsBetaald(x)&&x.verval&&x.verval<iso()?Math.round((vanIso(iso())-vanIso(x.verval))/864e5):0;
+const tbAlle=()=>Object.values(S.betalen?.f||{}).filter(isObj);
+const tbOpen=()=>tbAlle().filter(x=>!tbIsBetaald(x)).sort((a,c)=>(tbTeLaat(c)>0)-(tbTeLaat(a)>0)||String(a.verval||'9').localeCompare(String(c.verval||'9'))||String(a.fdat).localeCompare(String(c.fdat)));
+const tbBetaald=()=>tbAlle().filter(tbIsBetaald).sort((a,c)=>String(c.betaald).localeCompare(String(a.betaald))||c.t-a.t);
+function tbMatch(x,q){if(!q)return true;q=q.toLowerCase().trim();const n=q.replace(/[€\s]/g,'');
+  return String(x.nr||'').toLowerCase().includes(q)||String(x.lev||'').toLowerCase().includes(q)||(n&&/[0-9]/.test(n)&&[x.tot,tbTotaal(x)].some(c=>bedragTekst((+c||0)/100).includes(n.replace('.',','))))||String(x.not||'').toLowerCase().includes(q)}
+function tbSchrijf(){if(!isObj(S.betalen))S.betalen={};if(!isObj(S.betalen.f))S.betalen.f={};if(!S.betalen.eig)S.betalen.eig=L.sessie;return S.betalen.f}
+const tbLeveranciers=()=>[...new Set(tbAlle().map(x=>(x.lev||'').trim()).filter(Boolean))].sort((a,c)=>a.localeCompare(c,'nl'));
+function tbRij(x){const inc=tbInc(x),laat=tbTeLaat(x),som=tbBetaaldSom(x),rest=tbRest(x),bet=tbIsBetaald(x);
+  const sub=[`factuur ${tbD(x.fdat)}`,bet?`<b class="groentekst">betaald ${tbD(x.betaald)}</b>`:x.verval?(laat?`<b class="oranjetekst">${laat} ${laat===1?'dag':'dagen'} te laat</b> (vervaldatum ${tbD(x.verval)})`:`vervalt ${tbD(x.verval)}`):''].filter(Boolean).join(' · ');
+  const extra=[inc?`<span class="tbinc">Incasso${inc.bureau?' '+esc(inc.bureau):''} + ${fEuro(+inc.kosten||0)}</span>`:'',!bet&&som?`betaald ${fEuro(som)} · <b>nog open ${fEuro(rest)}</b>`:'',bet&&Object.keys(x.bet||{}).length>1?`${Object.keys(x.bet).length} betalingen`:'',x.not?esc(x.not):''].filter(Boolean).join(' · ');
+  return`<div class="tbrij ${laat?'laat':''} ${inc?'inc':''}"><button class="tbinfo" data-tb="bewerk" data-v="${esc(x.id)}"><div class="naam">${esc(x.lev||'?')} <span class="tbnr">${esc(x.nr||'')}</span></div><div class="sub">${sub}</div>${extra?`<div class="sub">${extra}</div>`:''}</button>
+   <div class="tbrechts"><div class="tbbedrag">${fEuro(bet?tbTotaal(x):rest)}</div>${bet?`<button class="knop rand klein" data-tb="terug" data-v="${esc(x.id)}">${tbStap==='terug:'+x.id?'Zeker?':'Terugzetten'}</button>`:`<div class="tbknoppen"><button class="knop klein" data-tb="betaald" data-v="${esc(x.id)}">✓ Betaald</button><button class="knop rand klein" data-tb="deel" data-v="${esc(x.id)}">Deel</button>${inc?'':`<button class="knop rand klein" data-tb="incasso" data-v="${esc(x.id)}">Incasso</button>`}</div>`}</div></div>`}
+function tbLijstHtml(){const l=(tbTab==='open'?tbOpen():tbBetaald()).filter(x=>tbMatch(x,tbZoek));
+  if(!l.length)return`<p class="leeg">${tbZoek?'Niets gevonden.':tbTab==='open'?'Geen openstaande facturen.':'Nog geen betaalde facturen.'}</p>`;
+  return l.map(tbRij).join('')+(tbZoek?`<p class="hulp">${l.length} gevonden · ${fEuro(l.reduce((t,x)=>t+(tbTab==='open'?tbRest(x):tbTotaal(x)),0))}</p>`:'')}
+function betalenHtml(){if(!betalenMag())return'';const o=tbOpen(),b=tbBetaald(),tot=o.reduce((t,x)=>t+tbRest(x),0),laat=o.filter(tbTeLaat),inc=o.filter(tbInc);
+  let h=`<div class="kop"><div class="koprij"><h1>Te betalen</h1></div><p>Je inkoopfacturen. Alleen voor jou zichtbaar.</p></div>
+   <div class="segment"><button data-tb="tab" data-v="open" class="${tbTab==='open'?'aan':''}">Open (${o.length})</button><button data-tb="tab" data-v="betaald" class="${tbTab==='betaald'?'aan':''}">Betaald (${b.length})</button></div>`;
+  if(tbTab==='open')h+=`<div class="kaartje tbtotaal"><div class="tbgroot">${fEuro(tot)}</div><div class="sub">nog te betalen · ${o.length} ${o.length===1?'factuur':'facturen'}</div>
+     ${laat.length?`<div class="sub oranjetekst"><b>${laat.length} te laat · ${fEuro(laat.reduce((t,x)=>t+tbRest(x),0))}</b></div>`:''}${inc.length?`<div class="sub" style="color:var(--rood)"><b>${inc.length} bij incasso · ${fEuro(inc.reduce((t,x)=>t+(+tbInc(x).kosten||0),0))} incassokosten</b></div>`:''}</div>`;
+  else{const mnd=iso().slice(0,7);h+=`<div class="kaartje tbtotaal"><div class="tbgroot">${fEuro(b.filter(x=>String(x.betaald).slice(0,7)===mnd).reduce((t,x)=>t+tbTotaal(x),0))}</div><div class="sub">betaald deze maand · ${b.length} betaalde facturen in totaal</div></div>`}
+  h+=`<div class="zoekbalk"><input class="veld" id="tbZoek" type="search" placeholder="Zoek op factuurnummer, leverancier of bedrag" value="${esc(tbZoek)}" autocomplete="off"></div>
+   <div class="knoppen" style="justify-content:flex-start;gap:8px;flex-wrap:wrap;padding-top:0">${tbTab==='open'?`<button class="knop" data-tb="nieuw">+ Factuur</button>`:''}<button class="knop rand" data-tb="excel">📊 Excel</button></div>
+   <div id="tbLijst">${tbLijstHtml()}</div>`;
+  return h}
+/* ---------- formulieren ---------- */
+function tbFormulier(x){const n=!x;x=x||{fdat:iso(),verval:plusDagen(iso(),30)};const inc=tbInc(x);
+  toonSheet(`<div class="pkop"><button data-a="sluit">Annuleren</button><b>${n?'Nieuwe factuur':'Factuur'}</b><button data-tb="bewaar" data-v="${esc(x.id||'')}" style="font-weight:700">Bewaren</button></div><div class="pinhoud">
+   <label>Leverancier</label><input class="veld" id="tbLev" list="tbLevLijst" maxlength="60" value="${esc(x.lev||'')}" autocomplete="off"><datalist id="tbLevLijst">${tbLeveranciers().map(l=>`<option value="${esc(l)}">`).join('')}</datalist>
+   <label>Factuurnummer</label><input class="veld" id="tbNr" maxlength="40" value="${esc(x.nr||'')}" autocomplete="off">
+   <div class="minmax"><div><label>Factuurdatum</label><input class="veld" type="date" id="tbFd" value="${esc(x.fdat||'')}"></div><div><label>Vervaldatum</label><input class="veld" type="date" id="tbVv" value="${esc(x.verval||'')}" data-auto="${n?1:''}"></div></div>
+   <label>Factuurtotaal (€)</label><input class="veld" id="tbTot" inputmode="decimal" value="${x.tot!=null?bedragTekst(x.tot/100):''}" style="width:160px">
+   <label class="schakel" style="margin-top:14px;color:var(--tekst);font-weight:700">Naar incassobureau<input type="checkbox" id="tbIncAan" ${inc?'checked':''}></label>
+   <div id="tbIncVeld" style="${inc?'':'display:none'}"><label>Incassobureau</label><input class="veld" id="tbIncB" maxlength="60" value="${esc(inc?.bureau||'')}"><label>Incassokosten (€)</label><input class="veld" id="tbIncK" inputmode="decimal" value="${inc?bedragTekst((+inc.kosten||0)/100):''}" style="width:160px"></div>
+   <label>Opmerking</label><input class="veld" id="tbNot" maxlength="200" value="${esc(x.not||'')}">
+   <div class="fout" id="fout"></div>
+   ${!n?tbBetalingenHtml(x)+`<div class="knoppen" style="justify-content:flex-start;padding:14px 0 0"><button class="knop rand rood klein" data-tb="weg" data-v="${esc(x.id)}">Factuur verwijderen</button></div>`:''}</div>`)}
+function tbBetalingenHtml(x){const l=Object.entries(x.bet||{}).sort((a,c)=>String(a[1].d).localeCompare(String(c[1].d)));
+  return`<div class="sectie" style="margin:16px 0 0"><div class="karkop"><b>Betalingen</b><span class="bbtel" style="margin-left:auto">${fEuro(tbBetaaldSom(x))} van ${fEuro(tbTotaal(x))}</span></div>
+   ${l.map(([pid,p])=>`<div class="rij inv"><div class="groei"><div class="naam" style="font-size:16px">${fEuro(+p.b||0)}</div><div class="sub">${tbD(p.d)}${p.vol?' · restbedrag':''}</div></div><button class="knop rand klein" data-tb="betweg" data-v="${esc(x.id)}|${esc(pid)}">Weg</button></div>`).join('')||'<p class="leeg" style="margin:10px">Nog niets betaald.</p>'}
+   ${tbIsBetaald(x)?'':`<div class="knoppen" style="justify-content:flex-start"><button class="knop rand klein" data-tb="deel" data-v="${esc(x.id)}">+ Deelbetaling</button></div>`}</div>`}
+function tbBetaalSheet(x,vol){const rest=tbRest(x);
+  toonSheet(`<div class="pkop"><button data-a="sluit">Annuleren</button><b>${vol?'Betaald':'Deelbetaling'}</b><button data-tb="${vol?'betaaldok':'deelok'}" data-v="${esc(x.id)}" style="font-weight:700">Bewaren</button></div><div class="pinhoud">
+   <p class="hulp" style="margin-top:0"><b>${esc(x.lev||'')}</b> · ${esc(x.nr||'')} · nog open ${fEuro(rest)}</p>
+   ${vol?'':`<label>Bedrag (€)</label><input class="veld" id="tbBb" inputmode="decimal" value="" placeholder="${bedragTekst(rest/100)}" style="width:160px">`}
+   <label>Datum betaald</label><input class="veld" type="date" id="tbBd" value="${iso()}" max="${iso()}" style="width:190px"><div class="fout" id="fout"></div>
+   ${vol?`<p class="hulp">Het restbedrag van ${fEuro(rest)} wordt als betaald geboekt en de factuur gaat naar Betaald.</p>`:`<p class="hulp">Is het restant daarna € 0,00, dan gaat de factuur vanzelf naar Betaald.</p>`}</div>`)}
+function tbIncSheet(x){toonSheet(`<div class="pkop"><button data-a="sluit">Annuleren</button><b>Naar incassobureau</b><button data-tb="incok" data-v="${esc(x.id)}" style="font-weight:700">Bewaren</button></div><div class="pinhoud">
+   <p class="hulp" style="margin-top:0"><b>${esc(x.lev||'')}</b> · ${esc(x.nr||'')} · ${fEuro(+x.tot||0)}</p>
+   <label>Incassobureau</label><input class="veld" id="tbIncB" maxlength="60"><label>Incassokosten (€)</label><input class="veld" id="tbIncK" inputmode="decimal" style="width:160px"><div class="fout" id="fout"></div>
+   <p class="hulp">De incassokosten komen bovenop het factuurbedrag.</p></div>`);setTimeout(()=>document.getElementById('tbIncB')?.focus(),200)}
+const tbVal=id=>(document.getElementById(id)?.value||'').trim();
+const tbFout=t=>{const e=document.getElementById('fout');if(e)e.textContent=t;return null};
+function tbBoekVol(x,d){const rest=tbRest(x);if(rest>0)x.bet[urenId()]={b:rest,d,vol:true};x.betaald=d}
+/* ---------- export ---------- */
+async function tbExcel(){if(!window.XLSX){toast('Excel-onderdeel laden…');try{await laadXlsx()}catch(e){toast('Excel kon niet laden, controleer je internet');return}}
+  const kop=['Leverancier','Factuurnummer','Factuurdatum','Vervaldatum','Factuurtotaal','Incassobureau','Incassokosten','Totaal te betalen','Betaald','Nog open','Betaaldatum','Dagen te laat','Betalingen','Opmerking'];
+  const rij=x=>{const inc=tbInc(x);return[x.lev||'',x.nr||'',tbD(x.fdat),tbD(x.verval),(+x.tot||0)/100,inc?.bureau||'',inc?(+inc.kosten||0)/100:'',tbTotaal(x)/100,tbBetaaldSom(x)/100,tbRest(x)/100,tbD(x.betaald),tbTeLaat(x)||'',Object.values(x.bet||{}).sort((a,c)=>String(a.d).localeCompare(String(c.d))).map(p=>`${tbD(p.d)} € ${bedragTekst((+p.b||0)/100)}`).join('; '),x.not||'']};
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([kop,...tbOpen().map(rij)]),'Open');XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([kop,...tbBetaald().map(rij)]),'Betaald');
+  const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});deelBestand(new File([buf],`te-betalen-${iso()}.xlsx`,{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}))}
+/* ---------- klikken ---------- */
+document.addEventListener('click',e=>{const el=e.target.closest('[data-tb]');if(!el||el.tagName==='INPUT')return;if(!betalenMag())return;L.laatsteActie=Date.now();const c=el.dataset.tb,v=el.dataset.v||'',f=tbSchrijf(),x=f[v];
+  try{switch(c){
+  case'tab':tbTab=v;tbStap=null;render();return;
+  case'nieuw':tbFormulier(null);setTimeout(()=>{const i=document.getElementById('tbLev');if(i&&!document.activeElement?.matches('#paneel input'))i.focus()},250);return;
+  case'bewerk':if(x)tbFormulier(x);return;
+  case'bewaar':{const lev=tbVal('tbLev'),nr=tbVal('tbNr'),fd=tbVal('tbFd'),vv=tbVal('tbVv'),tot=fCent(leesBedrag(tbVal('tbTot'))),incAan=document.getElementById('tbIncAan').checked,incK=fCent(leesBedrag(tbVal('tbIncK')));
+    if(!lev)return tbFout('Vul de leverancier in.');if(!nr)return tbFout('Vul het factuurnummer in.');if(!fd)return tbFout('Vul de factuurdatum in.');if(!(tot>0))return tbFout('Vul het factuurtotaal in.');if(vv&&vv<fd)return tbFout('De vervaldatum ligt voor de factuurdatum.');
+    if(incAan&&!(incK>=0))return tbFout('Vul de incassokosten in.');
+    const dub=tbAlle().find(y=>y.id!==v&&String(y.nr).toLowerCase()===nr.toLowerCase()&&String(y.lev).toLowerCase()===lev.toLowerCase());
+    if(dub&&tbStap!=='dub:'+nr){tbStap='dub:'+nr;return tbFout(`Factuur ${nr} van ${lev} staat er al in. Tik nogmaals op Bewaren om toch op te slaan.`)}tbStap=null;
+    const id=x?v:urenId(),y=x||(f[id]={id,bet:{},t:Date.now()});
+    Object.assign(y,{lev:lev.slice(0,60),nr:nr.slice(0,40),fdat:fd,verval:vv||null,tot,not:tbVal('tbNot').slice(0,200)});
+    if(incAan)y.inc={bureau:tbVal('tbIncB').slice(0,60),kosten:incK,t:y.inc?.t||Date.now()};else y.inc=null;
+    if(y.betaald&&tbRest(y)>0)y.betaald=null;else if(!y.betaald&&Object.keys(y.bet).length&&tbRest(y)===0)y.betaald=Object.values(y.bet).map(p=>p.d).sort().pop();
+    bewaar();sluit();render();toast(x?'Opgeslagen':'Factuur toegevoegd');return}
+  case'weg':if(!x)return;if(tbStap!=='weg:'+v){tbStap='weg:'+v;el.textContent='Zeker? Tik nogmaals';return}tbStap=null;delete f[v];bewaar();sluit();render();toast('Verwijderd');return;
+  case'betaald':if(x)tbBetaalSheet(x,true);return;
+  case'deel':if(x)tbBetaalSheet(x,false);setTimeout(()=>document.getElementById('tbBb')?.focus(),250);return;
+  case'betaaldok':{if(!x)return;const d=tbVal('tbBd');if(!d)return tbFout('Kies de datum.');tbBoekVol(x,d);bewaar();sluit();render();bevestig(`✓ Betaald · ${x.lev}`);return}
+  case'deelok':{if(!x)return;const d=tbVal('tbBd'),b=fCent(leesBedrag(tbVal('tbBb'))),rest=tbRest(x);if(!(b>0))return tbFout('Vul het bedrag in.');if(b>rest)return tbFout(`Dat is meer dan het openstaande bedrag (${fEuro(rest)}).`);if(!d)return tbFout('Kies de datum.');
+    x.bet[urenId()]={b,d};if(tbRest(x)===0)x.betaald=d;bewaar();sluit();render();bevestig(tbRest(x)===0?`✓ Helemaal betaald · ${x.lev}`:`✓ ${fEuro(b)} geboekt · nog open ${fEuro(tbRest(x))}`);return}
+  case'betweg':{const[fid,pid]=v.split('|'),y=f[fid];if(!y||!y.bet[pid])return;delete y.bet[pid];if(y.betaald&&tbRest(y)>0)y.betaald=null;bewaar();tbFormulier(y);render();return}
+  case'incasso':if(x)tbIncSheet(x);return;
+  case'incok':{if(!x)return;const k=fCent(leesBedrag(tbVal('tbIncK')));if(!tbVal('tbIncK'))return tbFout('Vul de incassokosten in (0 mag).');x.inc={bureau:tbVal('tbIncB').slice(0,60),kosten:k,t:Date.now()};bewaar();sluit();render();toast('Bij incasso gezet');return}
+  case'terug':{if(!x)return;if(tbStap!=='terug:'+v){tbStap='terug:'+v;render();setTimeout(()=>{if(tbStap==='terug:'+v){tbStap=null;render()}},5000);return}tbStap=null;
+    for(const[pid,p]of Object.entries(x.bet))if(p.vol)delete x.bet[pid];x.betaald=null;bewaar();render();toast('Teruggezet naar Open');return}
+  case'excel':tbExcel();return;
+  }}catch(z){meldFout(z,'Te betalen')}});
+document.addEventListener('input',e=>{if(e.target.id==='tbZoek'){tbZoek=e.target.value;const l=document.getElementById('tbLijst');if(l)l.innerHTML=tbLijstHtml()}});
+document.addEventListener('change',e=>{if(e.target.id==='tbIncAan'){const v=document.getElementById('tbIncVeld');if(v)v.style.display=e.target.checked?'':'none'}
+  if(e.target.id==='tbFd'){const vv=document.getElementById('tbVv');if(vv&&vv.dataset.auto&&e.target.value)vv.value=plusDagen(e.target.value,30)}
+  if(e.target.id==='tbVv')e.target.dataset.auto=''});
+(function(){const st=document.createElement('style');st.textContent=`.tbrij{display:flex;gap:10px;align-items:flex-start;margin:0 16px 8px;padding:12px;background:var(--kaart);border:1px solid var(--lijn);border-radius:12px}
+.tbrij.laat{border-left:4px solid var(--oranje)}.tbrij.inc{border-left:4px solid var(--rood)}
+.tbinfo{flex:1;min-width:0;background:none;border:0;padding:0;text-align:left;color:inherit;font:inherit}.tbinfo .naam{font-size:17px}.tbnr{font-weight:400;color:var(--grijs);font-size:15px}
+.tbrechts{display:flex;flex-direction:column;align-items:flex-end;gap:6px}.tbbedrag{font-weight:800;font-size:17px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tbknoppen{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.tbinc{color:var(--rood);font-weight:700}
+.tbtotaal .tbgroot{font-size:30px;font-weight:900;font-variant-numeric:tabular-nums}.groentekst{color:var(--groen)}
+@media(max-width:420px){.tbrij{flex-wrap:wrap}.tbrechts{width:100%;flex-direction:row;justify-content:space-between;align-items:center}}`;document.head.appendChild(st)})();
 
 /* ================= 10.10 chat ================= */
 /* Gesprekken staan in S.berichten (sleutel 'berichten'). Soorten: privé (medewerker ↔ beheer), 'team' en mededelingen ('med').
@@ -3652,6 +3769,7 @@ function meerHtml(){
   if(sub==='winkel'&&WINKEL&&kanBeheren()&&isAdmin())return terug+winkelHtml();
   if(sub==='abonnement'&&isEigenaar()&&isAdmin())return terug+abonnementHtml();
   if(sub==='facturen'&&facturenMag())return terug+facturenHtml();
+  if(sub==='tebetalen'&&betalenMag())return terug+betalenHtml();
   if(sub==='uren'&&isAdmin())return terug+urenBeheerHtml();
   if(sub==='bestelboeken'&&bbMag())return terug+bestelboekenHtml();
   if(sub==='bbkies'&&bbMag())return`<button class="terug" data-a="sub" data-v="bestelboeken">‹ Bestelboeken</button>`+bbKiesHtml();
