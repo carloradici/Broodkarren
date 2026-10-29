@@ -1395,7 +1395,7 @@ function bestelBerekening(){
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const APP_VERSIE='10.0',APP_BOUW='10.12';
+const APP_VERSIE='10.0',APP_BOUW='10.13';
 const NIEUWS=[['🏪','Brood Opzet per winkel','De app werkt nu per winkel. Alles wat je al had, hoort bij je eigen winkel. Voor jou verandert er niets.'],
  ['🔑','Koppelen met een code','Een nieuwe telefoon koppel je voortaan met de koppelcode van de winkel, zonder wachtwoord. De beheerder vindt de code onder Meer.'],
  ['🌤️','Weer en bakker','De beheerder kiest bij Broodsoorten en instellingen de plaats voor het weer en de naam van de bakker.'],
@@ -3336,18 +3336,30 @@ function afsluitHtml(){
 function laadPdf(){if(window.jspdf&&window.jspdf.jsPDF&&window.jspdf.jsPDF.API.autoTable)return Promise.resolve();
   const laad=src=>new Promise((ok,nee)=>{const x=document.createElement('script');x.src=src;x.onload=ok;x.onerror=nee;document.head.appendChild(x)});
   return laad('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js').then(()=>laad('https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js'))}
+/* 10.13 kiezen welke karren op de PDF komen (per persoon onthouden) */
+function printKeuze(){const p=prof().printKeuze;return{uit:Array.isArray(p?.uit)?p.uit.map(Number):[],vers:!!p?.vers}}
+function printKarren(d){const m=new Map();let vers=false;for(const mo of S.momenten){for(const s of maakLijst(d,mo.id))if(!m.has(s.nr))m.set(s.nr,s.naam);if(versRegels(d,mo.id).length)vers=true}return{karren:[...m].map(([nr,naam])=>({nr,naam})).sort((a,b)=>a.nr-b.nr),vers}}
+function printSelectieTekst(d){const k=printKeuze(),a=printKarren(d),l=a.karren.filter(x=>!k.uit.includes(x.nr)).map(x=>x.naam);if(a.vers&&k.vers)l.push('Vers brood');
+  return l.length===a.karren.length+(a.vers?1:0)?'':l.length?'Op deze lijst: '+l.join(', '):'Niets gekozen'}
+function printKeuzeHtml(){const k=printKeuze(),a=printKarren(datum);if(!a.karren.length&&!a.vers)return'';
+  return`<div class="kaartje" style="margin:0 0 12px"><b>Wat moet erop?</b><div class="printkeuze">${a.karren.map(x=>`<label><input type="checkbox" data-printkar="${x.nr}" ${k.uit.includes(x.nr)?'':'checked'}> ${esc(x.naam)}</label>`).join('')}${a.vers?`<label><input type="checkbox" data-printkar="vers" ${k.vers?'checked':''}> Vers brood</label>`:''}</div><div class="sub">Je keuze wordt onthouden.</div></div>`}
+document.addEventListener('change',e=>{const v=e.target.dataset?.printkar;if(v==null)return;const k=printKeuze();
+  if(v==='vers')k.vers=e.target.checked;else{const nr=+v;k.uit=k.uit.filter(x=>x!==nr);if(!e.target.checked)k.uit.push(nr)}
+  const id=L.sessie;if(!id)return;S.profielen[id]={...(S.profielen[id]||{}),printKeuze:k};bewaar();printDag()});
+(function(){const st=document.createElement('style');st.textContent='.printkeuze{display:flex;flex-wrap:wrap;gap:8px 16px;margin:8px 0 4px}.printkeuze label{display:flex;align-items:center;gap:6px;font-size:16px;color:var(--tekst)}.printkeuze input{width:22px;height:22px;accent-color:var(--oranje)}';document.head.appendChild(st)})();
 function printGegevens(){
-  const d=datum,delen=[];
-  for(const mo of S.momenten){const sec=maakLijst(d,mo.id),vers=versRegels(d,mo.id);if(!sec.length&&!vers.length)continue;const blokken=[];
+  const d=datum,delen=[],pk=printKeuze();
+  for(const mo of S.momenten){const sec=maakLijst(d,mo.id).filter(x=>!pk.uit.includes(x.nr)),vers=pk.vers?versRegels(d,mo.id):[];if(!sec.length&&!vers.length)continue;const blokken=[];
     for(const s of sec){const k=karTaak(d,s.nr),nm=k?S.gebruikers.find(g=>g.id===k)?.naam:'';blokken.push({titel:s.naam+(nm?' – '+nm:''),rijen:s.regels.map(r=>[r.ontdooi?'–':r.plaat,r.s.naam,r.s.plu||'',`${r.n}${!r.ontdooi&&r.v.platen>1?` (${r.v.delen.join('+')})`:''}`,''])})}
     if(vers.length)blokken.push({titel:'Vers brood',rijen:vers.map(r=>['–',r.s.naam,r.s.plu||'',String(r.n),''])});
     delen.push({moment:mo.naam,blokken})}
-  return{titel:'Brood Opzet – '+winkelNaam(),datum:`${datumTekst(d)} ${vanIso(d).getFullYear()}${S.afwijkend[d]?' – '+S.afwijkend[d].naam:''}`,delen};
+  return{titel:'Brood Opzet – '+winkelNaam(),selectie:printSelectieTekst(d),datum:`${datumTekst(d)} ${vanIso(d).getFullYear()}${S.afwijkend[d]?' – '+S.afwijkend[d].naam:''}`,delen};
 }
 function maakPdf(){
   const g=printGegevens(),doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'}),O=[241,125,4];let y=16;
   doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(g.titel,14,y);doc.setFont('helvetica','normal');doc.setFontSize(11);doc.text(g.datum,196,y,{align:'right'});
   doc.setDrawColor(...O);doc.setLineWidth(1);doc.line(14,y+3,196,y+3);y+=10;
+  if(g.selectie){doc.setFontSize(10);doc.setTextColor(90);doc.text(g.selectie,14,y-2);doc.setTextColor(0);doc.setFontSize(11);y+=5}
   if(!g.delen.length){doc.text('Niets gepland.',14,y)}
   for(const deel of g.delen){if(g.delen.length>1){doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text(deel.moment,14,y);y+=4}
     for(const bl of deel.blokken){
@@ -3364,15 +3376,15 @@ async function printDeel(){
   const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;document.body.appendChild(a);a.click();a.remove();
 }
 function printDag(){
-  const d=datum,delen=S.momenten.map(mo=>{const sec=maakLijst(d,mo.id),vers=versRegels(d,mo.id);if(!sec.length&&!vers.length)return'';
+  const d=datum,pk=printKeuze(),delen=S.momenten.map(mo=>{const sec=maakLijst(d,mo.id).filter(x=>!pk.uit.includes(x.nr)),vers=pk.vers?versRegels(d,mo.id):[];if(!sec.length&&!vers.length)return'';
     const tab=(titel,rows)=>`<h2>${esc(titel)}</h2><table><tr><th>Plaat</th><th>Product</th><th>PLU</th><th>Aantal</th><th>✓</th></tr>${rows}</table>`;
     return`<h1>${esc(mo.naam)}${S.momenten.length>1?'':''}</h1>`+sec.map(s=>{const k=karTaak(d,s.nr),naam=k?S.gebruikers.find(g=>g.id===k)?.naam:'';
       return tab(s.naam+(naam?` – ${naam}`:''),s.regels.map(r=>`<tr><td>${r.ontdooi?'–':r.plaat}</td><td>${esc(r.s.naam)}</td><td>${esc(r.s.plu||'')}</td><td>${r.n}${!r.ontdooi&&r.v.platen>1?` (${r.v.delen.join('+')})`:''}</td><td class="vak"></td></tr>`).join(''))}).join('')
       +(vers.length?tab('Vers brood',vers.map(r=>`<tr><td>–</td><td>${esc(r.s.naam)}</td><td>${esc(r.s.plu||'')}</td><td>${r.n}</td><td class="vak"></td></tr>`).join('')):'')}).join('');
   const el=document.getElementById('printvak');
-  el.innerHTML=`<div class="printkop"><b>Brood Opzet – ${esc(winkelNaam())}</b><span>${esc(datumTekst(d))} ${vanIso(d).getFullYear()}${S.afwijkend[d]?' – '+esc(S.afwijkend[d].naam):''}</span></div>${delen||'<p>Niets gepland.</p>'}`;
+  el.innerHTML=`<div class="printkop"><b>Brood Opzet – ${esc(winkelNaam())}</b><span>${esc(datumTekst(d))} ${vanIso(d).getFullYear()}${S.afwijkend[d]?' – '+esc(S.afwijkend[d].naam):''}</span></div>${printSelectieTekst(d)?`<p class="printsel">${esc(printSelectieTekst(d))}</p>`:''}${delen||'<p>Niets gepland.</p>'}`;
   toonSheet(`<div class="pkop"><button data-a="sluit">Sluiten</button><b>Afdrukvoorbeeld</b><span style="width:60px"></span></div>
-   <div class="pinhoud"><div class="knoppen" style="margin:12px 0"><button class="knop" data-a="printdeel">Printen of delen (PDF)</button></div><p class="hulp" style="text-align:center;margin:-4px 0 10px">Kies in het deelmenu <b>Afdrukken</b>, of bewaar of verstuur de PDF.</p>
+   <div class="pinhoud">${printKeuzeHtml()}<div class="knoppen" style="margin:12px 0"><button class="knop" data-a="printdeel">Printen of delen (PDF)</button></div><p class="hulp" style="text-align:center;margin:-4px 0 10px">Kies in het deelmenu <b>Afdrukken</b>, of bewaar of verstuur de PDF.</p>
    <div class="printvoorbeeld">${el.innerHTML}</div></div>`);
   laadPdf().catch(()=>{});
 }
