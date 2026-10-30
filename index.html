@@ -1395,7 +1395,7 @@ function bestelBerekening(){
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const APP_VERSIE='10.0',APP_BOUW='10.14';
+const APP_VERSIE='10.0',APP_BOUW='10.15';
 const NIEUWS=[['🏪','Brood Opzet per winkel','De app werkt nu per winkel. Alles wat je al had, hoort bij je eigen winkel. Voor jou verandert er niets.'],
  ['🔑','Koppelen met een code','Een nieuwe telefoon koppel je voortaan met de koppelcode van de winkel, zonder wachtwoord. De beheerder vindt de code onder Meer.'],
  ['🌤️','Weer en bakker','De beheerder kiest bij Broodsoorten en instellingen de plaats voor het weer en de naam van de bakker.'],
@@ -2923,13 +2923,23 @@ const tbAlle=()=>Object.values(S.betalen?.f||{}).filter(isObj);
 const tbOpen=()=>tbAlle().filter(x=>!tbIsBetaald(x)).sort((a,c)=>(tbTeLaat(c)>0)-(tbTeLaat(a)>0)||String(a.verval||'9').localeCompare(String(c.verval||'9'))||String(a.fdat).localeCompare(String(c.fdat)));
 const tbBetaald=()=>tbAlle().filter(tbIsBetaald).sort((a,c)=>String(c.betaald).localeCompare(String(a.betaald))||c.t-a.t);
 function tbMatch(x,q){if(!q)return true;q=q.toLowerCase().trim();const n=q.replace(/[€\s]/g,'');
-  return String(x.nr||'').toLowerCase().includes(q)||String(x.lev||'').toLowerCase().includes(q)||(n&&/[0-9]/.test(n)&&[x.tot,tbTotaal(x)].some(c=>bedragTekst((+c||0)/100).includes(n.replace('.',','))))||String(x.not||'').toLowerCase().includes(q)}
+  return String(x.nr||'').toLowerCase().includes(q)||String(x.lev||'').toLowerCase().includes(q)||(n&&/[0-9]/.test(n)&&[x.tot,tbTotaal(x)].some(c=>bedragTekst((+c||0)/100).includes(n.replace('.',','))))||String(x.not||'').toLowerCase().includes(q)||tbLog(x).some(([,n])=>tbLogTekst(n).toLowerCase().includes(q))}
+const TB_SOORT={herinnering:'Herinnering gestuurd',aanmaning:'Aanmaning',gebeld:'Gebeld',notitie:'Notitie'};
+const tbLog=x=>Object.entries(isObj(x.log)?x.log:{}).filter(([,n])=>isObj(n)).sort((a,c)=>String(c[1].d).localeCompare(String(a[1].d))||(c[1].ts||0)-(a[1].ts||0));
+const tbLogTekst=n=>`${TB_SOORT[n.s]||'Notitie'} · ${tbD(n.d)}${n.t?': '+n.t:''}`;
+function tbLogHtml(x){const l=tbLog(x);
+  return`<div class="sectie" style="margin:16px 0 0"><div class="karkop"><b>Notities</b></div>
+   <div class="tbsnel">${Object.entries(TB_SOORT).map(([k,t])=>`<button class="knop rand klein" data-tb="logsoort" data-v="${k}">${k==='notitie'?'+ Eigen notitie':t}</button>`).join('')}</div>
+   <div id="tbLogNieuw" style="display:none"><div class="minmax"><div><label id="tbLogLabel">Notitie</label><input class="veld" type="date" id="tbLogD" value="${iso()}" max="${iso()}"></div></div>
+    <input class="veld" id="tbLogT" maxlength="200" placeholder="Bijv. per mail, 2e herinnering"><input type="hidden" id="tbLogS" value="notitie">
+    <div class="knoppen" style="justify-content:flex-start;padding:8px 0 0"><button class="knop klein" data-tb="logok" data-v="${esc(x.id)}">Notitie toevoegen</button></div></div>
+   ${l.map(([nid,n])=>`<div class="rij inv"><div class="groei"><div class="naam" style="font-size:15px">${esc(TB_SOORT[n.s]||'Notitie')} · ${esc(tbD(n.d))}</div>${n.t?`<div class="sub">${esc(n.t)}</div>`:''}</div><button class="knop rand klein" data-tb="logweg" data-v="${esc(x.id)}|${esc(nid)}">Weg</button></div>`).join('')||'<p class="leeg" style="margin:10px">Nog geen notities.</p>'}</div>`}
 function tbSchrijf(){if(!isObj(S.betalen))S.betalen={};if(!isObj(S.betalen.f))S.betalen.f={};if(!S.betalen.eig)S.betalen.eig=L.sessie;return S.betalen.f}
 const tbLeveranciers=()=>[...new Set(tbAlle().map(x=>(x.lev||'').trim()).filter(Boolean))].sort((a,c)=>a.localeCompare(c,'nl'));
 function tbRij(x){const inc=tbInc(x),laat=tbTeLaat(x),som=tbBetaaldSom(x),rest=tbRest(x),bet=tbIsBetaald(x);
   const sub=[`factuur ${tbD(x.fdat)}`,bet?`<b class="groentekst">betaald ${tbD(x.betaald)}</b>`:x.verval?(laat?`<b class="oranjetekst">${laat} ${laat===1?'dag':'dagen'} te laat</b> (vervaldatum ${tbD(x.verval)})`:`vervalt ${tbD(x.verval)}`):''].filter(Boolean).join(' · ');
-  const extra=[inc?`<span class="tbinc">Incasso${inc.bureau?' '+esc(inc.bureau):''} + ${fEuro(+inc.kosten||0)}</span>`:'',!bet&&som?`betaald ${fEuro(som)} · <b>nog open ${fEuro(rest)}</b>`:'',bet&&Object.keys(x.bet||{}).length>1?`${Object.keys(x.bet).length} betalingen`:'',x.not?esc(x.not):''].filter(Boolean).join(' · ');
-  return`<div class="tbrij ${laat?'laat':''} ${inc?'inc':''}"><button class="tbinfo" data-tb="bewerk" data-v="${esc(x.id)}"><div class="naam">${esc(x.lev||'?')} <span class="tbnr">${esc(x.nr||'')}</span></div><div class="sub">${sub}</div>${extra?`<div class="sub">${extra}</div>`:''}</button>
+  const extra=[inc?`<span class="tbinc">Incasso${inc.bureau?' '+esc(inc.bureau):''} + ${fEuro(+inc.kosten||0)}</span>`:'',!bet&&som?`betaald ${fEuro(som)} · <b>nog open ${fEuro(rest)}</b>`:'',bet&&Object.keys(x.bet||{}).length>1?`${Object.keys(x.bet).length} betalingen`:'',x.not?esc(x.not):''].filter(Boolean).join(' · '),lg=tbLog(x)[0];
+  return`<div class="tbrij ${laat?'laat':''} ${inc?'inc':''}"><button class="tbinfo" data-tb="bewerk" data-v="${esc(x.id)}"><div class="naam">${esc(x.lev||'?')} <span class="tbnr">${esc(x.nr||'')}</span></div><div class="sub">${sub}</div>${extra?`<div class="sub">${extra}</div>`:''}${lg?`<div class="sub tblaatst">📝 ${esc(tbLogTekst(lg[1]))}</div>`:''}</button>
    <div class="tbrechts"><div class="tbbedrag">${fEuro(bet?tbTotaal(x):rest)}</div>${bet?`<button class="knop rand klein" data-tb="terug" data-v="${esc(x.id)}">${tbStap==='terug:'+x.id?'Zeker?':'Terugzetten'}</button>`:`<div class="tbknoppen"><button class="knop klein" data-tb="betaald" data-v="${esc(x.id)}">✓ Betaald</button><button class="knop rand klein" data-tb="deel" data-v="${esc(x.id)}">Deel</button>${inc?'':`<button class="knop rand klein" data-tb="incasso" data-v="${esc(x.id)}">Incasso</button>`}</div>`}</div></div>`}
 function tbLijstHtml(){const l=(tbTab==='open'?tbOpen():tbBetaald()).filter(x=>tbMatch(x,tbZoek));
   if(!l.length)return`<p class="leeg">${tbZoek?'Niets gevonden.':tbTab==='open'?'Geen openstaande facturen.':'Nog geen betaalde facturen.'}</p>`;
@@ -2941,7 +2951,7 @@ function betalenHtml(){if(!betalenMag())return'';const o=tbOpen(),b=tbBetaald(),
      ${laat.length?`<div class="sub oranjetekst"><b>${laat.length} te laat · ${fEuro(laat.reduce((t,x)=>t+tbRest(x),0))}</b></div>`:''}${inc.length?`<div class="sub" style="color:var(--rood)"><b>${inc.length} bij incasso · ${fEuro(inc.reduce((t,x)=>t+(+tbInc(x).kosten||0),0))} incassokosten</b></div>`:''}</div>`;
   else{const mnd=iso().slice(0,7);h+=`<div class="kaartje tbtotaal"><div class="tbgroot">${fEuro(b.filter(x=>String(x.betaald).slice(0,7)===mnd).reduce((t,x)=>t+tbTotaal(x),0))}</div><div class="sub">betaald deze maand · ${b.length} betaalde facturen in totaal</div></div>`}
   h+=`<div class="zoekbalk"><input class="veld" id="tbZoek" type="search" placeholder="Zoek op factuurnummer, leverancier of bedrag" value="${esc(tbZoek)}" autocomplete="off"></div>
-   <div class="knoppen" style="justify-content:flex-start;gap:8px;flex-wrap:wrap;padding-top:0">${tbTab==='open'?`<button class="knop" data-tb="nieuw">+ Factuur</button>`:''}<button class="knop rand" data-tb="excel">📊 Excel</button></div>
+   <div class="knoppen" style="justify-content:flex-start;gap:8px;flex-wrap:wrap;padding-top:0">${tbTab==='open'?`<button class="knop" data-tb="nieuw">+ Factuur</button>`:''}<button class="knop rand" data-tb="excel">📊 Excel</button><button class="knop rand" data-tb="inlezen">📥 Excel inlezen</button></div>
    <div id="tbLijst">${tbLijstHtml()}</div>`;
   return h}
 /* ---------- formulieren ---------- */
@@ -2955,7 +2965,7 @@ function tbFormulier(x){const n=!x;x=x||{fdat:iso(),verval:plusDagen(iso(),30)};
    <div id="tbIncVeld" style="${inc?'':'display:none'}"><label>Incassobureau</label><input class="veld" id="tbIncB" maxlength="60" value="${esc(inc?.bureau||'')}"><label>Incassokosten (€)</label><input class="veld" id="tbIncK" inputmode="decimal" value="${inc?bedragTekst((+inc.kosten||0)/100):''}" style="width:160px"></div>
    <label>Opmerking</label><input class="veld" id="tbNot" maxlength="200" value="${esc(x.not||'')}">
    <div class="fout" id="fout"></div>
-   ${!n?tbBetalingenHtml(x)+`<div class="knoppen" style="justify-content:flex-start;padding:14px 0 0"><button class="knop rand rood klein" data-tb="weg" data-v="${esc(x.id)}">Factuur verwijderen</button></div>`:''}</div>`)}
+   ${!n?`<div id="tbLogVak">${tbLogHtml(x)}</div>`+tbBetalingenHtml(x)+`<div class="knoppen" style="justify-content:flex-start;padding:14px 0 0"><button class="knop rand rood klein" data-tb="weg" data-v="${esc(x.id)}">Factuur verwijderen</button></div>`:''}</div>`)}
 function tbBetalingenHtml(x){const l=Object.entries(x.bet||{}).sort((a,c)=>String(a[1].d).localeCompare(String(c[1].d)));
   return`<div class="sectie" style="margin:16px 0 0"><div class="karkop"><b>Betalingen</b><span class="bbtel" style="margin-left:auto">${fEuro(tbBetaaldSom(x))} van ${fEuro(tbTotaal(x))}</span></div>
    ${l.map(([pid,p])=>`<div class="rij inv"><div class="groei"><div class="naam" style="font-size:16px">${fEuro(+p.b||0)}</div><div class="sub">${tbD(p.d)}${p.vol?' · restbedrag':''}</div></div><button class="knop rand klein" data-tb="betweg" data-v="${esc(x.id)}|${esc(pid)}">Weg</button></div>`).join('')||'<p class="leeg" style="margin:10px">Nog niets betaald.</p>'}
@@ -2975,10 +2985,42 @@ const tbFout=t=>{const e=document.getElementById('fout');if(e)e.textContent=t;re
 function tbBoekVol(x,d){const rest=tbRest(x);if(rest>0)x.bet[urenId()]={b:rest,d,vol:true};x.betaald=d}
 /* ---------- export ---------- */
 async function tbExcel(){if(!window.XLSX){toast('Excel-onderdeel laden…');try{await laadXlsx()}catch(e){toast('Excel kon niet laden, controleer je internet');return}}
-  const kop=['Leverancier','Factuurnummer','Factuurdatum','Vervaldatum','Factuurtotaal','Incassobureau','Incassokosten','Totaal te betalen','Betaald','Nog open','Betaaldatum','Dagen te laat','Betalingen','Opmerking'];
-  const rij=x=>{const inc=tbInc(x);return[x.lev||'',x.nr||'',tbD(x.fdat),tbD(x.verval),(+x.tot||0)/100,inc?.bureau||'',inc?(+inc.kosten||0)/100:'',tbTotaal(x)/100,tbBetaaldSom(x)/100,tbRest(x)/100,tbD(x.betaald),tbTeLaat(x)||'',Object.values(x.bet||{}).sort((a,c)=>String(a.d).localeCompare(String(c.d))).map(p=>`${tbD(p.d)} € ${bedragTekst((+p.b||0)/100)}`).join('; '),x.not||'']};
+  const kop=['Leverancier','Factuurnummer','Factuurdatum','Vervaldatum','Factuurtotaal','Incassobureau','Incassokosten','Totaal te betalen','Betaald','Nog open','Betaaldatum','Dagen te laat','Betalingen','Opmerking','Notities'];
+  const rij=x=>{const inc=tbInc(x);return[x.lev||'',x.nr||'',tbD(x.fdat),tbD(x.verval),(+x.tot||0)/100,inc?.bureau||'',inc?(+inc.kosten||0)/100:'',tbTotaal(x)/100,tbBetaaldSom(x)/100,tbRest(x)/100,tbD(x.betaald),tbTeLaat(x)||'',Object.values(x.bet||{}).sort((a,c)=>String(a.d).localeCompare(String(c.d))).map(p=>`${tbD(p.d)} € ${bedragTekst((+p.b||0)/100)}`).join('; '),x.not||'',tbLog(x).reverse().map(([,n])=>tbLogTekst(n)).join('; ')]};
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([kop,...tbOpen().map(rij)]),'Open');XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([kop,...tbBetaald().map(rij)]),'Betaald');
   const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});deelBestand(new File([buf],`te-betalen-${iso()}.xlsx`,{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}))}
+/* ---------- Excel inlezen (Openstaande Posten) ---------- */
+let tbImport=null;
+function tbXlsDatum(v){if(v==null||v==='')return null;if(typeof v==='number'){const d=new Date(Math.round((v-25569)*864e5));return isNaN(d)?null:d.toISOString().slice(0,10)}
+  const t=String(v).trim();let m=t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);if(m)return`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  m=t.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$/);if(m){const j=m[3].length===2?'20'+m[3]:m[3];return`${j}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`}return null}
+const tbXlsGetal=v=>typeof v==='number'?v:leesBedrag(v);
+async function tbLeesExcel(file){if(!window.XLSX){toast('Excel-onderdeel laden…');try{await laadXlsx()}catch(e){toast('Excel kon niet laden, controleer je internet');return}}
+  let wb;try{wb=XLSX.read(await file.arrayBuffer(),{type:'array'})}catch(e){toast('Dit bestand kan ik niet lezen');return}
+  const naam=wb.SheetNames.find(n=>/openstaande posten/i.test(n))||wb.SheetNames.find(n=>{const r=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:true,defval:null}).slice(0,15);return r.some(x=>x.includes('Factuurnummer'))});
+  if(!naam){toast('Geen tabblad met facturen gevonden');return}
+  const rijen=XLSX.utils.sheet_to_json(wb.Sheets[naam],{header:1,raw:true,defval:null}),ki=rijen.findIndex(r=>r.some(c=>String(c||'').trim()==='Factuurnummer'));if(ki<0){toast('Kolom Factuurnummer niet gevonden');return}
+  const kop=rijen[ki].map(c=>String(c||'').trim().toLowerCase()),col=(...n)=>{for(const x of n){const i=kop.indexOf(x);if(i>=0)return i}return -1};
+  const cL=col('bedrijf','leverancier'),cN=col('factuurnummer'),cF=col('factuurdatum'),cV=col('vervaldatum'),cT=col('te betalen','bedrag incl btw','totaal'),cB=col('betaald bedrag','betaald'),cS=col('status'),cO=col('notities','notitie','opmerking');
+  if(cL<0||cN<0||cT<0){toast('Kolommen Bedrijf, Factuurnummer of Te betalen niet gevonden');return}
+  const bestaand=new Set(tbAlle().map(x=>(String(x.lev).trim()+'|'+String(x.nr).trim()).toLowerCase())),nieuw=[],gezien=new Set();let dubbel=0;
+  for(const r of rijen.slice(ki+1)){const lev=String(r[cL]??'').trim(),nr=String(r[cN]??'').trim();if(!lev||!nr)continue;const k=(lev+'|'+nr).toLowerCase();if(bestaand.has(k)||gezien.has(k)){dubbel++;continue}gezien.add(k);
+    const fd=tbXlsDatum(r[cF])||iso(),vv=tbXlsDatum(cV>=0?r[cV]:null)||plusDagen(fd,30),tot=fCent(tbXlsGetal(r[cT])),bb=cB>=0?fCent(tbXlsGetal(r[cB])):0,st=String(cS>=0?r[cS]??'':'').trim().toLowerCase(),no=String(cO>=0?r[cO]??'':'').trim();
+    nieuw.push({lev:lev.slice(0,60),nr:nr.slice(0,40),fdat:fd,verval:vv,tot,bb,betaald:st==='betaald',no})}
+  if(!nieuw.length){toast(dubbel?`Alle ${dubbel} facturen staan er al in`:'Geen facturen gevonden');return}
+  tbImport=nieuw;const o=nieuw.filter(x=>!x.betaald),b=nieuw.filter(x=>x.betaald),som=o.reduce((t,x)=>t+Math.max(0,x.tot-x.bb),0),inc=o.filter(x=>/^incasso$/i.test(x.no)).length;
+  toonSheet(`<div class="pkop"><button data-a="sluit">Annuleren</button><b>Excel inlezen</b><button data-tb="importok" style="font-weight:700">Inlezen</button></div><div class="pinhoud">
+   <p>Uit <b>${esc(file.name)}</b> (tabblad ${esc(naam.replace(/^[^A-Za-z]+/,''))}):</p>
+   <div class="kaartje"><div class="naam">${nieuw.length} facturen</div><div class="sub"><b>${o.length} open</b> · ${fEuro(som)} nog te betalen${inc?` · ${inc} bij incasso`:''}</div><div class="sub">${b.length} betaald</div>${dubbel?`<div class="sub">${dubbel} overgeslagen: staan er al in</div>`:''}</div>
+   <p class="hulp">Betaalde facturen krijgen de vervaldatum als betaaldatum, met de notitie "betaaldatum onbekend (uit Excel)". De notitie "Incasso" wordt een incassomarkering met € 0 kosten: vul de echte kosten later per factuur in.</p></div>`)}
+function tbImportDoe(){const f=tbSchrijf(),nu=iso(),ts=Date.now();let n=0;
+  for(const r of tbImport||[]){const id=urenId(),x=f[id]={id,lev:r.lev,nr:r.nr,fdat:r.fdat,verval:r.verval,tot:r.tot,not:'',bet:{},log:{},inc:null,t:ts,bron:'excel'};n++;
+    const nl=(s,t,d)=>{x.log[urenId()]={s,t,d:d||nu,ts:Date.now()}};
+    if(/^incasso$/i.test(r.no))x.inc={bureau:'',kosten:0,t:ts};else if(r.no)nl('notitie',r.no);
+    if(r.betaald){const d=r.verval||r.fdat;if(r.bb)x.bet[urenId()]={b:r.bb,d};else if(r.tot)x.bet[urenId()]={b:r.tot,d,vol:true};x.betaald=d;nl('notitie','betaaldatum onbekend (uit Excel)');
+      if(r.bb-r.tot>=100)nl('notitie',`${fEuro(r.bb-r.tot)} te veel betaald (volgens Excel)`)}
+    else if(r.bb>0){x.bet[urenId()]={b:Math.min(r.bb,r.tot),d:nu};nl('notitie',`${fEuro(r.bb)} al betaald volgens Excel, datum onbekend`)}}
+  tbImport=null;return n}
 /* ---------- klikken ---------- */
 document.addEventListener('click',e=>{const el=e.target.closest('[data-tb]');if(!el||el.tagName==='INPUT')return;if(!betalenMag())return;L.laatsteActie=Date.now();const c=el.dataset.tb,v=el.dataset.v||'',f=tbSchrijf(),x=f[v];
   try{switch(c){
@@ -3007,6 +3049,12 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-tb]');if(
   case'terug':{if(!x)return;if(tbStap!=='terug:'+v){tbStap='terug:'+v;render();setTimeout(()=>{if(tbStap==='terug:'+v){tbStap=null;render()}},5000);return}tbStap=null;
     for(const[pid,p]of Object.entries(x.bet))if(p.vol)delete x.bet[pid];x.betaald=null;bewaar();render();toast('Teruggezet naar Open');return}
   case'excel':tbExcel();return;
+  case'inlezen':{const i=document.createElement('input');i.type='file';i.accept='.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';i.onchange=()=>{if(i.files[0])tbLeesExcel(i.files[0]).catch(z=>meldFout(z,'Excel inlezen'))};i.click();return}
+  case'importok':{if(!tbImport)return;const n=tbImportDoe();bewaar();sluit();tbTab='open';render();bevestig(`✓ ${n} facturen ingelezen`);return}
+  case'logsoort':{const vak=document.getElementById('tbLogNieuw');if(!vak)return;vak.style.display='';document.getElementById('tbLogS').value=v;document.getElementById('tbLogLabel').textContent=(TB_SOORT[v]||'Notitie')+' op';const t=document.getElementById('tbLogT');t.placeholder=v==='notitie'?'Wat wil je noteren?':'Optioneel: bijv. per mail, 2e keer';t.focus();return}
+  case'logok':{if(!x)return;const s=tbVal('tbLogS')||'notitie',t=tbVal('tbLogT').slice(0,200),d=tbVal('tbLogD')||iso();if(s==='notitie'&&!t){document.getElementById('tbLogT').focus();return}
+    if(!isObj(x.log))x.log={};x.log[urenId()]={s,t,d,ts:Date.now()};bewaar();const vak=document.getElementById('tbLogVak');if(vak)vak.innerHTML=tbLogHtml(x);render();toast('Notitie toegevoegd');return}
+  case'logweg':{const[fid,nid]=v.split('|'),y=f[fid];if(!y||!isObj(y.log)||!y.log[nid])return;delete y.log[nid];bewaar();const vak=document.getElementById('tbLogVak');if(vak)vak.innerHTML=tbLogHtml(y);render();return}
   }}catch(z){meldFout(z,'Te betalen')}});
 document.addEventListener('input',e=>{if(e.target.id==='tbZoek'){tbZoek=e.target.value;const l=document.getElementById('tbLijst');if(l)l.innerHTML=tbLijstHtml()}});
 document.addEventListener('change',e=>{if(e.target.id==='tbIncAan'){const v=document.getElementById('tbIncVeld');if(v)v.style.display=e.target.checked?'':'none'}
@@ -3017,6 +3065,7 @@ document.addEventListener('change',e=>{if(e.target.id==='tbIncAan'){const v=docu
 .tbinfo{flex:1;min-width:0;background:none;border:0;padding:0;text-align:left;color:inherit;font:inherit}.tbinfo .naam{font-size:17px}.tbnr{font-weight:400;color:var(--grijs);font-size:15px}
 .tbrechts{display:flex;flex-direction:column;align-items:flex-end;gap:6px}.tbbedrag{font-weight:800;font-size:17px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .tbknoppen{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.tbinc{color:var(--rood);font-weight:700}
+.tbsnel{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.tblaatst{font-style:italic}
 .tbtotaal .tbgroot{font-size:30px;font-weight:900;font-variant-numeric:tabular-nums}.groentekst{color:var(--groen)}
 @media(max-width:420px){.tbrij{flex-wrap:wrap}.tbrechts{width:100%;flex-direction:row;justify-content:space-between;align-items:center}}`;document.head.appendChild(st)})();
 
