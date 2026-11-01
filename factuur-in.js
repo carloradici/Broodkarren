@@ -1,4 +1,5 @@
 // Brood Opzet – factuur ontvangen via de iPhone-opdracht "Naar Brood Opzet" (Supabase Edge Function "factuur-in").
+// 10.19: antwoord als gewone tekst (✓ Ontvangen! / ✗ Niet ontvangen: …) voor de melding in de opdracht.
 // 10.18: wordt door de korte factuur-in in Supabase opgehaald van GitHub. Bijwerken = dit bestand uploaden en in Supabase op Deploy tikken.
 export function start(createClient) {
   const cors = {
@@ -6,7 +7,8 @@ export function start(createClient) {
     "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info, x-code, x-test, x-naam",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
   };
-  const antwoord = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { ...cors, "Content-Type": "application/json" } });
+  const tekst = (t, status = 200) => new Response(t, { status, headers: { ...cors, "Content-Type": "text/plain; charset=utf-8" } });
+  const antwoord = (o, status = 200) => tekst(o.ok ? (o.test ? "✓ Verbinding werkt" : o.ontvangen > 1 ? `✓ ${o.ontvangen} facturen ontvangen!` : "✓ Ontvangen!") : "✗ Niet ontvangen: " + (o.fout || "onbekende fout"), status);
   const MAX = 8 * 1024 * 1024;
   const soortVan = (b, ct) => {
     if (b[0] === 0x25 && b[1] === 0x50 && b[2] === 0x44 && b[3] === 0x46) return "application/pdf";

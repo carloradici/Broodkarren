@@ -1395,7 +1395,7 @@ function bestelBerekening(){
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const APP_VERSIE='10.0',APP_BOUW='10.18';
+const APP_VERSIE='10.0',APP_BOUW='10.19';
 const NIEUWS=[['🏪','Brood Opzet per winkel','De app werkt nu per winkel. Alles wat je al had, hoort bij je eigen winkel. Voor jou verandert er niets.'],
  ['🔑','Koppelen met een code','Een nieuwe telefoon koppel je voortaan met de koppelcode van de winkel, zonder wachtwoord. De beheerder vindt de code onder Meer.'],
  ['🌤️','Weer en bakker','De beheerder kiest bij Broodsoorten en instellingen de plaats voor het weer en de naam van de bakker.'],
@@ -2982,7 +2982,7 @@ function betalenHtml(){if(!betalenMag())return'';const o=tbOpen(),b=tbBetaald(),
   else if(tbTab==='planning')return h+tbPlanHtml();
   else{const mnd=iso().slice(0,7);h+=`<div class="kaartje tbtotaal"><div class="tbgroot">${fEuro(b.filter(x=>String(x.betaald).slice(0,7)===mnd).reduce((t,x)=>t+tbTotaal(x),0))}</div><div class="sub">betaald deze maand · ${b.length} betaalde facturen in totaal</div></div>`}
   h+=`<div class="zoekbalk"><input class="veld" id="tbZoek" type="search" placeholder="Zoek op factuurnummer, leverancier of bedrag" value="${esc(tbZoek)}" autocomplete="off"></div>${tbFilterHtml()}
-   <div class="knoppen" style="justify-content:flex-start;gap:8px;flex-wrap:wrap;padding-top:0">${tbTab==='open'?`<button class="knop" data-tb="nieuw">+ Factuur</button><button class="knop" data-tb="scan">📷 Scan factuur</button>${S.betalen?.inst?.code?'':'<button class="knop rand" data-tb="opdracht">📲 Delen vanuit Mail</button>'}`:''}<button class="knop rand" data-tb="excel">📊 Excel</button><button class="knop rand" data-tb="inlezen">📥 Excel inlezen</button></div>${S.betalen?.sjab?.data?`<p class="hulp" style="margin:0 18px 8px">📊 Excel gebruikt jouw bestand ${esc(S.betalen.sjab.naam||'')}${tbFilterAan()?' · alleen de getoonde facturen':''}.</p>`:''}
+   <div class="knoppen" style="justify-content:flex-start;gap:8px;flex-wrap:wrap;padding-top:0">${tbTab==='open'?`<button class="knop" data-tb="nieuw">+ Factuur</button><button class="knop" data-tb="scan">📷 Scan factuur</button><button class="knop rand" data-tb="opdracht">📲 Delen vanuit Mail</button>`:''}<button class="knop rand" data-tb="excel">📊 Excel</button><button class="knop rand" data-tb="inlezen">📥 Excel inlezen</button></div>${S.betalen?.sjab?.data?`<p class="hulp" style="margin:0 18px 8px">📊 Excel gebruikt jouw bestand ${esc(S.betalen.sjab.naam||'')}${tbFilterAan()?' · alleen de getoonde facturen':''}.</p>`:''}
    <div id="tbLijst">${tbLijstHtml()}</div>`;
   return h}
 /* ---------- 10.17 planning, scannen, bijlagen ---------- */
@@ -3041,15 +3041,16 @@ function tbOpdrachtSheet(){const c=S.betalen?.inst?.code||'',kb=(k,t)=>`<button 
    <p>Eén keer instellen in de app <b>Opdrachten</b> op je iPhone. Daarna: bijlage in Mail → <b>Deel</b> → <b>Naar Brood Opzet</b>.</p>
    <ol>
     <li>Open <b>Opdrachten</b>, tik op <b>＋</b> en noem de opdracht <b>Naar Brood Opzet</b>.</li>
-    <li>Tik onderaan op <b>ⓘ</b> (of de naam bovenaan → Details) en zet <b>Toon in deelmenu</b> aan. Kies bij invoer: <b>Bestanden, Afbeeldingen en PDF's</b>.</li>
-    <li>Voeg de actie <b>Herhaal met elk</b> toe, met <b>Opdrachtinvoer</b>.</li>
-    <li>Zet daarbinnen de actie <b>Haal inhoud van URL op</b>:
-      <ul><li>URL: plak het adres ${kb('url','Kopieer adres')}</li>
-      <li>Tik op <b>Toon meer</b>: Methode <b>POST</b></li>
-      <li>Headers → <b>Nieuwe header</b>: sleutel <code>x-code</code>, waarde: plak je code ${kb('code','Kopieer code')}</li>
-      <li>Nog een header: sleutel <code>apikey</code>, waarde ${kb('key','Kopieer sleutel')}</li>
-      <li>Hoofdtekst aanvraag: <b>Bestand</b> → kies <b>Herhaalonderdeel</b></li></ul></li>
-    <li>Zet ná de herhaling de actie <b>Toon melding</b>: “Factuur naar Brood Opzet gestuurd”.</li>
+    <li>Tik op <b>ⓘ</b> onderaan en zet <b>Toon in deelpaneel</b> aan. Bovenaan staat dan: <i>Ontvang Afbeeldingen en 3 andere uit Deelpaneel</i>. Goed zo.</li>
+    <li>Zoek de actie <b>Herhaal met elk</b> en zet hem eronder (onderdeel in <b>Invoer opdracht</b>).</li>
+    <li>Zoek <b>Haal inhoud van URL op</b> en sleep hem tussen <b>Herhaal met elk</b> en <b>Stop herhalen</b>.
+      <ul><li>Tik op <b>URL</b> en plak het adres ${kb('url','Kopieer adres')}</li>
+      <li>Tik op het pijltje <b>⌄</b> → <b>Methode</b>: <b>POST</b></li>
+      <li><b>Kopteksten</b> → <b>Voeg nieuwe koptekst toe</b>: sleutel <code>x-code</code>, tekst: plak je code ${kb('code','Kopieer code')}</li>
+      <li>Nog een keer <b>Voeg nieuwe koptekst toe</b>: sleutel <code>apikey</code>, tekst ${kb('key','Kopieer sleutel')}</li>
+      <li><b>Vraag om hoofdtekst</b>: tik op <b>JSON</b> en kies <b>Bestand</b>. Tik op het vak bij <b>Bestand</b> → <b>Selecteer variabele</b> → <b>Herhaalonderdeel</b>.</li></ul></li>
+    <li>Zoek <b>Toon melding</b> en zet hem <b>direct onder</b> Haal inhoud van URL op (nog vóór Stop herhalen). Wis de tekst en tik op het blauwe blokje <b>Inhoud van URL</b>. Je krijgt dan “✓ Ontvangen!” of de reden als het niet lukt.</li>
+    <li>Mooier maken: tik bovenaan op de naam → <b>Kies pictogram</b> → kleur <b>oranje</b>. Wil je de opdracht ook op je beginscherm met het Brood Opzet-logo: bewaar eerst het logo ${'<button class="knop rand klein" data-tb="logo">🖼 Logo bewaren</button>'} (kies <i>Bewaar afbeelding</i>), daarna naam → <b>Zet op beginscherm</b> → tik op het icoon → <b>Kies foto</b>.</li>
    </ol>
    <div class="knoppen" style="justify-content:flex-start;gap:6px;flex-wrap:wrap"><button class="knop klein" data-tb="intest">Verbinding testen</button><button class="knop rand klein rood" data-tb="nieuwecode">Nieuwe code maken</button></div>
    <p class="hulp">Je code: <code>${esc(c)}</code>. Houd hem geheim: met deze code kan iemand een factuur naar je app sturen (niet lezen). De namen van de acties kunnen per iOS-versie iets verschillen.</p></div>`)}
@@ -3209,8 +3210,9 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-tb]');if(
   case'opdracht':{const ub=tbSchrijf()&&S.betalen;if(!isObj(ub.inst))ub.inst={};if(!ub.inst.code){ub.inst.code=tbNieuweCode();bewaar()}tbOpdrachtSheet();return}
   case'nieuwecode':{if(tbStap!=='code'){tbStap='code';el.textContent='Zeker? De oude opdracht werkt dan niet meer';return}tbStap=null;S.betalen.inst.code=tbNieuweCode();bewaar();tbOpdrachtSheet();toast('Nieuwe code gemaakt: pas hem aan in de opdracht');return}
   case'kopieer':{const t=el.dataset.k==='url'?TB_IN_URL:el.dataset.k==='key'?SUPA_KEY:S.betalen?.inst?.code||'';try{navigator.clipboard.writeText(t).then(()=>toast('Gekopieerd'),()=>prompt('Kopieer:',t))}catch(z){prompt('Kopieer:',t)}return}
-  case'intest':{toast('Verbinding testen…');fetch(TB_IN_URL,{method:'POST',headers:{'x-code':S.betalen.inst.code,'x-test':'1','apikey':SUPA_KEY}}).then(r=>r.json().catch(()=>({})).then(j=>{
-    toast(r.ok&&j.ok?'✓ Verbinding werkt':r.status===404?'✗ De functie factuur-in bestaat nog niet in Supabase':r.status===401&&j.fout==='onbekende code'?'✗ Code nog niet op de server: wacht even en probeer opnieuw':'✗ '+(j.fout||j.msg||('fout '+r.status)))})).catch(()=>toast('✗ Geen verbinding met Supabase'));return}
+  case'intest':{toast('Verbinding testen…');fetch(TB_IN_URL,{method:'POST',headers:{'x-code':S.betalen.inst.code,'x-test':'1','apikey':SUPA_KEY}}).then(r=>r.text().catch(()=>'').then(t=>{let j={};try{j=JSON.parse(t)}catch(z){}
+    toast(r.ok?'✓ Verbinding werkt':r.status===404?'✗ De functie factuur-in is niet gevonden in Supabase (naam of Deploy controleren)':/onbekende code/.test(t)?'✗ Code nog niet op de server: wacht even en probeer opnieuw':'✗ '+(j.fout||j.message||t||('fout '+r.status)).slice(0,120))})).catch(()=>toast('✗ Geen verbinding met Supabase'));return}
+  case'logo':{fetch('icon-512.png').then(r=>r.blob()).then(b=>deelBestand(new File([b],'brood-opzet-logo.png',{type:'image/png'}))).catch(()=>toast('Logo laden lukte niet'));return}
   case'bijlkoppel':{const fid=v;tbKiesBestand(async f2=>{try{toast('Bijlage verwerken…');const c=await tbCanvas(f2);S.tbBijl[fid]=tbVerklein(c.canvas);bewaar();const y=tbSchrijf()[fid];if(y)tbFormulier(y);toast('Bijlage bewaard')}catch(z){toast('Dit bestand lukte niet')}});return}
   case'bijlzien':tbToonBijl(S.tbBijl?.[v]);return;
   case'tbpush':return;
@@ -3241,7 +3243,7 @@ document.addEventListener('change',e=>{if(e.target.id==='tbIncAan'){const v=docu
 #tbBijlOv{display:none;position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.9);flex-direction:column}#tbBijlOv.open{display:flex}.tbbijlbalk{display:flex;justify-content:space-between;align-items:center;padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 10px;color:#fff}.tbbijlvak{flex:1;overflow:auto;-webkit-overflow-scrolling:touch}.tbbijlvak img{width:100%;display:block}
 .tbinbox{border:2px solid var(--oranje)}.tbopdracht ol{padding-left:20px;line-height:1.5}.tbopdracht li{margin-bottom:10px}.tbopdracht ul{padding-left:18px;margin-top:6px}.tbopdracht li .knop{margin:4px 0}.tbopdracht code{background:var(--achter);padding:1px 5px;border-radius:5px;word-break:break-all}
 .tbchips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 16px 8px}.tbchip{border:1px solid var(--lijn);background:var(--kaart);color:var(--tekst);border-radius:16px;padding:6px 12px;font-size:15px}.tbchip.aan{background:var(--oranje);border-color:var(--oranje);color:#fff;font-weight:700}
-.tbfilters{margin:0 16px 8px}.tbfilters label{display:block;font-size:14px;color:var(--grijs);margin-top:6px}.tbfilters select{width:100%}
+.tbfilters{margin:0 16px 8px}.tbfilters .minmax{display:grid;grid-template-columns:1fr 1fr;gap:10px}.tbfilters .minmax>div{min-width:0}.minmax>div{min-width:0}.minmax input[type=date],.minmax input[type=time],#paneel input[type=date]{min-width:0;max-width:100%;box-sizing:border-box;display:block}.tbfilters label{display:block;font-size:14px;color:var(--grijs);margin-top:6px}.tbfilters select{width:100%}
 .tbfilterinfo{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 16px 8px;font-size:15px}
 .tbsnel{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.tblaatst{font-style:italic}
 .tbtotaal .tbgroot{font-size:30px;font-weight:900;font-variant-numeric:tabular-nums}.groentekst{color:var(--groen)}
