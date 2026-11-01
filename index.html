@@ -1395,7 +1395,7 @@ function bestelBerekening(){
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const APP_VERSIE='10.0',APP_BOUW='10.19';
+const APP_VERSIE='10.0',APP_BOUW='10.20';
 const NIEUWS=[['🏪','Brood Opzet per winkel','De app werkt nu per winkel. Alles wat je al had, hoort bij je eigen winkel. Voor jou verandert er niets.'],
  ['🔑','Koppelen met een code','Een nieuwe telefoon koppel je voortaan met de koppelcode van de winkel, zonder wachtwoord. De beheerder vindt de code onder Meer.'],
  ['🌤️','Weer en bakker','De beheerder kiest bij Broodsoorten en instellingen de plaats voor het weer en de naam van de bakker.'],
@@ -3006,13 +3006,33 @@ async function tbOcr(c){const w=await tessKlaar();try{await w.setParameters({tes
 const TB_MND={jan:1,feb:2,mrt:3,maa:3,mar:3,apr:4,mei:5,may:5,jun:6,jul:7,aug:8,sep:9,okt:10,oct:10,nov:11,dec:12};
 function tbLeesFactuur(t){t=String(t||'').replace(/\r/g,'');const low=t.toLowerCase(),r={};
   r.lev=tbLeveranciers().sort((a,c)=>c.length-a.length).find(l=>l.length>2&&low.includes(l.toLowerCase()))||'';
-  if(!r.lev){const k=t.split('\n').map(x=>x.trim()).find(x=>/[a-z]{3}/i.test(x)&&!/factuur|invoice|datum|pagina|page|t\.a\.v|btw|kvk|iban|klant|debiteur|coop|vogelenzang|zondaglaan/i.test(x));r.lev=(k||'').replace(/\s{2,}.*/,'').replace(/[^\p{L}\p{N}&.,' -]/gu,'').trim().slice(0,60)}
-  const nr=t.match(/(?:factuur|invoice)\s*(?:nummer|nr\.?|no\.?|number|#)?\s*[:#.]?\s*([A-Z]{0,5}[-\/]?\d[\w\-\/.]{1,20})/i);r.nr=nr?nr[1].replace(/[.,:]$/,''):'';
-  const DT='(\\d{1,2})\\s*[-./ ]\\s*(\\d{1,2}|jan|feb|mrt|maa|mar|apr|mei|may|jun|jul|aug|sep|okt|oct|nov|dec)[a-z]*\\.?\\s*[-./ ]\\s*(\\d{4}|\\d{2})(?!\\d)';
+  if(!r.lev){const c=t.split('\n').map(x=>x.trim().split(/\s(?:btw|vat|kvk|iban|bic|tel\.?|telefoon|incassant\w*|e-?mail)\b/i)[0].trim()).filter(x=>/[a-z]{3}/i.test(x)&&!/^[\d+]/.test(x)&&!/factuur|invoice|datum|date|due|amount|total|pagina|page|t\.a\.v|klant|debiteur|coop|vogelenzang|zondaglaan|@|www\.|straat|weg\s\d|laan\s\d/i.test(x));
+    const k=c.find(x=>/\b(b\.?v\.?|v\.?o\.?f\.?|n\.?v\.?|holding|bakkerij|groothandel)(\b|$)/i.test(x))||c[0];r.lev=(k||'').replace(/\s{2,}.*/,'').replace(/[^\p{L}\p{N}&.,' -]/gu,'').trim().slice(0,60)}
+  const MND='jan|feb|mrt|maa|mar|apr|mei|may|jun|jul|aug|sep|okt|oct|nov|dec';
+  const DTN='(?<![\\d.,])(\\d{1,2})[-./](\\d{1,2})[-./](\\d{4}|\\d{2})(?![\\d,])',DTM='(?<!\\d)(\\d{1,2})\\.?\\s*[-./ ]?\\s*('+MND+')[a-z]*\\.?\\s*[-./ ]?\\s*(\\d{4})(?!\\d)';
   const pd=m=>{if(!m)return null;let d=+m[1],mm=/^\d+$/.test(m[2])?+m[2]:TB_MND[m[2].toLowerCase().slice(0,3)],y=+m[3];if(y<100)y+=2000;if(!(d>=1&&d<=31&&mm>=1&&mm<=12&&y>=2000&&y<2100))return null;return`${y}-${String(mm).padStart(2,'0')}-${String(d).padStart(2,'0')}`};
-  const zoek=w=>{for(const x of w){const m=t.match(new RegExp(x+'[^\\n\\d]{0,30}'+DT,'i'));const v=m&&pd(m);if(v)return v}return null};
-  r.fdat=zoek(['factuurdatum','factuur datum','datum factuur','invoice date','datum'])||pd(t.match(new RegExp(DT,'i')));
-  r.verval=zoek(['vervaldatum','verval datum','uiterste betaaldatum','betalen voor','te voldoen voor','due date','vervaldag']);
+  const redelijk=d=>!!d&&d>=plusDagen(iso(),-730)&&d<=plusDagen(iso(),120);
+  const datums=x=>{const l=[];for(const re of[DTN,DTM])for(const m of x.matchAll(new RegExp(re,'gi'))){const v=pd(m);if(v)l.push({i:m.index,v})}return l.sort((a,c)=>a.i-c.i).map(o=>o.v)};
+  const isDatum=w=>/^\d{1,2}[-./]\d{1,2}[-./](\d{4}|\d{2})$/.test(w);
+  const isBedrag=w=>/^-?(€|eur)?\d{1,3}([.\s]\d{3})*[.,]\d{2}$/i.test(w);
+  const nrOk=w=>!!w&&/\d/.test(w)&&!isDatum(w)&&!isBedrag(w)&&w.length>=3;
+  /* 1. kopjes naast elkaar, waarden op de regel eronder (zoals bij Retail Solutions) */
+  const regels=t.split('\n').map(x=>x.trim()).filter(Boolean),kol={};
+  for(let i=0;i<regels.length-1;i++){const L=regels[i].toLowerCase(),lb=[];
+    for(const[k,re]of[['nr',/factuur\s*(nummer|nr\b|no\b)|invoice\s*(number|no\b)/],['fdat',/factuurdatum|factuur\s+datum|invoice\s+date/],['verval',/vervaldatum|verval\s+datum|due\s+date|uiterste\s+betaaldatum/]]){const m=L.search(re);if(m>=0)lb.push([m,k])}
+    if(lb.length<2)continue;lb.sort((a,c)=>a[0]-c[0]);
+    for(const V of regels.slice(i+1,i+3)){const ds=datums(V);if(!ds.length&&!/\d/.test(V))continue;
+      lb.filter(x=>x[1]!=='nr').forEach((x,j)=>{if(ds[j]&&!kol[x[1]])kol[x[1]]=ds[j]});
+      if(lb.some(x=>x[1]==='nr')&&!kol.nr){const w=V.split(/\s+/).find(nrOk);if(w)kol.nr=w.replace(/[.,:;]$/,'')}
+      break}
+    if(Object.keys(kol).length)break}
+  /* 2. waarde direct achter het kopje */
+  const nr=t.match(/(?:factuur|invoice)\s*(?:nummer|nr\.?|no\.?|number|#)?\s*[:#.]?\s*([A-Z]{0,5}[-\/]?\d[\w\-\/.]{1,20})/i);
+  r.nr=kol.nr||(nr&&nrOk(nr[1].replace(/[.,:]$/,''))?nr[1].replace(/[.,:]$/,''):'');
+  const zoek=w=>{for(const x of w)for(const re of[DTN,DTM]){const m=t.match(new RegExp(x+'[^\\n\\d]{0,30}'+re,'i'));const v=m&&pd(m);if(redelijk(v))return v}return null};
+  r.fdat=redelijk(kol.fdat)?kol.fdat:zoek(['factuurdatum','factuur datum','datum factuur','invoice date','datum'])||datums(t).find(redelijk)||null;
+  r.verval=redelijk(kol.verval)?kol.verval:zoek(['vervaldatum','verval datum','uiterste betaaldatum','betalen voor','te voldoen voor','due date','vervaldag']);
+  if(r.verval&&r.fdat&&r.verval<r.fdat)r.verval=null;
   const BED='(-?\\d{1,3}(?:[.\\s]\\d{3})*,\\d{2}|-?\\d+[.,]\\d{2})(?!\\d)';let tot=null;
   for(const w of['totaal te betalen','te betalen','totaal incl','totaalbedrag','factuurbedrag','totaal factuur','amount due','totaal','total']){const re=new RegExp(w+'[^\\n\\d€-]{0,40}(?:€|eur)?\\s*'+BED,'gi');let m,best=null;
     while((m=re.exec(t))){const v=leesBedrag(m[1].replace(/\s/g,''));if(v&&(best==null||v>best))best=v}if(best!=null){tot=best;break}}
@@ -3027,7 +3047,7 @@ function tbToonBijl(src){if(!src)return;let ov=document.getElementById('tbBijlOv
   ov.innerHTML=`<div class="tbbijlbalk"><b>Factuur</b><button data-tbsluit="1" class="knop wit klein">Sluiten</button></div><div class="tbbijlvak"><img src="${src}" alt="Factuur"></div>`;ov.classList.add('open')}
 /* ---------- 10.18 binnengekomen facturen (iPhone-opdracht) ---------- */
 let tbInActief=null;
-const TB_IN_URL=SUPA_URL+'/functions/v1/factuur-in';
+const TB_IN_URL=SUPA_URL+'/functions/v1/hyper-task';
 const tbInLijst=()=>Object.entries(isObj(S.tbIn)?S.tbIn:{}).filter(([,d])=>typeof d==='string'&&d.startsWith('data:')).sort((a,c)=>a[0].localeCompare(c[0]));
 function tbNieuweCode(){const a=new Uint8Array(18);crypto.getRandomValues(a);return Array.from(a,b=>'abcdefghjkmnpqrstuvwxyz23456789'[b%31]).join('')}
 function tbDataFile(d,naam){const m=/^data:([^;]+);base64,(.*)$/.exec(d);if(!m)throw new Error('geen bestand');const bin=atob(m[2]),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
