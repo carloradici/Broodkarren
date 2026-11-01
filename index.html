@@ -597,7 +597,7 @@ function naarV6(S){
   delete S.sessie;delete S.laatsteActie;S.versie=6;return S;
 }
 function vulAan(S){
-  for(const k of['historie','derving','karOverride','afwijkend','notities','voorraad','vinkjes','status','avond','dervBest','aanpas','timers','log','fotos','snij','ontdooi','dervHH','bijbak','profielen','berichten','karTaak','afsluit','feestNee','notfotos','dervReg','levering','cadeau','pins','push','pbFouten','prijzen','pushTeam','uren','tbBijl','checklists'])S[k]=isObj(S[k])?S[k]:{};
+  for(const k of['historie','derving','karOverride','afwijkend','notities','voorraad','vinkjes','status','avond','dervBest','aanpas','timers','log','fotos','snij','ontdooi','dervHH','bijbak','profielen','berichten','karTaak','afsluit','feestNee','notfotos','dervReg','levering','cadeau','pins','push','pbFouten','prijzen','pushTeam','uren','tbBijl','checklists','tbIn'])S[k]=isObj(S[k])?S[k]:{};
   for(const k of['gebruikers','soorten','karren'])S[k]=Array.isArray(S[k])?S[k]:[];
   S.plan=isObj(S.plan)?S.plan:{};for(const k of['ma','di','wo','do','vr','za','zo'])S.plan[k]=isObj(S.plan[k])?S.plan[k]:{};
   S.leverdagen=Array.isArray(S.leverdagen)?S.leverdagen:[1,3,5];S.ovenMax=S.ovenMax||10;if(S.omschakel===undefined)S.omschakel=14;if(!Array.isArray(S.versDagen))S.versDagen=[1,2,3,4,5,6];if(!isObj(S.versUitz))S.versUitz={};if(!isObj(S.herinnering))S.herinnering={aan:true,uur:10,min:0};if(S.uitlogMin==null)S.uitlogMin=5;
@@ -1395,7 +1395,7 @@ function bestelBerekening(){
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const APP_VERSIE='10.0',APP_BOUW='10.17';
+const APP_VERSIE='10.0',APP_BOUW='10.18';
 const NIEUWS=[['🏪','Brood Opzet per winkel','De app werkt nu per winkel. Alles wat je al had, hoort bij je eigen winkel. Voor jou verandert er niets.'],
  ['🔑','Koppelen met een code','Een nieuwe telefoon koppel je voortaan met de koppelcode van de winkel, zonder wachtwoord. De beheerder vindt de code onder Meer.'],
  ['🌤️','Weer en bakker','De beheerder kiest bij Broodsoorten en instellingen de plaats voor het weer en de naam van de bakker.'],
@@ -1428,8 +1428,8 @@ function idbSchrijf(){idbTimer=null;if(!idb||!idbRij.size)return;const rij=idbRi
 function idbGroep(pre,obj){const nu=new Set();for(const[id,v]of Object.entries(obj||{}))if(typeof v==='string'&&v){nu.add(pre+id);idbZet(pre+id,v)}
   for(const k of new Set([...idbBekend.keys(),...idbRij.keys()]))if(k.startsWith(pre)&&!nu.has(k))idbZet(k,undefined)}
 function wisIdb(){return new Promise(ok=>{idbRij=new Map();idbBekend.clear();if(!idb)return ok();try{const t=idb.transaction('kv','readwrite');t.objectStore('kv').clear();t.oncomplete=t.onerror=t.onabort=()=>ok()}catch(e){ok()}})}
-function lichteS(){const o={...S,fotos:{},notfotos:{},tbBijl:{}};for(const[id,v]of Object.entries(S.notfotos))if(v===null)o.notfotos[id]=null;for(const[id,v]of Object.entries(S.tbBijl||{}))if(v===null)o.tbBijl[id]=null;return o}
-function bewaarS(){try{localStorage.setItem(OPSLAG,JSON.stringify(idbOk?lichteS():S));if(idbOk){idbGroep('f:',S.fotos);idbGroep('n:',S.notfotos);idbGroep('t:',S.tbBijl)}return true}catch(e){return false}}
+function lichteS(){const o={...S,fotos:{},notfotos:{},tbBijl:{},tbIn:{}};for(const[id,v]of Object.entries(S.tbIn||{}))if(v===null)o.tbIn[id]=null;for(const[id,v]of Object.entries(S.notfotos))if(v===null)o.notfotos[id]=null;for(const[id,v]of Object.entries(S.tbBijl||{}))if(v===null)o.tbBijl[id]=null;return o}
+function bewaarS(){try{localStorage.setItem(OPSLAG,JSON.stringify(idbOk?lichteS():S));if(idbOk){idbGroep('f:',S.fotos);idbGroep('n:',S.notfotos);idbGroep('t:',S.tbBijl);idbGroep('i:',S.tbIn)}return true}catch(e){return false}}
 function opslagFoutZet(f){opslagFout=f;const el=document.getElementById('opslagmelding');if(!el)return;
   el.textContent=L.gekoppeld&&L.modus!=='lokaal'?'Dit toestel kon niet alles bewaren. Je werk staat wel veilig op de server.':'Opslaan op dit toestel is mislukt: het geheugen is vol.';el.style.display=f?'block':'none'}
 /* pakbonfoto's ouder dan 60 dagen blijven alleen op de server (ophalen bij openen) */
@@ -1442,10 +1442,11 @@ const opslagKlaar=(async()=>{if(window.ReactNativeWebView||window.__BEGINSTAAT__
     if(k.startsWith('f:')){if(!S.fotos[id])S.fotos[id]=v}
     else if(k.startsWith('n:')){if(S.notfotos[id]!==null&&!S.notfotos[id]&&!oudePakbonFoto(id))S.notfotos[id]=v}
     else if(k.startsWith('t:')){if(S.tbBijl[id]!==null&&!S.tbBijl[id])S.tbBijl[id]=v}
+    else if(k.startsWith('i:')){if(S.tbIn[id]!==null&&!S.tbIn[id])S.tbIn[id]=v}
     else if(k.startsWith('b:'))basis[id]=v}
   idbOk=true;
   /* overstap van de oude opslag: serverkopie naar IndexedDB, daarna de grote kopieën uit localStorage weg */
-  idbGroep('b:',basis);idbGroep('f:',S.fotos);idbGroep('n:',S.notfotos);idbGroep('t:',S.tbBijl);idbSchrijf();
+  idbGroep('b:',basis);idbGroep('f:',S.fotos);idbGroep('n:',S.notfotos);idbGroep('t:',S.tbBijl);idbGroep('i:',S.tbIn);idbSchrijf();
   if(lsBasis!==null&&idbHeeftBasis)try{localStorage.removeItem(OPSLAG_BASIS)}catch(e){}  /* pas weg als de kopie in IndexedDB zeker staat */
   try{localStorage.setItem(OPSLAG,JSON.stringify(lichteS()))}catch(e){}
   render()})();
@@ -1509,6 +1510,7 @@ function splitsen(){
   if(kanBeheren()&&(isAanbieder()||L.modus==='lokaal'))o['prive:facturen']=S.facturen;
   if(betalenMag()&&(Object.keys(S.betalen.f).length||S.betalen.eig))o['prive:betalen']=S.betalen;
   if(betalenMag())for(const[id,f]of Object.entries(S.tbBijl))o['prive:tbbijl:'+id]={data:f||null};
+  if(betalenMag())for(const[id,f]of Object.entries(S.tbIn))o['prive:tbin:'+id]={data:f||null};
   if(Object.keys(S.checklists).length)o.checklists=S.checklists;
   if(Object.keys(S.bestelboeken.boeken).length||S.bestelboeken.editie.naam||Object.keys(S.bestelboeken.eigen).length)o.bestelboeken=S.bestelboeken;
   /* 10.0: wat niet in het pakket zit, gaat niet naar de server */
@@ -1533,6 +1535,7 @@ function pasToe(k,v){
   else if(k==='prive:facturen')S.facturen=vulFacturen(v);
   else if(k==='prive:betalen')S.betalen=vulBetalen(v);
   else if(k.startsWith('prive:tbbijl:')){S.tbBijl[k.slice(13)]=v.data||null}
+  else if(k.startsWith('prive:tbin:')){S.tbIn[k.slice(11)]=v.data||null}
   else if(k==='checklists')S.checklists=v;
   else if(k==='bestelboeken')S.bestelboeken=vulBestelboeken(v);
   else if(k==='pakbonfouten')S.pbFouten=v;
@@ -2306,7 +2309,7 @@ function meerLijstHtml(items){
     ...(isEigenaar()?[['winkels','🏪 Winkels',`${(WK.lijst||[]).length} ${(WK.lijst||[]).length===1?'winkel':'winkels'} · wisselen, toestellen koppelen, overzicht`,()=>true]]:WINKEL&&WINKEL.rol==='bedrijfsleider'?[['winkel','🏪 Winkel en toestellen','Koppelcode voor de toestellen van de winkel',()=>true]]:[]),
     ...(isEigenaar()?[['abonnement','⭐ Abonnement',`Pakket ${PAKKET_NAAM[WINKEL.pakket]||''}${WINKEL.proef_pakket&&WINKEL.proef_tot>=iso()?' · proef '+PAKKET_NAAM[WINKEL.proef_pakket]:''}`,()=>true]]:[]),
     ...(isAdmin()?[['uren','⏱ Urenregistratie',(()=>{const n=urenNu().length,c=Object.values(isObj(S.uren?.corr)?S.uren.corr:{}).filter(x=>x.status==='open').length;return[n?`${n} nu ingeklokt`:'',c?`${c} correctie${c===1?'':'s'}`:''].filter(Boolean).join(' · ')||(urenInst().iedereen?'Overzicht per dag, week of maand':'Overzicht per dag, week of maand · testfase')})(),()=>true]]:[]),
-    ...(betalenMag()?[['tebetalen','💶 Te betalen',(()=>{const o=tbOpen(),l=o.filter(tbTeLaat).length;return o.length?`${o.length} open · ${fEuro(o.reduce((t,x)=>t+tbRest(x),0))}${l?` · ${l} te laat`:''}`:'Inkoopfacturen bijhouden'})(),()=>true]]:[]),
+    ...(betalenMag()?[['tebetalen','💶 Te betalen',(()=>{const o=tbOpen(),l=o.filter(tbTeLaat).length;const ni=tbInLijst().length;return(ni?`📥 ${ni} nieuw · `:'')+(o.length?`${o.length} open · ${fEuro(o.reduce((t,x)=>t+tbRest(x),0))}${l?` · ${l} te laat`:''}`:'Inkoopfacturen bijhouden')})(),()=>true]]:[]),
     ...(facturenMag()?[['facturen','🧾 Facturen',(()=>{const o=Object.values(S.facturen.lijst).filter(f=>f.status==='verstuurd'||f.status==='afgerond');return o.length?`${o.length} open · ${fEuro(o.reduce((t,f)=>t+factTotalen(f).tot,0))}`:'Facturen maken en bijhouden'})(),()=>true]]:[]),
     ...(isAanbieder()?[['aanbieder','🧑‍💼 Brood Opzet beheer',`Ondernemers, pakketten, uitnodigingen${L.aanvragen?` · ${L.aanvragen} ${L.aanvragen===1?'aanvraag':'aanvragen'}`:''}`,()=>true]]:[])];
   /* 10.0: functies buiten het pakket met een slotje */
@@ -2973,12 +2976,13 @@ function tbFilterHtml(){const st=tbTab==='open'?[['alle','Alles'],['laat','Te la
 function betalenHtml(){if(!betalenMag())return'';const o=tbOpen(),b=tbBetaald(),tot=o.reduce((t,x)=>t+tbRest(x),0),laat=o.filter(tbTeLaat),inc=o.filter(tbInc);
   let h=`<div class="kop"><div class="koprij"><h1>Te betalen</h1></div><p>Je inkoopfacturen. Alleen voor jou zichtbaar.</p></div>
    <div class="segment"><button data-tb="tab" data-v="open" class="${tbTab==='open'?'aan':''}">Open (${o.length})</button><button data-tb="tab" data-v="planning" class="${tbTab==='planning'?'aan':''}">Planning</button><button data-tb="tab" data-v="betaald" class="${tbTab==='betaald'?'aan':''}">Betaald (${b.length})</button></div>`;
+  if(tbTab==='open')h+=tbInboxHtml();
   if(tbTab==='open')h+=`<div class="kaartje tbtotaal"><div class="tbgroot">${fEuro(tot)}</div><div class="sub">nog te betalen · ${o.length} ${o.length===1?'factuur':'facturen'}</div>
      ${laat.length?`<div class="sub oranjetekst"><b>${laat.length} te laat · ${fEuro(laat.reduce((t,x)=>t+tbRest(x),0))}</b></div>`:''}${inc.length?`<div class="sub" style="color:var(--rood)"><b>${inc.length} bij incasso · ${fEuro(inc.reduce((t,x)=>t+(+tbInc(x).kosten||0),0))} incassokosten</b></div>`:''}</div>`;
   else if(tbTab==='planning')return h+tbPlanHtml();
   else{const mnd=iso().slice(0,7);h+=`<div class="kaartje tbtotaal"><div class="tbgroot">${fEuro(b.filter(x=>String(x.betaald).slice(0,7)===mnd).reduce((t,x)=>t+tbTotaal(x),0))}</div><div class="sub">betaald deze maand · ${b.length} betaalde facturen in totaal</div></div>`}
   h+=`<div class="zoekbalk"><input class="veld" id="tbZoek" type="search" placeholder="Zoek op factuurnummer, leverancier of bedrag" value="${esc(tbZoek)}" autocomplete="off"></div>${tbFilterHtml()}
-   <div class="knoppen" style="justify-content:flex-start;gap:8px;flex-wrap:wrap;padding-top:0">${tbTab==='open'?`<button class="knop" data-tb="nieuw">+ Factuur</button><button class="knop" data-tb="scan">📷 Scan factuur</button>`:''}<button class="knop rand" data-tb="excel">📊 Excel</button><button class="knop rand" data-tb="inlezen">📥 Excel inlezen</button></div>${S.betalen?.sjab?.data?`<p class="hulp" style="margin:0 18px 8px">📊 Excel gebruikt jouw bestand ${esc(S.betalen.sjab.naam||'')}${tbFilterAan()?' · alleen de getoonde facturen':''}.</p>`:''}
+   <div class="knoppen" style="justify-content:flex-start;gap:8px;flex-wrap:wrap;padding-top:0">${tbTab==='open'?`<button class="knop" data-tb="nieuw">+ Factuur</button><button class="knop" data-tb="scan">📷 Scan factuur</button>${S.betalen?.inst?.code?'':'<button class="knop rand" data-tb="opdracht">📲 Delen vanuit Mail</button>'}`:''}<button class="knop rand" data-tb="excel">📊 Excel</button><button class="knop rand" data-tb="inlezen">📥 Excel inlezen</button></div>${S.betalen?.sjab?.data?`<p class="hulp" style="margin:0 18px 8px">📊 Excel gebruikt jouw bestand ${esc(S.betalen.sjab.naam||'')}${tbFilterAan()?' · alleen de getoonde facturen':''}.</p>`:''}
    <div id="tbLijst">${tbLijstHtml()}</div>`;
   return h}
 /* ---------- 10.17 planning, scannen, bijlagen ---------- */
@@ -2992,7 +2996,9 @@ function tbPlanHtml(){const o=tbOpen(),vd=iso(),w1=plusDagen(maandag(vd),7),w2=p
   return h+`<p class="hulp" style="margin:4px 18px 12px">Een factuur staat in de week van de geplande betaaldatum, of anders van de vervaldatum. De geplande datum zet je in de factuur.</p>
    <div class="kaartje"><h3>Pushmeldingen</h3><label class="schakel" style="margin:6px 0 0;color:var(--tekst);font-weight:400">Meldingen over vervaldatums<input type="checkbox" id="tbPushAan" ${inst.push!==false?'checked':''}></label>
     <div style="display:flex;align-items:center;gap:10px;margin-top:10px">Melding <select class="veld" id="tbPushVoor" style="width:90px">${[1,2,3,5,7].map(n=>`<option value="${n}" ${(+inst.voor||3)===n?'selected':''}>${n}</option>`).join('')}</select> ${(+inst.voor||3)===1?'dag':'dagen'} voor de vervaldatum</div>
-    <div class="sub" style="margin-top:8px">Plus een melding op de vervaldag zelf en elke maandag om 8:00 wat er die week betaald moet worden. Alleen naar jouw toestel (zet pushmeldingen aan onder Beheer → Pushmeldingen).</div></div>`}
+    <div class="sub" style="margin-top:8px">Plus een melding op de vervaldag zelf en elke maandag om 8:00 wat er die week betaald moet worden. Alleen naar jouw toestel (zet pushmeldingen aan onder Beheer → Pushmeldingen).</div></div>
+   <div class="kaartje"><h3>📲 Facturen delen vanuit Mail</h3><div class="sub">Met de iPhone-opdracht “Naar Brood Opzet” deel je een factuur uit Mail, Bestanden of Foto's direct naar de app, zonder op te slaan.</div>
+    <div class="knoppen" style="justify-content:flex-start;padding:10px 0 0"><button class="knop klein" data-tb="opdracht">${S.betalen?.inst?.code?'Opdracht bekijken':'Opdracht instellen'}</button></div></div>`}
 function tbKiesBestand(cb){const i=document.createElement('input');i.type='file';i.accept='image/*,application/pdf,.pdf';i.onchange=()=>{if(i.files[0])cb(i.files[0])};i.click()}
 async function tbCanvas(file){if(/pdf/i.test(file.type)||/\.pdf$/i.test(file.name)){const r=await pdfNaarTekst(file);return{canvas:r.canvas,tekst:r.tekst||''}}return{canvas:await afbNaarCanvas(file),tekst:''}}
 function tbVerklein(c){const m=Math.min(1,1400/Math.max(c.width,c.height)),k=document.createElement('canvas');k.width=Math.round(c.width*m);k.height=Math.round(c.height*m);const g=k.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,k.width,k.height);g.drawImage(c,0,0,k.width,k.height);return k.toDataURL('image/jpeg',.6)}
@@ -3019,6 +3025,34 @@ async function tbScan(file){toast('Factuur lezen… even geduld');try{const c=aw
   catch(z){console.warn(z);toast('Lezen lukte niet: vul de factuur zelf in');tbScanBijl=null;tbFormulier(null)}}
 function tbToonBijl(src){if(!src)return;let ov=document.getElementById('tbBijlOv');if(!ov){ov=document.createElement('div');ov.id='tbBijlOv';ov.setAttribute('role','dialog');document.body.appendChild(ov);ov.addEventListener('click',e=>{if(e.target.closest('[data-tbsluit]')||e.target===ov)ov.classList.remove('open')})}
   ov.innerHTML=`<div class="tbbijlbalk"><b>Factuur</b><button data-tbsluit="1" class="knop wit klein">Sluiten</button></div><div class="tbbijlvak"><img src="${src}" alt="Factuur"></div>`;ov.classList.add('open')}
+/* ---------- 10.18 binnengekomen facturen (iPhone-opdracht) ---------- */
+let tbInActief=null;
+const TB_IN_URL=SUPA_URL+'/functions/v1/factuur-in';
+const tbInLijst=()=>Object.entries(isObj(S.tbIn)?S.tbIn:{}).filter(([,d])=>typeof d==='string'&&d.startsWith('data:')).sort((a,c)=>a[0].localeCompare(c[0]));
+function tbNieuweCode(){const a=new Uint8Array(18);crypto.getRandomValues(a);return Array.from(a,b=>'abcdefghjkmnpqrstuvwxyz23456789'[b%31]).join('')}
+function tbDataFile(d,naam){const m=/^data:([^;]+);base64,(.*)$/.exec(d);if(!m)throw new Error('geen bestand');const bin=atob(m[2]),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
+  const ext=/pdf/.test(m[1])?'.pdf':/png/.test(m[1])?'.png':/heic/.test(m[1])?'.heic':'.jpg';return new File([u],naam+ext,{type:m[1]})}
+function tbInboxHtml(){const l=tbInLijst();if(!l.length)return'';const tijd=id=>{const t=parseInt(id.slice(0,-4),36);return isFinite(t)&&t>1e12?`${datumTekst(iso(new Date(t)))} ${tijdTekst(t)}`:''};
+  return`<div class="kaartje tbinbox"><h3>📥 Nieuwe facturen (${l.length})</h3><div class="sub">Gedeeld met de opdracht “Naar Brood Opzet”. Tik op Verwerken: de app leest de factuur uit.</div>
+   ${l.map(([id,d])=>`<div class="rij inv" style="flex-wrap:wrap;padding-left:0;padding-right:0"><div class="groei"><div class="naam" style="font-size:16px">${/pdf/.test(d.slice(0,30))?'📄 PDF':'🖼 Foto'}</div><div class="sub">ontvangen ${esc(tijd(id))}</div></div>
+    <div class="knoppen" style="padding:0;gap:6px;flex-wrap:wrap"><button class="knop klein" data-tb="inverwerk" data-v="${esc(id)}">Verwerken</button>${/pdf/.test(d.slice(0,30))?'':`<button class="knop rand klein" data-tb="inzien" data-v="${esc(id)}">Bekijken</button>`}<button class="knop rand klein" data-tb="inweg" data-v="${esc(id)}">${tbStap==='inweg:'+id?'Zeker?':'Weggooien'}</button></div></div>`).join('')}</div>`}
+function tbOpdrachtSheet(){const c=S.betalen?.inst?.code||'',kb=(k,t)=>`<button class="knop rand klein" data-tb="kopieer" data-k="${k}">📋 ${t}</button>`;
+  toonSheet(`<div class="pkop"><span style="width:70px"></span><b>Opdracht “Naar Brood Opzet”</b><button data-a="sluit" style="font-weight:700">Klaar</button></div><div class="pinhoud tbopdracht">
+   <p>Eén keer instellen in de app <b>Opdrachten</b> op je iPhone. Daarna: bijlage in Mail → <b>Deel</b> → <b>Naar Brood Opzet</b>.</p>
+   <ol>
+    <li>Open <b>Opdrachten</b>, tik op <b>＋</b> en noem de opdracht <b>Naar Brood Opzet</b>.</li>
+    <li>Tik onderaan op <b>ⓘ</b> (of de naam bovenaan → Details) en zet <b>Toon in deelmenu</b> aan. Kies bij invoer: <b>Bestanden, Afbeeldingen en PDF's</b>.</li>
+    <li>Voeg de actie <b>Herhaal met elk</b> toe, met <b>Opdrachtinvoer</b>.</li>
+    <li>Zet daarbinnen de actie <b>Haal inhoud van URL op</b>:
+      <ul><li>URL: plak het adres ${kb('url','Kopieer adres')}</li>
+      <li>Tik op <b>Toon meer</b>: Methode <b>POST</b></li>
+      <li>Headers → <b>Nieuwe header</b>: sleutel <code>x-code</code>, waarde: plak je code ${kb('code','Kopieer code')}</li>
+      <li>Nog een header: sleutel <code>apikey</code>, waarde ${kb('key','Kopieer sleutel')}</li>
+      <li>Hoofdtekst aanvraag: <b>Bestand</b> → kies <b>Herhaalonderdeel</b></li></ul></li>
+    <li>Zet ná de herhaling de actie <b>Toon melding</b>: “Factuur naar Brood Opzet gestuurd”.</li>
+   </ol>
+   <div class="knoppen" style="justify-content:flex-start;gap:6px;flex-wrap:wrap"><button class="knop klein" data-tb="intest">Verbinding testen</button><button class="knop rand klein rood" data-tb="nieuwecode">Nieuwe code maken</button></div>
+   <p class="hulp">Je code: <code>${esc(c)}</code>. Houd hem geheim: met deze code kan iemand een factuur naar je app sturen (niet lezen). De namen van de acties kunnen per iOS-versie iets verschillen.</p></div>`)}
 /* ---------- formulieren ---------- */
 function tbFormulier(x,pre){const n=!x;if(n)tbScanKlaar=!!pre;x=x||{fdat:iso(),verval:plusDagen(iso(),30),...(pre||{})};const inc=tbInc(x);
   toonSheet(`<div class="pkop"><button data-a="sluit">Annuleren</button><b>${n?'Nieuwe factuur':'Factuur'}</b><button data-tb="bewaar" data-v="${esc(x.id||'')}" style="font-weight:700">Bewaren</button></div><div class="pinhoud">
@@ -3152,7 +3186,7 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-tb]');if(
     if(dub&&tbStap!=='dub:'+nr){tbStap='dub:'+nr;return tbFout(`Factuur ${nr} van ${lev} staat er al in. Tik nogmaals op Bewaren om toch op te slaan.`)}tbStap=null;
     const id=x?v:urenId(),y=x||(f[id]={id,bet:{},t:Date.now()});
     Object.assign(y,{lev:lev.slice(0,60),nr:nr.slice(0,40),fdat:fd,verval:vv||null,plan:tbVal('tbPlan')||null,tot,not:tbVal('tbNot').slice(0,200)});
-    if(!x&&tbScanKlaar&&tbScanBijl){S.tbBijl[id]=tbScanBijl}tbScanBijl=null;tbScanKlaar=false;
+    if(!x&&tbScanKlaar&&tbScanBijl){S.tbBijl[id]=tbScanBijl}tbScanBijl=null;tbScanKlaar=false;if(!x&&tbInActief){S.tbIn[tbInActief]=null;tbInActief=null}
     if(incAan)y.inc={bureau:tbVal('tbIncB').slice(0,60),kosten:incK,t:y.inc?.t||Date.now()};else y.inc=null;
     if(y.betaald&&tbRest(y)>0)y.betaald=null;else if(!y.betaald&&Object.keys(y.bet).length&&tbRest(y)===0)y.betaald=Object.values(y.bet).map(p=>p.d).sort().pop();
     bewaar();sluit();render();toast(x?'Opgeslagen':'Factuur toegevoegd');return}
@@ -3168,7 +3202,15 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-tb]');if(
   case'terug':{if(!x)return;if(tbStap!=='terug:'+v){tbStap='terug:'+v;render();setTimeout(()=>{if(tbStap==='terug:'+v){tbStap=null;render()}},5000);return}tbStap=null;
     for(const[pid,p]of Object.entries(x.bet))if(p.vol)delete x.bet[pid];x.betaald=null;bewaar();render();toast('Teruggezet naar Open');return}
   case'excel':tbExcel();return;
-  case'scan':tbKiesBestand(f2=>tbScan(f2));return;
+  case'scan':tbInActief=null;tbKiesBestand(f2=>tbScan(f2));return;
+  case'inverwerk':{const d=S.tbIn?.[v];if(!d)return;tbInActief=v;try{tbScan(tbDataFile(d,'factuur-'+v))}catch(z){toast('Dit bestand lukte niet')}return}
+  case'inweg':{if(tbStap!=='inweg:'+v){tbStap='inweg:'+v;render();setTimeout(()=>{if(tbStap==='inweg:'+v){tbStap=null;render()}},5000);return}tbStap=null;S.tbIn[v]=null;bewaar();render();toast('Weggegooid');return}
+  case'inzien':tbToonBijl(S.tbIn?.[v]);return;
+  case'opdracht':{const ub=tbSchrijf()&&S.betalen;if(!isObj(ub.inst))ub.inst={};if(!ub.inst.code){ub.inst.code=tbNieuweCode();bewaar()}tbOpdrachtSheet();return}
+  case'nieuwecode':{if(tbStap!=='code'){tbStap='code';el.textContent='Zeker? De oude opdracht werkt dan niet meer';return}tbStap=null;S.betalen.inst.code=tbNieuweCode();bewaar();tbOpdrachtSheet();toast('Nieuwe code gemaakt: pas hem aan in de opdracht');return}
+  case'kopieer':{const t=el.dataset.k==='url'?TB_IN_URL:el.dataset.k==='key'?SUPA_KEY:S.betalen?.inst?.code||'';try{navigator.clipboard.writeText(t).then(()=>toast('Gekopieerd'),()=>prompt('Kopieer:',t))}catch(z){prompt('Kopieer:',t)}return}
+  case'intest':{toast('Verbinding testen…');fetch(TB_IN_URL,{method:'POST',headers:{'x-code':S.betalen.inst.code,'x-test':'1','apikey':SUPA_KEY}}).then(r=>r.json().catch(()=>({})).then(j=>{
+    toast(r.ok&&j.ok?'✓ Verbinding werkt':r.status===404?'✗ De functie factuur-in bestaat nog niet in Supabase':r.status===401&&j.fout==='onbekende code'?'✗ Code nog niet op de server: wacht even en probeer opnieuw':'✗ '+(j.fout||j.msg||('fout '+r.status)))})).catch(()=>toast('✗ Geen verbinding met Supabase'));return}
   case'bijlkoppel':{const fid=v;tbKiesBestand(async f2=>{try{toast('Bijlage verwerken…');const c=await tbCanvas(f2);S.tbBijl[fid]=tbVerklein(c.canvas);bewaar();const y=tbSchrijf()[fid];if(y)tbFormulier(y);toast('Bijlage bewaard')}catch(z){toast('Dit bestand lukte niet')}});return}
   case'bijlzien':tbToonBijl(S.tbBijl?.[v]);return;
   case'tbpush':return;
@@ -3197,6 +3239,7 @@ document.addEventListener('change',e=>{if(e.target.id==='tbIncAan'){const v=docu
 .tbgroep{margin:0 0 10px}.tbgroepkop{display:flex;justify-content:space-between;align-items:center;margin:12px 18px 6px;font-size:16px}.tbgroepkop.laat b{color:var(--oranje)}
 .tbbijl{margin-top:12px}.tbbijl img{max-width:100%;max-height:240px;border:1px solid var(--lijn);border-radius:8px}
 #tbBijlOv{display:none;position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.9);flex-direction:column}#tbBijlOv.open{display:flex}.tbbijlbalk{display:flex;justify-content:space-between;align-items:center;padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 10px;color:#fff}.tbbijlvak{flex:1;overflow:auto;-webkit-overflow-scrolling:touch}.tbbijlvak img{width:100%;display:block}
+.tbinbox{border:2px solid var(--oranje)}.tbopdracht ol{padding-left:20px;line-height:1.5}.tbopdracht li{margin-bottom:10px}.tbopdracht ul{padding-left:18px;margin-top:6px}.tbopdracht li .knop{margin:4px 0}.tbopdracht code{background:var(--achter);padding:1px 5px;border-radius:5px;word-break:break-all}
 .tbchips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 16px 8px}.tbchip{border:1px solid var(--lijn);background:var(--kaart);color:var(--tekst);border-radius:16px;padding:6px 12px;font-size:15px}.tbchip.aan{background:var(--oranje);border-color:var(--oranje);color:#fff;font-weight:700}
 .tbfilters{margin:0 16px 8px}.tbfilters label{display:block;font-size:14px;color:var(--grijs);margin-top:6px}.tbfilters select{width:100%}
 .tbfilterinfo{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 16px 8px;font-size:15px}
@@ -3291,9 +3334,9 @@ function checkHtml(){const l=clLijsten();if(!l.length)return`<div class="kop"><h
   return h}
 function clBeheerSheet(){const l=clLijsten().map(x=>kloon(x));
   toonSheet(`<div class="pkop"><button data-a="sluit">Annuleren</button><b>Checklists aanpassen</b><button data-cl="bewaar" style="font-weight:700">Bewaren</button></div><div class="pinhoud" id="clBeheer">
-   ${l.map(clBlok).join('')}<div class="knoppen" style="justify-content:flex-start"><button class="knop rand" data-cl="lijstbij">+ Nieuwe lijst</button></div>
+   ${l.map(clBlok).join('')}<div class="knoppen" id="clBij" style="justify-content:flex-start"><button class="knop rand" data-cl="lijstbij">+ Nieuwe lijst</button></div>
    <p class="hulp">Eén taak per regel. Met “Klaar om” krijg je een pushmelding als de lijst om die tijd nog niet af is (leeg = geen melding).</p></div>`)}
-const clBlok=x=>`<div class="kaartje clblok" data-id="${esc(x.id||'')}" style="margin:0 0 12px"><label>Naam</label><input class="veld clnaam" maxlength="40" value="${esc(x.naam||'')}">
+const clBlok=x=>`<div class="kaartje clblok" data-id="${esc(x.id||'')}" style="margin:0 0 12px"><h3 class="clkop">${esc(x.naam||'Nieuwe lijst')}</h3><label>Naam</label><input class="veld clnaam" maxlength="40" value="${esc(x.naam||'')}">
   <label>Klaar om</label><input class="veld cltijd" type="time" value="${esc(x.tijd||'')}" style="width:140px">
   <label>Taken</label><textarea class="veld cltaken" rows="6">${esc((x.taken||[]).map(t=>t.t).join('\n'))}</textarea>
   <div class="knoppen" style="justify-content:flex-start;padding:6px 0 0"><button class="knop rand rood klein" data-cl="lijstweg">Lijst verwijderen</button></div></div>`;
@@ -3306,7 +3349,7 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-cl]');if(
     for(const k of Object.keys(D))if(k<plusDagen(iso(),-120))delete D[k];bewaar();render();
     {const l=clLijsten().find(x=>x.id===clKeuze);if(l){const s=clStand(d,l);if(m[v]&&s.n===s.tot)bevestig(`✓ ${l.naam}: alles gedaan`)}}return}
   case'beheer':if(isAdmin())clBeheerSheet();return;
-  case'lijstbij':{const w=document.getElementById('clBeheer');const k=w.querySelector('.knoppen:last-of-type');k.insertAdjacentHTML('beforebegin',clBlok({naam:'',taken:[]}));return}
+  case'lijstbij':{const k=document.getElementById('clBij');if(!k)return;k.insertAdjacentHTML('beforebegin',clBlok({naam:'',taken:[]}));const n=k.previousElementSibling;n?.scrollIntoView({block:'start',behavior:'smooth'});setTimeout(()=>n?.querySelector('.clnaam')?.focus(),350);return}
   case'lijstweg':{const b=el.closest('.clblok');if(!b)return;if(el.dataset.z!=='1'){el.dataset.z='1';el.textContent='Zeker? Tik nogmaals';return}b.remove();return}
   case'bewaar':{if(!isAdmin())return;const oud=clLijsten(),nieuw={};let i=0;
     for(const b of document.querySelectorAll('#clBeheer .clblok')){const naam=b.querySelector('.clnaam').value.trim();if(!naam)continue;const id=b.dataset.id||'l'+urenId(),o=oud.find(x=>x.id===id),tk=[];
@@ -3339,7 +3382,8 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-de]');if(
   for(const pk of a.pks)if(dagTotaal(pk,a.s)>a.a.aantal)verdeelAdvies(pk,a.s,a.a.aantal);log(`Advies toegepast: ${a.s.naam} ${GROEP[a.g]} → ${a.a.aantal}`);bewaar();render();toast(`${a.s.naam}: ${a.a.aantal} per dag`)}});
 (function(){const st=document.createElement('style');st.textContent=`.rsrij.afw{border-left:4px solid var(--oranje)}.rsrij.weg{border-left:4px solid var(--rood)}.rsrij.ok{border-left:4px solid var(--groen)}.rsrij.extra{opacity:.85;border-left:4px dashed var(--grijs)}
 .clrij{display:flex;align-items:center;gap:12px;min-height:58px}.clvak{width:30px;height:30px;border:2px solid var(--oranje);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;flex:none}
-.clrij.af .clvak{background:var(--oranje)}.clrij.af .naam{text-decoration:line-through;opacity:.7}.clblok textarea{min-height:120px}`;document.head.appendChild(st)})();
+.clrij.af .clvak{background:var(--oranje)}.clrij.af .naam{text-decoration:line-through;opacity:.7}#paneel .clblok textarea.veld{width:100%;box-sizing:border-box;min-height:140px;background:var(--kaart)!important;color:var(--tekst)!important;border:1px solid var(--lijn);border-radius:10px;padding:12px 14px;-webkit-appearance:none;appearance:none}.clkop{margin:0 0 4px}`;document.head.appendChild(st)})();
+document.addEventListener('input',e=>{if(e.target.classList?.contains('clnaam')){const k=e.target.closest('.clblok')?.querySelector('.clkop');if(k)k.textContent=e.target.value.trim()||'Nieuwe lijst'}});
 
 /* ================= 10.10 chat ================= */
 /* Gesprekken staan in S.berichten (sleutel 'berichten'). Soorten: privé (medewerker ↔ beheer), 'team' en mededelingen ('med').
