@@ -1395,7 +1395,7 @@ function bestelBerekening(){
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const APP_VERSIE='10.0',APP_BOUW='10.22';
+const APP_VERSIE='10.0',APP_BOUW='10.23';
 const NIEUWS=[['🏪','Brood Opzet per winkel','De app werkt nu per winkel. Alles wat je al had, hoort bij je eigen winkel. Voor jou verandert er niets.'],
  ['🔑','Koppelen met een code','Een nieuwe telefoon koppel je voortaan met de koppelcode van de winkel, zonder wachtwoord. De beheerder vindt de code onder Meer.'],
  ['🌤️','Weer en bakker','De beheerder kiest bij Broodsoorten en instellingen de plaats voor het weer en de naam van de bakker.'],
@@ -3430,6 +3430,8 @@ document.addEventListener('input',e=>{if(e.target.classList?.contains('clnaam'))
 /* ================= 10.22 Home zelf indelen ================= */
 /* eigen indeling: S.profielen[uid].home={tegels:[{k,g}]} · medewerkers: S.homeTeam={alle:{tegels},per:{uid:{tegels}},zelf:bool} */
 let homeEdit=null,homeSleep=null;
+const homeToonTekst=x=>x.t!=null?!!x.t:!(String(x.k).startsWith('m:')&&MEER_GROEP[x.k.slice(2)]==='beheer');
+const HOME_IC={materiaal:'📦',plu:'🏷️',notities:'🗒️',dervlijsten:'📋',ontdooi:'❄️',pakbonnen:'📄',afsluiten:'🔒',instellingen:'⚙️',uitleg:'❓',bestelboeken:'📚',afwijkend:'📅',bestel:'🛒',rapport:'📈',nieuw:'✨',export:'📤',gedaan:'✔️',log:'📜',soorten:'🥐',programmas:'🔥',team:'👥',vraag:'❔'};
 const HOME_BASIS=['lijst','plan','derving','uren','check','chat'];
 function homeBasisTegels(){const t={};
   {const{n,k}=homeKlaar();t.lijst={k:'lijst',a:'tab',v:'lijst',ic:'🥖',l:'Klaarzetten',s:n?(k===n?'✓ Alles klaar':`nog ${n-k} te gaan`):'Niets klaar te zetten',wl:n&&k<n}}
@@ -3443,7 +3445,7 @@ function homeBasisTegels(){const t={};
 function meerCatalogus(){const s=sub,t=tab;try{sub=null;window.__meerItems=[];meerHtml()}catch(e){}finally{sub=s;tab=t}
   const uit={};for(const x of window.__meerItems||[]){const[k,tl,sb,,,act]=x;if(act&&act!=='sub')continue;if(k==='berichten')continue;
     const tekst=String(tl).replace(/<[^>]+>/g,'').trim(),m=tekst.match(/^(\p{Extended_Pictographic}[️‍\p{Extended_Pictographic}]*)\s*(.*)$/u);
-    uit['m:'+k]={k:'m:'+k,a:'sub2',v:k,ic:m?m[1]:'📁',l:m?m[2]:tekst,s:String(sb||'').replace(/<[^>]+>/g,'')}}
+    uit['m:'+k]={k:'m:'+k,a:'sub2',v:k,ic:m?m[1]:(HOME_IC[k]||'📁'),l:m?m[2]:tekst,s:String(sb||'').replace(/<[^>]+>/g,'')}}
   return uit}
 function homeCatalogus(uid){const s=L.sessie;if(uid&&uid!==s)L.sessie=uid;try{return{...homeBasisTegels(),...meerCatalogus()}}finally{L.sessie=s}}
 function homeTeamCatalogus(){const c={};for(const g of S.gebruikers.filter(x=>x.rol!=='admin'&&x.actief!==false))Object.assign(c,homeCatalogus(g.id));
@@ -3454,12 +3456,13 @@ function homeIndeling(cat){const u=ik(),eigen=prof().home?.tegels,t=homeTeam();
   let l=null;if(Array.isArray(eigen)&&(isAdmin()||t.zelf))l=eigen;else if(!isAdmin())l=t.per?.[u?.id]?.tegels||t.alle?.tegels||null;
   l=(l||homeStd(cat)).filter(x=>x&&cat[x.k]);return l.length?l:homeStd(cat)}
 function homeTegelHtml(x,c,edit,i,n){const g=x.g?'groot':'';
-  if(!edit)return`<button class="hometegel ${g} ${c.wl?'let':''}" data-a="${c.a}" data-v="${esc(c.v)}"><span class="hti">${c.ic}</span><b>${esc(c.l)}</b><span class="hts">${esc(c.s||'')}</span></button>`;
-  return`<div class="hometegel bewerk ${g}" data-hk="${esc(x.k)}"><span class="hti">${c.ic}</span><b>${esc(c.l)}</b>
+  const tt=homeToonTekst(x);
+  if(!edit)return`<button class="hometegel ${g} ${c.wl?'let':''}" data-a="${c.a}" data-v="${esc(c.v)}"><span class="hti">${c.ic}</span><b>${esc(c.l)}</b>${tt&&c.s?`<span class="hts">${esc(c.s)}</span>`:''}</button>`;
+  return`<div class="hometegel bewerk ${g}" data-hk="${esc(x.k)}"><button class="heye ${tt?'':'uit'}" data-h="tekst" data-v="${i}" aria-label="${tt?'Tekst verbergen':'Tekst tonen'}">${tt?'👁':'🙈'}</button><span class="hti">${c.ic}</span><b>${esc(c.l)}</b><span class="hts">${tt?esc(c.s||''):'<i>tekst verborgen</i>'}</span>
    <div class="hedit"><button data-h="op" data-v="${i}" ${i===0?'disabled':''} aria-label="Naar voren">▲</button><button data-h="neer" data-v="${i}" ${i===n-1?'disabled':''} aria-label="Naar achteren">▼</button><button data-h="groot" data-v="${i}" aria-label="Groot of klein" class="${x.g?'aan':''}">↔</button><button data-h="weg" data-v="${i}" aria-label="Verbergen">✕</button></div></div>`}
 function homeTegelsHtml(){const cat=homeCatalogus();
   if(homeEdit&&homeEdit.ctx==='eigen'){const l=homeEdit.lijst.filter(x=>cat[x.k]);
-    return`<div class="homebalk"><b>Home indelen</b><span>Houd een tegel vast en sleep, of gebruik ▲▼. ↔ = groot/klein, ✕ = verbergen.</span><div class="knoppen" style="padding:6px 0 0;gap:6px;flex-wrap:wrap;justify-content:flex-start"><button class="knop klein" data-h="klaar">Klaar</button><button class="knop rand klein" data-h="erbij">＋ Tegel toevoegen</button><button class="knop rand klein" data-h="std">${homeEdit.std?'Zeker? Tik nogmaals':'Standaard herstellen'}</button></div></div>
+    return`<div class="homebalk"><b>Home indelen</b><span>Houd een tegel vast en sleep, of gebruik ▲▼. ↔ = groot/klein, 👁 = tekst aan/uit, ✕ = verbergen.</span><div class="knoppen" style="padding:6px 0 0;gap:6px;flex-wrap:wrap;justify-content:flex-start"><button class="knop klein" data-h="klaar">Klaar</button><button class="knop rand klein" data-h="erbij">＋ Tegel toevoegen</button><button class="knop rand klein" data-h="std">${homeEdit.std?'Zeker? Tik nogmaals':'Standaard herstellen'}</button></div></div>
      <div class="hometegels" id="homeTegels">${l.map((x,i)=>homeTegelHtml(x,cat[x.k],true,i,l.length)).join('')}</div>`}
   const l=homeIndeling(cat),magEdit=isAdmin()||homeTeam().zelf;
   return`<div class="hometegels">${l.map(x=>homeTegelHtml(x,cat[x.k],false)).join('')}</div>${magEdit?'<div class="knoppen" style="padding-top:0"><button class="knop rand klein" data-h="start">✏️ Home indelen</button></div>':''}`}
@@ -3475,10 +3478,10 @@ function homeTeamHtml(){if(!isAdmin())return'';const t=homeTeam(),mw=S.gebruiker
    <div class="kaartje"><label>Voor wie</label><select class="veld" id="htWie"><option value="alle">Alle medewerkers</option>${mw.map(g=>`<option value="${esc(g.id)}" ${htKeuze===g.id?'selected':''}>${esc(g.naam)}${t.per?.[g.id]?' (eigen indeling)':''}</option>`).join('')}</select>
     ${htKeuze!=='alle'?`<div class="sub" style="margin-top:6px">${eigen?'Deze medewerker heeft een eigen indeling.':'Gebruikt nu de indeling voor alle medewerkers. Pas je hier iets aan, dan krijgt deze medewerker een eigen indeling.'}</div>`:''}
     <label class="schakel" style="margin:12px 0 0;color:var(--tekst);font-weight:700">Medewerkers mogen hun Home zelf aanpassen<input type="checkbox" id="htZelf" ${t.zelf?'checked':''}></label></div>
-   <div class="homebalk"><span>Houd een tegel vast en sleep, of gebruik ▲▼. ↔ = groot/klein, ✕ = verbergen. Wijzigingen worden meteen bewaard.</span><div class="knoppen" style="padding:6px 0 0;gap:6px;flex-wrap:wrap;justify-content:flex-start"><button class="knop rand klein" data-h="erbij">＋ Tegel toevoegen</button><button class="knop rand klein" data-h="std">${homeEdit.std?'Zeker? Tik nogmaals':'Standaard herstellen'}</button>${eigen?`<button class="knop rand klein" data-h="perweg">Zelfde als alle medewerkers</button>`:''}</div></div>
+   <div class="homebalk"><span>Houd een tegel vast en sleep, of gebruik ▲▼. ↔ = groot/klein, 👁 = tekst aan/uit, ✕ = verbergen. Wijzigingen worden meteen bewaard.</span><div class="knoppen" style="padding:6px 0 0;gap:6px;flex-wrap:wrap;justify-content:flex-start"><button class="knop rand klein" data-h="erbij">＋ Tegel toevoegen</button><button class="knop rand klein" data-h="std">${homeEdit.std?'Zeker? Tik nogmaals':'Standaard herstellen'}</button>${eigen?`<button class="knop rand klein" data-h="perweg">Zelfde als alle medewerkers</button>`:''}</div></div>
    <div class="hometegels" id="homeTegels">${l.map((x,i)=>homeTegelHtml(x,cat[x.k],true,i,l.length)).join('')}</div>`}
 /* ---------- opslaan ---------- */
-function homeBewaar(){if(!homeEdit)return;const l=homeEdit.lijst.map(x=>({k:x.k,g:x.g?1:0}));
+function homeBewaar(){if(!homeEdit)return;const l=homeEdit.lijst.map(x=>({k:x.k,g:x.g?1:0,...(x.t!=null?{t:x.t?1:0}:{})}));
   if(homeEdit.ctx==='eigen'){const id=L.sessie;S.profielen[id]={...(S.profielen[id]||{}),home:homeEdit.reset?null:{tegels:l}}}
   else{if(!isAdmin())return;const wie=homeEdit.ctx.slice(5);if(!isObj(S.homeTeam))S.homeTeam={};
     if(wie==='alle')S.homeTeam.alle=homeEdit.reset?null:{tegels:l};else{if(!isObj(S.homeTeam.per))S.homeTeam.per={};S.homeTeam.per[wie]=homeEdit.reset?null:{tegels:l}}}
@@ -3492,6 +3495,7 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-h]');if(!
   if(c==='op'&&i>0){[l[i-1],l[i]]=[l[i],l[i-1]];homeBewaar();render();return}
   if(c==='neer'&&i<l.length-1){[l[i+1],l[i]]=[l[i],l[i+1]];homeBewaar();render();return}
   if(c==='groot'){l[i].g=l[i].g?0:1;homeBewaar();render();return}
+  if(c==='tekst'){l[i].t=homeToonTekst(l[i])?0:1;homeBewaar();render();return}
   if(c==='weg'){l.splice(i,1);homeBewaar();render();return}
   if(c==='std'){if(!homeEdit.std){homeEdit.std=true;render();setTimeout(()=>{if(homeEdit?.std){homeEdit.std=false;render()}},5000);return}
     const cat=homeCtxCat();homeEdit.lijst=homeStd(cat);homeEdit.std=false;homeEdit.reset=true;homeBewaar();render();toast('Standaard hersteld');return}
@@ -3518,6 +3522,7 @@ document.addEventListener('pointercancel',()=>{if(homeSleep){clearTimeout(homeSl
 .hometegel.bewerk.sleept{opacity:.75;transform:scale(1.04);animation:none;box-shadow:0 8px 20px rgba(0,0,0,.25);z-index:2}
 @keyframes hwiebel{from{transform:rotate(-.6deg)}to{transform:rotate(.6deg)}}
 .hedit{display:flex;gap:4px;margin-top:auto;padding-top:8px;flex-wrap:nowrap}.hedit button.aan{background:var(--oranje);color:#fff;border-color:var(--oranje)}.hedit button{width:32px;min-width:32px;height:38px;padding:0;border-radius:10px;border:1px solid var(--lijn);background:var(--achter);color:var(--tekst);font-size:16px}.hedit button:disabled{opacity:.3}
+.heye{position:absolute;top:8px;right:8px;width:38px;height:38px;border-radius:10px;border:1px solid var(--lijn);background:var(--achter);font-size:18px;padding:0}.heye.uit{opacity:.7}
 .homebalk{margin:6px 16px 4px;font-size:15px;color:var(--grijs)}.homebalk b{display:block;color:var(--tekst);font-size:17px}
 @media (prefers-reduced-motion:reduce){.hometegel.bewerk{animation:none}}`;document.head.appendChild(st)})();
 
