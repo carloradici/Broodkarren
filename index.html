@@ -1395,7 +1395,7 @@ function bestelBerekening(){
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const APP_VERSIE='10.0',APP_BOUW='10.24';
+const APP_VERSIE='10.0',APP_BOUW='10.25';
 const NIEUWS=[['🏪','Brood Opzet per winkel','De app werkt nu per winkel. Alles wat je al had, hoort bij je eigen winkel. Voor jou verandert er niets.'],
  ['🔑','Koppelen met een code','Een nieuwe telefoon koppel je voortaan met de koppelcode van de winkel, zonder wachtwoord. De beheerder vindt de code onder Meer.'],
  ['🌤️','Weer en bakker','De beheerder kiest bij Broodsoorten en instellingen de plaats voor het weer en de naam van de bakker.'],
@@ -2989,7 +2989,7 @@ function betalenHtml(){if(!betalenMag())return'';const o=tbOpen(),b=tbBetaald(),
    <div id="tbLijst">${tbLijstHtml()}</div>`;
   return h}
 /* ---------- 10.17 planning, scannen, bijlagen ---------- */
-let tbScanBijl=null,tbScanKlaar=false;
+let tbScanBijl=null,tbScanKlaar=false,tbScanPdf=null,tbScanN=1;
 const tbDat=x=>x.plan||x.verval||'';
 function tbPlanHtml(){const o=tbOpen(),vd=iso(),w1=plusDagen(maandag(vd),7),w2=plusDagen(w1,7),inst=isObj(S.betalen?.inst)?S.betalen.inst:{};
   const gr=[['Te laat',x=>tbDat(x)&&tbDat(x)<vd],['Deze week',x=>tbDat(x)>=vd&&tbDat(x)<w1],['Volgende week',x=>tbDat(x)>=w1&&tbDat(x)<w2],['Later',x=>tbDat(x)>=w2],['Zonder datum',x=>!tbDat(x)]];
@@ -3003,11 +3003,18 @@ function tbPlanHtml(){const o=tbOpen(),vd=iso(),w1=plusDagen(maandag(vd),7),w2=p
    <div class="kaartje"><h3>📲 Facturen delen vanuit Mail</h3><div class="sub">Met de iPhone-opdracht “Naar Brood Opzet” deel je een factuur uit Mail, Bestanden of Foto's direct naar de app, zonder op te slaan.</div>
     <div class="knoppen" style="justify-content:flex-start;padding:10px 0 0"><button class="knop klein" data-tb="opdracht">${S.betalen?.inst?.code?'Opdracht bekijken':'Opdracht instellen'}</button></div></div>`}
 function tbKiesBestand(cb){const i=document.createElement('input');i.type='file';i.accept='image/*,application/pdf,.pdf';i.onchange=()=>{if(i.files[0])cb(i.files[0])};i.click()}
-async function tbCanvas(file){if(/pdf/i.test(file.type)||/\.pdf$/i.test(file.name)){const r=await pdfNaarTekst(file);return{canvas:r.canvas,tekst:r.tekst||''}}return{canvas:await afbNaarCanvas(file),tekst:''}}
+const tbIsPdf=f=>/pdf/i.test(f.type)||/\.pdf$/i.test(f.name||'');
+const tbDataUrl=f=>new Promise((ok,nee)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=nee;r.readAsDataURL(f)});
+async function tbPdfLees(file){await laadPdfjs();const pdf=await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise,n=pdf.numPages,pag=[];
+  for(let p=1;p<=n;p++){const pg=await pdf.getPage(p),tc=await pg.getTextContent(),rij={};for(const it of tc.items){if(!it.str.trim())continue;const y=Math.round(it.transform[5]/3)*3;(rij[y]=rij[y]||[]).push(it)}
+    pag.push(Object.keys(rij).map(Number).sort((a,b)=>b-a).map(y=>rij[y].sort((a,b)=>a.transform[4]-b.transform[4]).map(i=>i.str).join(' ')).join('\n'))}
+  const p1=await pdf.getPage(1),v1=p1.getViewport({scale:1}),sc=Math.min(3,1400/v1.width),vp=p1.getViewport({scale:sc}),c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);await p1.render({canvasContext:g,viewport:vp}).promise;
+  return{tekst:pag.join('\n'),eind:pag.slice(-2).join('\n'),canvas:c,n}}
+async function tbCanvas(file){if(tbIsPdf(file)){const r=await tbPdfLees(file);return{...r,pdf:file.size<=8*1024*1024?await tbDataUrl(file):null}}return{canvas:await afbNaarCanvas(file),tekst:''}}
 function tbVerklein(c){const m=Math.min(1,1400/Math.max(c.width,c.height)),k=document.createElement('canvas');k.width=Math.round(c.width*m);k.height=Math.round(c.height*m);const g=k.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,k.width,k.height);g.drawImage(c,0,0,k.width,k.height);return k.toDataURL('image/jpeg',.6)}
 async function tbOcr(c){const w=await tessKlaar();try{await w.setParameters({tessedit_pageseg_mode:'3',tessedit_char_whitelist:''})}catch(e){}return ocrCanvas(c)}
 const TB_MND={jan:1,feb:2,mrt:3,maa:3,mar:3,apr:4,mei:5,may:5,jun:6,jul:7,aug:8,sep:9,okt:10,oct:10,nov:11,dec:12};
-function tbLeesFactuur(t){t=String(t||'').replace(/\r/g,'');const low=t.toLowerCase(),r={};
+function tbLeesFactuur(t,eind){t=String(t||'').replace(/\r/g,'');const low=t.toLowerCase(),r={};
   r.lev=tbLeveranciers().sort((a,c)=>c.length-a.length).find(l=>l.length>2&&low.includes(l.toLowerCase()))||'';
   if(!r.lev){const c=t.split('\n').map(x=>x.trim().split(/\s(?:btw|vat|kvk|iban|bic|tel\.?|telefoon|incassant\w*|e-?mail)\b/i)[0].trim()).filter(x=>/[a-z]{3}/i.test(x)&&!/^[\d+]/.test(x)&&!/factuur|invoice|datum|date|due|amount|total|pagina|page|t\.a\.v|klant|debiteur|coop|vogelenzang|zondaglaan|@|www\.|straat|weg\s\d|laan\s\d/i.test(x));
     const k=c.find(x=>/\b(b\.?v\.?|v\.?o\.?f\.?|n\.?v\.?|holding|bakkerij|groothandel)(\b|$)/i.test(x))||c[0];r.lev=(k||'').replace(/\s{2,}.*/,'').replace(/[^\p{L}\p{N}&.,' -]/gu,'').trim().slice(0,60)}
@@ -3037,16 +3044,17 @@ function tbLeesFactuur(t){t=String(t||'').replace(/\r/g,'');const low=t.toLowerC
   r.verval=redelijk(kol.verval)?kol.verval:zoek(['vervaldatum','verval datum','uiterste betaaldatum','betalen voor','te voldoen voor','due date','vervaldag']);
   if(r.verval&&r.fdat&&r.verval<r.fdat)r.verval=null;
   const BED='(-?\\d{1,3}(?:[.\\s]\\d{3})*,\\d{2}|-?\\d+[.,]\\d{2})(?!\\d)';let tot=null;
-  for(const w of['totaal te betalen','te betalen','totaal incl','totaalbedrag','factuurbedrag','totaal factuur','amount due','totaal','total']){const re=new RegExp(w+'[^\\n\\d€-]{0,40}(?:€|eur)?\\s*'+BED,'gi');let m,best=null;
-    while((m=re.exec(t))){const v=leesBedrag(m[1].replace(/\s/g,''));if(v&&(best==null||v>best))best=v}if(best!=null){tot=best;break}}
+  const zoekTot=txt=>{for(const w of['totaal te betalen','te betalen','totaal te voldoen','totaal incl','totaalbedrag','factuurbedrag','totaal factuur','amount due','totaal','total']){const re=new RegExp(w+'([^\\n\\d€-]{0,40})(?:€|eur)?\\s*'+BED,'gi');let m,laatst=null;
+    while((m=re.exec(txt))){const voor=txt.slice(Math.max(0,m.index-3),m.index).toLowerCase();if(voor.endsWith('sub')||/excl|ex\.? ?btw|zonder/i.test(m[1]))continue;const v=leesBedrag(m[2].replace(/\s/g,''));if(v)laatst=v}if(laatst!=null)return laatst}return null};
+  tot=(eind?zoekTot(eind):null)??zoekTot(t);
   if(tot==null){const alle=[...t.matchAll(new RegExp('€\\s*'+BED,'g'))].map(m=>leesBedrag(m[1].replace(/\s/g,''))).filter(v=>v>0);if(alle.length)tot=Math.max(...alle)}
   if(tot!=null)r.tot=fCent(tot);if(!r.verval&&r.fdat)r.verval=plusDagen(r.fdat,30);return r}
 async function tbScan(file){toast('Factuur lezen… even geduld');try{const c=await tbCanvas(file);let tekst=c.tekst;
     if(tekst.replace(/\s/g,'').length<40&&c.canvas){toast('Tekst herkennen…');tekst=await tbOcr(c.canvas)}
-    tbScanBijl=c.canvas?tbVerklein(c.canvas):null;const v=tbLeesFactuur(tekst),gev=['lev','nr','fdat','tot'].filter(k=>v[k]).length;
+    tbScanBijl=c.canvas?tbVerklein(c.canvas):null;tbScanPdf=c.pdf||null;tbScanN=c.n||1;const v=tbLeesFactuur(tekst,c.eind),gev=['lev','nr','fdat','tot'].filter(k=>v[k]).length;
     const pre={};for(const k of['lev','nr','fdat','verval','tot'])if(v[k]!=null&&v[k]!=='')pre[k]=v[k];tbFormulier(null,pre);toast(gev===4?'Gelezen: controleer de gegevens':`${gev} van 4 gegevens gelezen: vul de rest aan`)}
   catch(z){console.warn(z);toast('Lezen lukte niet: vul de factuur zelf in');tbScanBijl=null;tbFormulier(null)}}
-function tbToonBijl(src){if(!src)return;let ov=document.getElementById('tbBijlOv');if(!ov){ov=document.createElement('div');ov.id='tbBijlOv';ov.setAttribute('role','dialog');document.body.appendChild(ov);ov.addEventListener('click',e=>{if(e.target.closest('[data-tbsluit]')||e.target===ov)ov.classList.remove('open')})}
+function tbToonBijl(src){if(!src)return;if(/^data:application\/pdf/.test(src)){tbToonPdf(src);return}let ov=document.getElementById('tbBijlOv');if(!ov){ov=document.createElement('div');ov.id='tbBijlOv';ov.setAttribute('role','dialog');document.body.appendChild(ov);ov.addEventListener('click',e=>{if(e.target.closest('[data-tbsluit]')||e.target===ov)ov.classList.remove('open')})}
   ov.innerHTML=`<div class="tbbijlbalk"><b>Factuur</b><span class="tbbijlhulp">tik om in te zoomen</span><button data-tbsluit="1" class="knop wit klein">Sluiten</button></div><div class="tbbijlvak"><img src="${src}" alt="Factuur"></div>`;ov.classList.add('open');
   const img=ov.querySelector('img');img.addEventListener('click',ev=>{ev.stopPropagation();const vak=ov.querySelector('.tbbijlvak'),r=img.getBoundingClientRect(),fx=(ev.clientX-r.left)/r.width,fy=(ev.clientY-r.top)/r.height;img.classList.toggle('zoom');
     if(img.classList.contains('zoom'))requestAnimationFrame(()=>{vak.scrollLeft=img.offsetWidth*fx-vak.clientWidth/2;vak.scrollTop=img.offsetHeight*fy-vak.clientHeight/2})})}
@@ -3087,6 +3095,19 @@ function tbDubbel(nr,lev,tot,eigen){const n=tbNrN(nr);if(n.length<3)return null;
 function tbDubHtml(d){if(!d)return'';return`<div class="kaartje tbdub"><b>⚠️ Deze factuur staat er al in</b><div class="sub">${esc(d.lev||'?')} · ${esc(d.nr||'')} · ${fEuro(+d.tot||0)} · factuur ${tbD(d.fdat)} · ${tbIsBetaald(d)?'<b>betaald '+tbD(d.betaald)+'</b>':'<b>nog open</b>'}</div>
    <div class="knoppen" style="justify-content:flex-start;gap:6px;flex-wrap:wrap;padding:8px 0 0"><button class="knop klein" data-tb="dubweg">${tbInActief?'Weggooien':'Niet toevoegen'}</button><button class="knop rand klein" data-tb="dubok">Toch toevoegen</button></div></div>`}
 function tbDubToon(d){const v=document.getElementById('tbDubVak');if(v)v.innerHTML=tbDubHtml(d);document.querySelector('#paneel .pinhoud')?.scrollTo({top:0,behavior:'smooth'})}
+async function tbToonPdf(src){let ov=document.getElementById('tbBijlOv');if(!ov){ov=document.createElement('div');ov.id='tbBijlOv';ov.setAttribute('role','dialog');document.body.appendChild(ov);ov.addEventListener('click',e=>{if(e.target.closest('[data-tbsluit]')||e.target===ov)ov.classList.remove('open')})}
+  ov.innerHTML=`<div class="tbbijlbalk"><b>Factuur</b><span class="tbbijlhulp" id="tbPag">laden…</span><button data-tbsluit="1" class="knop wit klein">Sluiten</button></div><div class="tbbijlvak" id="tbPdfVak"></div>`;ov.classList.add('open');
+  try{await laadPdfjs();const bin=atob(src.split(',')[1]),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
+    const pdf=await pdfjsLib.getDocument({data:u}).promise,n=pdf.numPages,vak=document.getElementById('tbPdfVak'),lab=document.getElementById('tbPag');if(!vak)return;
+    const tel=()=>{const kids=[...vak.children],mid=vak.scrollTop+vak.clientHeight/3;let p=1;for(const k of kids)if(k.offsetTop<=mid)p=+k.dataset.p;if(vak.scrollTop+vak.clientHeight>=vak.scrollHeight-4)p=n;if(lab)lab.textContent=`pagina ${p} van ${n} · tik om in te zoomen`};
+    for(let p=1;p<=n;p++){const d=document.createElement('div');d.className='tbpag';d.dataset.p=p;d.style.aspectRatio='1/1.414';vak.appendChild(d)}
+    const teken=async d=>{if(d.dataset.klaar)return;d.dataset.klaar=1;const pg=await pdf.getPage(+d.dataset.p),v1=pg.getViewport({scale:1}),vp=pg.getViewport({scale:Math.min(3,1500/v1.width)}),c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;
+      const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);await pg.render({canvasContext:g,viewport:vp}).promise;d.style.aspectRatio=`${vp.width}/${vp.height}`;d.appendChild(c)};
+    const io=new IntersectionObserver(es=>{for(const e of es)if(e.isIntersecting)teken(e.target)},{root:vak,rootMargin:'600px 0px'});for(const d of vak.children)io.observe(d);
+    vak.addEventListener('scroll',tel,{passive:true});tel();
+    vak.addEventListener('click',e=>{if(!e.target.closest('canvas'))return;const r=e.target.getBoundingClientRect(),fx=(e.clientX-r.left)/r.width,top=e.target.parentElement.offsetTop,fy=(e.clientY-r.top)/r.height;vak.classList.toggle('zoom');
+      requestAnimationFrame(()=>{const c=e.target;vak.scrollLeft=c.offsetWidth*fx-vak.clientWidth/2;vak.scrollTop=e.target.parentElement.offsetTop+c.offsetHeight*fy-vak.clientHeight/2})})}
+  catch(z){console.warn(z);const v=document.getElementById('tbPdfVak');if(v)v.innerHTML='<p class="leeg" style="color:#fff">De PDF kon niet worden geopend.</p>'}}
 /* ---------- formulieren ---------- */
 function tbFormulier(x,pre){const n=!x;if(n){tbScanKlaar=!!pre;tbStap=null}x=x||{fdat:iso(),verval:plusDagen(iso(),30),...(pre||{})};const inc=tbInc(x);
   toonSheet(`<div class="pkop"><button data-a="sluit">Annuleren</button><b>${n?'Nieuwe factuur':'Factuur'}</b><button data-tb="bewaar" data-v="${esc(x.id||'')}" style="font-weight:700">Bewaren</button></div><div class="pinhoud">
@@ -3099,7 +3120,7 @@ function tbFormulier(x,pre){const n=!x;if(n){tbScanKlaar=!!pre;tbStap=null}x=x||
    <label class="schakel" style="margin-top:14px;color:var(--tekst);font-weight:700">Naar incassobureau<input type="checkbox" id="tbIncAan" ${inc?'checked':''}></label>
    <div id="tbIncVeld" style="${inc?'':'display:none'}"><label>Incassobureau</label><input class="veld" id="tbIncB" maxlength="60" value="${esc(inc?.bureau||'')}"><label>Incassokosten (€)</label><input class="veld" id="tbIncK" inputmode="decimal" value="${inc?bedragTekst((+inc.kosten||0)/100):''}" style="width:160px"></div>
    <label>Opmerking</label><input class="veld" id="tbNot" maxlength="200" value="${esc(x.not||'')}">
-   ${n?(tbScanKlaar&&tbScanBijl?`<div class="tbbijl"><img src="${tbScanBijl}" alt="Gescande factuur" data-tb="scanzien" role="button"><div class="sub">🔍 Tik op de factuur om hem groot te bekijken.</div><div class="sub">De gescande factuur wordt bij de factuur bewaard. Controleer de gegevens.</div></div>`:''):`<div class="knoppen" style="justify-content:flex-start;gap:6px;flex-wrap:wrap;padding:10px 0 0">${S.tbBijl?.[x.id]?`<button class="knop rand klein" data-tb="bijlzien" data-v="${esc(x.id)}">📎 Factuur bekijken</button>`:''}<button class="knop rand klein" data-tb="bijlkoppel" data-v="${esc(x.id)}">📷 ${S.tbBijl?.[x.id]?'Andere foto/PDF':'Foto of PDF koppelen'}</button></div>`}
+   ${n?(tbScanKlaar&&tbScanBijl?`<div class="tbbijl"><img src="${tbScanBijl}" alt="Gescande factuur" data-tb="scanzien" role="button"><div class="sub">🔍 Tik op de factuur om hem groot te bekijken${tbScanPdf&&tbScanN>1?` · 📄 ${tbScanN} pagina's`:''}.</div><div class="sub">De gescande factuur wordt bij de factuur bewaard. Controleer de gegevens.</div></div>`:''):`<div class="knoppen" style="justify-content:flex-start;gap:6px;flex-wrap:wrap;padding:10px 0 0">${S.tbBijl?.[x.id]?`<button class="knop rand klein" data-tb="bijlzien" data-v="${esc(x.id)}">📎 Factuur bekijken</button>`:''}<button class="knop rand klein" data-tb="bijlkoppel" data-v="${esc(x.id)}">📷 ${S.tbBijl?.[x.id]?'Andere foto/PDF':'Foto of PDF koppelen'}</button></div>`}
    <div class="fout" id="fout"></div>
    ${!n?`<div id="tbLogVak">${tbLogHtml(x)}</div>`+tbBetalingenHtml(x)+`<div class="knoppen" style="justify-content:flex-start;padding:14px 0 0"><button class="knop rand rood klein" data-tb="weg" data-v="${esc(x.id)}">Factuur verwijderen</button></div>`:''}</div>`)}
 function tbBetalingenHtml(x){const l=Object.entries(x.bet||{}).sort((a,c)=>String(a[1].d).localeCompare(String(c[1].d)));
@@ -3221,7 +3242,7 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-tb]');if(
     if(dub&&tbStap!=='dubok'){tbDubToon(dub);return}tbStap=null;
     const id=x?v:urenId(),y=x||(f[id]={id,bet:{},t:Date.now()});
     Object.assign(y,{lev:lev.slice(0,60),nr:nr.slice(0,40),fdat:fd,verval:vv||null,plan:tbVal('tbPlan')||null,tot,not:tbVal('tbNot').slice(0,200)});
-    if(!x&&tbScanKlaar&&tbScanBijl){S.tbBijl[id]=tbScanBijl}tbScanBijl=null;tbScanKlaar=false;if(!x&&tbInActief){S.tbIn[tbInActief]=null;tbInActief=null}
+    if(!x&&tbScanKlaar&&(tbScanPdf||tbScanBijl)){S.tbBijl[id]=tbScanPdf||tbScanBijl}tbScanBijl=null;tbScanPdf=null;tbScanKlaar=false;if(!x&&tbInActief){S.tbIn[tbInActief]=null;tbInActief=null}
     if(incAan)y.inc={bureau:tbVal('tbIncB').slice(0,60),kosten:incK,t:y.inc?.t||Date.now()};else y.inc=null;
     if(y.betaald&&tbRest(y)>0)y.betaald=null;else if(!y.betaald&&Object.keys(y.bet).length&&tbRest(y)===0)y.betaald=Object.values(y.bet).map(p=>p.d).sort().pop();
     bewaar();sluit();render();toast(x?'Opgeslagen':'Factuur toegevoegd');return}
@@ -3249,9 +3270,9 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-tb]');if(
   case'intest':{toast('Verbinding testen…');fetch(TB_IN_URL,{method:'POST',headers:{'x-code':S.betalen.inst.code,'x-test':'1','apikey':SUPA_KEY}}).then(r=>r.text().catch(()=>'').then(t=>{let j={};try{j=JSON.parse(t)}catch(z){}
     toast(r.ok?'✓ Verbinding werkt':r.status===404?'✗ De functie factuur-in is niet gevonden in Supabase (naam of Deploy controleren)':/onbekende code/.test(t)?'✗ Code nog niet op de server: wacht even en probeer opnieuw':'✗ '+(j.fout||j.message||t||('fout '+r.status)).slice(0,120))})).catch(()=>toast('✗ Geen verbinding met Supabase'));return}
   case'logo':{fetch('icon-512.png').then(r=>r.blob()).then(b=>deelBestand(new File([b],'brood-opzet-logo.png',{type:'image/png'}))).catch(()=>toast('Logo laden lukte niet'));return}
-  case'bijlkoppel':{const fid=v;tbKiesBestand(async f2=>{try{toast('Bijlage verwerken…');const c=await tbCanvas(f2);S.tbBijl[fid]=tbVerklein(c.canvas);bewaar();const y=tbSchrijf()[fid];if(y)tbFormulier(y);toast('Bijlage bewaard')}catch(z){toast('Dit bestand lukte niet')}});return}
+  case'bijlkoppel':{const fid=v;tbKiesBestand(async f2=>{try{toast('Bijlage verwerken…');const c=await tbCanvas(f2);S.tbBijl[fid]=c.pdf||tbVerklein(c.canvas);bewaar();const y=tbSchrijf()[fid];if(y)tbFormulier(y);toast('Bijlage bewaard')}catch(z){toast('Dit bestand lukte niet')}});return}
   case'bijlzien':tbToonBijl(S.tbBijl?.[v]);return;
-  case'scanzien':tbToonBijl(tbScanBijl);return;
+  case'scanzien':tbToonBijl(tbScanPdf||tbScanBijl);return;
   case'tbpush':return;
   case'fst':tbF.st=v;render();return;
   case'fwis':tbF={st:'alle',lev:'',van:'',tot:''};tbZoek='';render();return;
@@ -3277,7 +3298,7 @@ document.addEventListener('change',e=>{if(e.target.id==='tbIncAan'){const v=docu
 .tbknoppen{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.tbinc{color:var(--rood);font-weight:700}
 .tbgroep{margin:0 0 10px}.tbgroepkop{display:flex;justify-content:space-between;align-items:center;margin:12px 18px 6px;font-size:16px}.tbgroepkop.laat b{color:var(--oranje)}
 .tbbijl{margin-top:12px}.tbbijl img{max-width:100%;max-height:240px;border:1px solid var(--lijn);border-radius:8px}
-#tbBijlOv{display:none;position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.9);flex-direction:column}#tbBijlOv.open{display:flex}.tbbijlbalk{display:flex;justify-content:space-between;align-items:center;padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 10px;color:#fff}.tbbijlvak{flex:1;overflow:auto;-webkit-overflow-scrolling:touch}.tbbijlvak img{width:100%;display:block;cursor:zoom-in}.tbbijlvak img.zoom{width:230%;max-width:none;cursor:zoom-out}.tbbijlhulp{font-size:13px;opacity:.7}.tbbijl img{cursor:zoom-in}
+#tbBijlOv{display:none;position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.9);flex-direction:column}#tbBijlOv.open{display:flex}.tbbijlbalk{display:flex;justify-content:space-between;align-items:center;padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 10px;color:#fff}.tbbijlvak{flex:1;overflow:auto;-webkit-overflow-scrolling:touch}.tbbijlvak img{width:100%;display:block;cursor:zoom-in}.tbbijlvak img.zoom{width:230%;max-width:none;cursor:zoom-out}.tbpag{background:#fff;margin:0 0 8px;width:100%}.tbpag canvas{width:100%;display:block}#tbPdfVak.zoom .tbpag{width:230%}.tbbijlhulp{font-size:13px;opacity:.7}.tbbijl img{cursor:zoom-in}
 .tbinbox{border:2px solid var(--oranje)}.tbopdracht ol{padding-left:20px;line-height:1.5}.tbopdracht li{margin-bottom:10px}.tbopdracht ul{padding-left:18px;margin-top:6px}.tbopdracht li .knop{margin:4px 0}.tbopdracht code{background:var(--achter);padding:1px 5px;border-radius:5px;word-break:break-all}
 .tbdub{border:2px solid var(--oranje);margin:0 0 12px}
 .veld[type=date],.veld[type=time]{-webkit-appearance:none;appearance:none;min-width:0;max-width:100%;width:100%;box-sizing:border-box;min-height:50px;display:block}.veld[type=date]::-webkit-date-and-time-value,.veld[type=time]::-webkit-date-and-time-value{text-align:left}
