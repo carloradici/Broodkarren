@@ -1395,7 +1395,7 @@ function bestelBerekening(){
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const APP_VERSIE='10.0',APP_BOUW='10.20';
+const APP_VERSIE='10.0',APP_BOUW='10.21';
 const NIEUWS=[['🏪','Brood Opzet per winkel','De app werkt nu per winkel. Alles wat je al had, hoort bij je eigen winkel. Voor jou verandert er niets.'],
  ['🔑','Koppelen met een code','Een nieuwe telefoon koppel je voortaan met de koppelcode van de winkel, zonder wachtwoord. De beheerder vindt de code onder Meer.'],
  ['🌤️','Weer en bakker','De beheerder kiest bij Broodsoorten en instellingen de plaats voor het weer en de naam van de bakker.'],
@@ -3074,9 +3074,18 @@ function tbOpdrachtSheet(){const c=S.betalen?.inst?.code||'',kb=(k,t)=>`<button 
    </ol>
    <div class="knoppen" style="justify-content:flex-start;gap:6px;flex-wrap:wrap"><button class="knop klein" data-tb="intest">Verbinding testen</button><button class="knop rand klein rood" data-tb="nieuwecode">Nieuwe code maken</button></div>
    <p class="hulp">Je code: <code>${esc(c)}</code>. Houd hem geheim: met deze code kan iemand een factuur naar je app sturen (niet lezen). De namen van de acties kunnen per iOS-versie iets verschillen.</p></div>`)}
+/* ---------- 10.21 dubbele facturen ---------- */
+const tbNrN=x=>String(x||'').toLowerCase().replace(/[\s.\-\/]/g,'');
+const tbLevN=x=>String(x||'').toLowerCase().replace(/\b(b\.?\s?v\.?|v\.?o\.?f\.?|n\.?v\.?|holding)\b/g,'').replace(/[^a-z0-9]/g,'');
+function tbDubbel(nr,lev,tot,eigen){const n=tbNrN(nr);if(n.length<3)return null;const l=tbLevN(lev);
+  return tbAlle().find(y=>y.id!==eigen&&tbNrN(y.nr)===n&&((l&&tbLevN(y.lev)&&(tbLevN(y.lev).includes(l)||l.includes(tbLevN(y.lev))))||(tot&&+y.tot===+tot)))||null}
+function tbDubHtml(d){if(!d)return'';return`<div class="kaartje tbdub"><b>⚠️ Deze factuur staat er al in</b><div class="sub">${esc(d.lev||'?')} · ${esc(d.nr||'')} · ${fEuro(+d.tot||0)} · factuur ${tbD(d.fdat)} · ${tbIsBetaald(d)?'<b>betaald '+tbD(d.betaald)+'</b>':'<b>nog open</b>'}</div>
+   <div class="knoppen" style="justify-content:flex-start;gap:6px;flex-wrap:wrap;padding:8px 0 0"><button class="knop klein" data-tb="dubweg">${tbInActief?'Weggooien':'Niet toevoegen'}</button><button class="knop rand klein" data-tb="dubok">Toch toevoegen</button></div></div>`}
+function tbDubToon(d){const v=document.getElementById('tbDubVak');if(v)v.innerHTML=tbDubHtml(d);document.querySelector('#paneel .pinhoud')?.scrollTo({top:0,behavior:'smooth'})}
 /* ---------- formulieren ---------- */
-function tbFormulier(x,pre){const n=!x;if(n)tbScanKlaar=!!pre;x=x||{fdat:iso(),verval:plusDagen(iso(),30),...(pre||{})};const inc=tbInc(x);
+function tbFormulier(x,pre){const n=!x;if(n){tbScanKlaar=!!pre;tbStap=null}x=x||{fdat:iso(),verval:plusDagen(iso(),30),...(pre||{})};const inc=tbInc(x);
   toonSheet(`<div class="pkop"><button data-a="sluit">Annuleren</button><b>${n?'Nieuwe factuur':'Factuur'}</b><button data-tb="bewaar" data-v="${esc(x.id||'')}" style="font-weight:700">Bewaren</button></div><div class="pinhoud">
+   <div id="tbDubVak">${n?tbDubHtml(tbDubbel(x.nr,x.lev,x.tot,'')):''}</div>
    <label>Leverancier</label><input class="veld" id="tbLev" list="tbLevLijst" maxlength="60" value="${esc(x.lev||'')}" autocomplete="off"><datalist id="tbLevLijst">${tbLeveranciers().map(l=>`<option value="${esc(l)}">`).join('')}</datalist>
    <label>Factuurnummer</label><input class="veld" id="tbNr" maxlength="40" value="${esc(x.nr||'')}" autocomplete="off">
    <div class="minmax"><div><label>Factuurdatum</label><input class="veld" type="date" id="tbFd" value="${esc(x.fdat||'')}"></div><div><label>Vervaldatum</label><input class="veld" type="date" id="tbVv" value="${esc(x.verval||'')}" data-auto="${n&&!pre?.verval?1:''}"></div></div>
@@ -3203,8 +3212,8 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-tb]');if(
   case'bewaar':{const lev=tbVal('tbLev'),nr=tbVal('tbNr'),fd=tbVal('tbFd'),vv=tbVal('tbVv'),tot=fCent(leesBedrag(tbVal('tbTot'))),incAan=document.getElementById('tbIncAan').checked,incK=fCent(leesBedrag(tbVal('tbIncK')));
     if(!lev)return tbFout('Vul de leverancier in.');if(!nr)return tbFout('Vul het factuurnummer in.');if(!fd)return tbFout('Vul de factuurdatum in.');if(!(tot>0))return tbFout('Vul het factuurtotaal in.');if(vv&&vv<fd)return tbFout('De vervaldatum ligt voor de factuurdatum.');
     if(incAan&&!(incK>=0))return tbFout('Vul de incassokosten in.');
-    const dub=tbAlle().find(y=>y.id!==v&&String(y.nr).toLowerCase()===nr.toLowerCase()&&String(y.lev).toLowerCase()===lev.toLowerCase());
-    if(dub&&tbStap!=='dub:'+nr){tbStap='dub:'+nr;return tbFout(`Factuur ${nr} van ${lev} staat er al in. Tik nogmaals op Bewaren om toch op te slaan.`)}tbStap=null;
+    const dub=tbDubbel(nr,lev,tot,v);
+    if(dub&&tbStap!=='dubok'){tbDubToon(dub);return}tbStap=null;
     const id=x?v:urenId(),y=x||(f[id]={id,bet:{},t:Date.now()});
     Object.assign(y,{lev:lev.slice(0,60),nr:nr.slice(0,40),fdat:fd,verval:vv||null,plan:tbVal('tbPlan')||null,tot,not:tbVal('tbNot').slice(0,200)});
     if(!x&&tbScanKlaar&&tbScanBijl){S.tbBijl[id]=tbScanBijl}tbScanBijl=null;tbScanKlaar=false;if(!x&&tbInActief){S.tbIn[tbInActief]=null;tbInActief=null}
@@ -3223,6 +3232,8 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-tb]');if(
   case'terug':{if(!x)return;if(tbStap!=='terug:'+v){tbStap='terug:'+v;render();setTimeout(()=>{if(tbStap==='terug:'+v){tbStap=null;render()}},5000);return}tbStap=null;
     for(const[pid,p]of Object.entries(x.bet))if(p.vol)delete x.bet[pid];x.betaald=null;bewaar();render();toast('Teruggezet naar Open');return}
   case'excel':tbExcel();return;
+  case'dubweg':{if(tbInActief){S.tbIn[tbInActief]=null;tbInActief=null;bewaar()}tbScanBijl=null;tbScanKlaar=false;tbStap=null;sluit();render();toast('Niet toegevoegd');return}
+  case'dubok':{tbStap='dubok';const d=document.getElementById('tbDubVak');if(d)d.innerHTML='';toast('Tik op Bewaren om toch toe te voegen');return}
   case'scan':tbInActief=null;tbKiesBestand(f2=>tbScan(f2));return;
   case'inverwerk':{const d=S.tbIn?.[v];if(!d)return;tbInActief=v;try{tbScan(tbDataFile(d,'factuur-'+v))}catch(z){toast('Dit bestand lukte niet')}return}
   case'inweg':{if(tbStap!=='inweg:'+v){tbStap='inweg:'+v;render();setTimeout(()=>{if(tbStap==='inweg:'+v){tbStap=null;render()}},5000);return}tbStap=null;S.tbIn[v]=null;bewaar();render();toast('Weggegooid');return}
@@ -3262,6 +3273,8 @@ document.addEventListener('change',e=>{if(e.target.id==='tbIncAan'){const v=docu
 .tbbijl{margin-top:12px}.tbbijl img{max-width:100%;max-height:240px;border:1px solid var(--lijn);border-radius:8px}
 #tbBijlOv{display:none;position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.9);flex-direction:column}#tbBijlOv.open{display:flex}.tbbijlbalk{display:flex;justify-content:space-between;align-items:center;padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 10px;color:#fff}.tbbijlvak{flex:1;overflow:auto;-webkit-overflow-scrolling:touch}.tbbijlvak img{width:100%;display:block}
 .tbinbox{border:2px solid var(--oranje)}.tbopdracht ol{padding-left:20px;line-height:1.5}.tbopdracht li{margin-bottom:10px}.tbopdracht ul{padding-left:18px;margin-top:6px}.tbopdracht li .knop{margin:4px 0}.tbopdracht code{background:var(--achter);padding:1px 5px;border-radius:5px;word-break:break-all}
+.tbdub{border:2px solid var(--oranje);margin:0 0 12px}
+.veld[type=date],.veld[type=time]{-webkit-appearance:none;appearance:none;min-width:0;max-width:100%;width:100%;box-sizing:border-box;min-height:50px;display:block}.veld[type=date]::-webkit-date-and-time-value,.veld[type=time]::-webkit-date-and-time-value{text-align:left}
 .tbchips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 16px 8px}.tbchip{border:1px solid var(--lijn);background:var(--kaart);color:var(--tekst);border-radius:16px;padding:6px 12px;font-size:15px}.tbchip.aan{background:var(--oranje);border-color:var(--oranje);color:#fff;font-weight:700}
 .tbfilters{margin:0 16px 8px}.tbfilters .minmax{display:grid;grid-template-columns:1fr 1fr;gap:10px}.tbfilters .minmax>div{min-width:0}.minmax>div{min-width:0}.minmax input[type=date],.minmax input[type=time],#paneel input[type=date]{min-width:0;max-width:100%;box-sizing:border-box;display:block}.tbfilters label{display:block;font-size:14px;color:var(--grijs);margin-top:6px}.tbfilters select{width:100%}
 .tbfilterinfo{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 16px 8px;font-size:15px}
