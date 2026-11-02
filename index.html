@@ -1395,7 +1395,7 @@ function bestelBerekening(){
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const APP_VERSIE='10.0',APP_BOUW='10.23';
+const APP_VERSIE='10.0',APP_BOUW='10.24';
 const NIEUWS=[['🏪','Brood Opzet per winkel','De app werkt nu per winkel. Alles wat je al had, hoort bij je eigen winkel. Voor jou verandert er niets.'],
  ['🔑','Koppelen met een code','Een nieuwe telefoon koppel je voortaan met de koppelcode van de winkel, zonder wachtwoord. De beheerder vindt de code onder Meer.'],
  ['🌤️','Weer en bakker','De beheerder kiest bij Broodsoorten en instellingen de plaats voor het weer en de naam van de bakker.'],
@@ -1505,7 +1505,7 @@ function splitsen(){
   for(const[id,f]of Object.entries(S.fotos))o['foto:'+id]={data:f||null};
   for(const[id,f]of Object.entries(S.notfotos))o['notfoto:'+id]={data:f||null};
   if(kanBeheren()&&heeft('cadeau')&&Object.keys(S.cadeau).length)o['prive:cadeau']={bonnen:S.cadeau};
-  if(kanBeheren()&&heeft('push')&&(S.push.subs?.length||S.push.stil))o['prive:push']=S.push;
+  if(kanBeheren()&&heeft('push')&&(S.push.subs?.length||S.push.stil||S.push.uit))o['prive:push']=S.push;
   if(kanBeheren()&&heeft('euro')&&Object.keys(S.prijzen).length)o['prive:prijzen']=S.prijzen;
   if(kanBeheren()&&(isAanbieder()||L.modus==='lokaal'))o['prive:facturen']=S.facturen;
   if(betalenMag()&&(Object.keys(S.betalen.f).length||S.betalen.eig))o['prive:betalen']=S.betalen;
@@ -2265,7 +2265,7 @@ function instellingenHtml(){const p=prof();
    ${isAdmin()&&kanBeheren()?`<div class="kaartje"><h3>Face ID</h3>${!faceKan()?`<p class="hulp">${IS_ANDROID?'Inloggen met Face ID kan alleen op de iPhone van de beheerder.':'Face ID wordt hier niet ondersteund. Open Brood Opzet vanaf je beginscherm op je iPhone.'}</p>`:L.faceid&&L.faceid.uid===L.sessie?'<div class="sub">✓ Aan op dit toestel. Op het inlogscherm staat de knop Inloggen met Face ID.</div><div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:8px"><button class="knop rand klein" data-a="faceuit">Face ID uitzetten</button></div>':'<div class="sub">Log op dit toestel in met Face ID in plaats van je pincode. Alleen voor jou, alleen op deze telefoon.</div><div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:8px"><button class="knop klein" data-a="faceaan">Face ID aanzetten</button></div>'}</div>`:''}
    <div class="kaartje"><h3>Pincode</h3>${ik()?.rol==='admin'&&!kanBeheren()?'<p class="hulp">Je eigen pincode wijzig je op je eigen telefoon.</p>':'<div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:6px"><button class="knop rand klein" data-a="pinwijzig">Pincode wijzigen</button></div>'}</div>
    <div class="kaartje"><h3>Eenvoud</h3>${sw('eenvoudig','Eenvoudige modus (minder informatie, grotere knoppen)')}${isAdmin()?sw('werkvloer','Werkvloer-weergave (beheerdersdingen op Klaarzetten verbergen)'):''}</div>
-   ${mag('vinken')&&heeft('push')&&!(isAdmin()&&kanBeheren())?`<div class="kaartje"><h3>Pushmelding levering</h3><div class="sub">Een melding op deze telefoon als de levering om ${tijd2(S.herinnering.uur??10,S.herinnering.min)} nog niet is ingevuld.${S.herinnering.aan?'':' (De beheerder heeft de herinnering nu uitgezet.)'}</div><div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:8px">${pushStatus()==='niet'?`<span class="hulp" style="margin:0">${esc(pushNietTekst())}</span>`:L.pushTeamAan&&(S.pushTeam.subs||[]).some(x=>x.endpoint===L.pushTeamAan)?'<span class="goed" style="margin-right:10px">✓ Staat aan</span><button class="knop rand klein" data-a="pushteamuit">Uitzetten</button>':'<button class="knop klein" data-a="pushteamaan">Aanzetten op dit toestel</button>'}</div></div>`:''}
+   ${mag('vinken')&&heeft('push')&&!(isAdmin()&&kanBeheren())?`<div class="kaartje"><h3>Pushmelding levering</h3><div class="sub">Een melding op deze telefoon als de levering om ${tijd2(S.herinnering.uur??10,S.herinnering.min)} nog niet is ingevuld.${S.herinnering.aan?'':' (De beheerder heeft de herinnering nu uitgezet.)'}</div><div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:8px">${pushStatus()==='niet'?`<span class="hulp" style="margin:0">${esc(pushNietTekst())}</span>`:L.pushTeamAan&&(S.pushTeam.subs||[]).some(x=>x.endpoint===L.pushTeamAan)?'<span class="goed" style="margin-right:10px">✓ Staat aan</span><button class="knop rand klein" data-a="pushteamuit">Uitzetten</button>':'<button class="knop klein" data-a="pushteamaan">Aanzetten op dit toestel</button>'}</div></div>`:''}${heeft('push')&&!(isAdmin()&&kanBeheren())?pushSoortenMHtml():''}
    <div class="kaartje"><h3>Meldingen</h3>${sw('bevestig','Groene bevestiging na een actie')}${kanTrillen()?sw('tril','Kort trillen bij afvinken'):''}${sw('feest','"Alles klaargezet!"-melding')}${sw('groet','Begroeting en voortgangsring')}</div>`}
 
 function programmasHtml(){
@@ -2351,7 +2351,7 @@ function pushHtml(){const st=pushStatus(),aan=st==='granted'&&S.push.subs?.lengt
     <div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:10px;flex-wrap:wrap">${st!=='niet'&&st!=='denied'?`<button class="knop klein" data-a="pushaan">${aan?'Dit toestel opnieuw aanmelden':'Pushmeldingen aanzetten'}</button>`:''}${aan?'<button class="knop rand klein" data-a="pushtest">Testmelding sturen</button>':''}</div></div>
    <div class="kaartje"><h3>Stille uren</h3><div class="sub">In deze uren komen alleen meldingen van "Op!" door. "Bijna op" volgt daarna.</div>
     <div style="display:flex;align-items:center;gap:10px;margin-top:10px">Van <select class="veld" id="stilVan" style="width:90px">${uren.map(u=>`<option value="${u}" ${u===stil.van?'selected':''}>${u}:00</option>`).join('')}</select> tot <select class="veld" id="stilTot" style="width:90px">${uren.map(u=>`<option value="${u}" ${u===stil.tot?'selected':''}>${u}:00</option>`).join('')}</select></div></div>
-   ${herinneringHtml()}
+   ${pushSoortenHtml()}${herinneringHtml()}
    <p class="hulp" style="margin:12px 20px">De eenmalige instelling in Supabase staat in de uitleg die je bij deze update hebt gekregen.</p>`}
 function materiaalHtml(){const adm=isAdmin(),regel=(id,naam,x,los)=>{const st=x?.staat;
     return`<div class="rij inv matrij ${st||''}"><div class="groei"><div class="naam">${esc(naam)}</div><div class="sub">${st?`<span class="st ${MAT_LABEL[st][1]}">${MAT_LABEL[st][0]}</span> ${esc(x.wie)} · ${tijdTekst(x.t)}${x.besteld?` · besteld door ${esc(x.besteld.wie)}`:''}`:'Op voorraad'}</div></div>
@@ -3525,6 +3525,17 @@ document.addEventListener('pointercancel',()=>{if(homeSleep){clearTimeout(homeSl
 .heye{position:absolute;top:8px;right:8px;width:38px;height:38px;border-radius:10px;border:1px solid var(--lijn);background:var(--achter);font-size:18px;padding:0}.heye.uit{opacity:.7}
 .homebalk{margin:6px 16px 4px;font-size:15px;color:var(--grijs)}.homebalk b{display:block;color:var(--tekst);font-size:17px}
 @media (prefers-reduced-motion:reduce){.hometegel.bewerk{animation:none}}`;document.head.appendChild(st)})();
+
+/* ================= 10.24 per soort melding aan/uit ================= */
+const PUSH_B=[['mat-bijna','📦 Materiaal bijna op'],['mat-op','📦 Materiaal op!'],['chat-prive','💬 Chat: privéberichten van medewerkers'],['chat-team','👥 Chat: teamchat'],['chat-her','⏰ Melding staat nog open (herinnering)'],['levering','🥖 Levering nog niet ingevuld'],['week','📊 Weekoverzicht op maandag'],['tb-voor','💶 Factuur vervalt binnenkort'],['tb-dag','💶 Factuur vervalt vandaag'],['tb-week','💶 Deze week te betalen (maandag)'],['uit-bh','⏱ Medewerker nog ingeklokt'],['checklist','✅ Checklist niet op tijd af']];
+const PUSH_M=[['levering','🥖 Levering nog niet ingevuld'],['chat-beheer','💬 Berichten van de beheerder'],['chat-team','👥 Teamchat'],['chat-med','📢 Mededelingen'],['uitklok','⏰ Vergeten uit te klokken']];
+function pushSoortenHtml(){const uit=isObj(S.push?.uit)?S.push.uit:{};
+  return`<div class="kaartje"><h3>Welke meldingen</h3><div class="sub">Zet uit wat je niet op je telefoon wilt krijgen.</div>${PUSH_B.map(([k,l])=>`<label class="schakel" style="margin:10px 0 0;color:var(--tekst);font-weight:400">${l}<input type="checkbox" data-pushsoort="${k}" ${uit[k]?'':'checked'}></label>`).join('')}</div>`}
+function pushSoortenMHtml(){const uit=isObj(prof().pushUit)?prof().pushUit:{},l=PUSH_M.filter(([k])=>k!=='levering'||mag('vinken')).filter(([k])=>k!=='uitklok'||urenMag()||roosterAlle().some(r=>r.uid===L.sessie));
+  return`<div class="kaartje"><h3>Welke meldingen</h3><div class="sub">Werkt als pushmeldingen op deze telefoon aan staan.</div>${l.map(([k,t])=>`<label class="schakel" style="margin:10px 0 0;color:var(--tekst);font-weight:400">${t}<input type="checkbox" data-pushsoortm="${k}" ${uit[k]?'':'checked'}></label>`).join('')}</div>`}
+document.addEventListener('change',e=>{const d=e.target.dataset||{};
+  if(d.pushsoort&&isAdmin()){if(!isObj(S.push))S.push={};if(!isObj(S.push.uit))S.push.uit={};if(e.target.checked)delete S.push.uit[d.pushsoort];else S.push.uit[d.pushsoort]=true;bewaar();toast(e.target.checked?'Melding aan':'Melding uit')}
+  if(d.pushsoortm){const id=L.sessie;if(!id)return;const u={...(isObj(prof().pushUit)?prof().pushUit:{})};if(e.target.checked)delete u[d.pushsoortm];else u[d.pushsoortm]=true;S.profielen[id]={...(S.profielen[id]||{}),pushUit:u};bewaar();toast(e.target.checked?'Melding aan':'Melding uit')}});
 
 /* ================= 10.10 chat ================= */
 /* Gesprekken staan in S.berichten (sleutel 'berichten'). Soorten: privé (medewerker ↔ beheer), 'team' en mededelingen ('med').

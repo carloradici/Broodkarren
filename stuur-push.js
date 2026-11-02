@@ -1,8 +1,9 @@
 // Brood Opzet – pushmelding versturen (Supabase Edge Function "stuur-push")
 // 10.0: per winkel. Materiaal bijna op (beheerder), herinnering levering (iedereen die de levering mag invullen) en weekoverzicht op maandag (beheerder).
+// 10.24: per soort melding aan/uit (beheerder: prive:push.uit, medewerker: profielen[uid].pushUit).
 // 10.17: te betalen (vervaldatum, maandag-overzicht), vergeten uit te klokken, checklist niet af.
 // 10.10: berichten (chat): privé, teamchat, mededelingen, @naam, dempen, ingeplande berichten en herinnering bij open meldingen.
-// 10.17: wordt door de korte stuur-push in Supabase opgehaald van GitHub Pages. Bijwerken = dit bestand uploaden en in Supabase op Deploy tikken.
+// Wordt door de korte stuur-push in Supabase opgehaald van GitHub. Bijwerken = dit bestand uploaden en in Supabase op Deploy tikken.
 export function start(webpush, createClient) {
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -49,7 +50,7 @@ Deno.serve(async (req) => {
     async function doeWinkel(winkel) {
       const metW = (q) => winkel.id ? q.eq("winkel", winkel.id) : q;
       const { data: rijen, error } = await metW(sb.from("app_data").select("sleutel,waarde"))
-        .in("sleutel", ["prive:push", "materiaal", "prive:pushlog", "pushteam", "instellingen", "beheer:gebruikers", "berichten", "prive:betalen", "uren", "checklists"]);
+        .in("sleutel", ["prive:push", "materiaal", "prive:pushlog", "pushteam", "instellingen", "beheer:gebruikers", "berichten", "prive:betalen", "uren", "checklists", "profielen"]);
       if (error) throw error;
       const haal = (k) => (rijen.find((r) => r.sleutel === k) || {}).waarde || {};
       const push = haal("prive:push"), mat = haal("materiaal"), plog = haal("prive:pushlog");
@@ -79,12 +80,15 @@ Deno.serve(async (req) => {
         const open = gemeld
           .filter((x) => !verstuurd[`${x.id}:${x.staat}:${x.t}`])
           .filter((x) => !inStil || x.staat === "op");
+        const matUit = open.filter((x) => (push.uit || {})[x.staat === "op" ? "mat-op" : "mat-bijna"]);
+        for (const x of matUit) nieuw.push(`${x.id}:${x.staat}:${x.t}`);
+        open.splice(0, open.length, ...open.filter((x) => !matUit.includes(x)));
         if (open.length) {
           const titel = open.some((x) => x.staat === "op") ? "📦 Materiaal op!" : "📦 Materiaal bijna op";
           const tekst = open.length === 1
             ? `${naam(open[0].id)} ${open[0].staat === "op" ? "is op" : "bijna op"} – gemeld door ${open[0].wie || "?"}`
             : open.map((x) => `${naam(x.id)}${x.staat === "op" ? " (op!)" : ""}`).join(", ");
-          berichten.push({ titel, tekst, tag: "materiaal", url: "./#materiaal", aan: "beheer" });
+          berichten.push({ titel, tekst, tag: "materiaal", url: "./#materiaal", aan: "beheer", soort: open.some((x) => x.staat === "op") ? "mat-op" : "mat-bijna" });
           for (const x of open) nieuw.push(`${x.id}:${x.staat}:${x.t}`);
         }
         // ---- 10.10 berichten (chat): privé, teamchat, mededelingen, @naam, dempen, ingepland, herinnering ----
@@ -113,17 +117,17 @@ Deno.serve(async (req) => {
             if (soort === "prive") {
               if (x.beheer) {
                 const uid = b.uid || zoekUid(b.van);
-                if (uid && !gedempt(b, uid)) berichten.push({ titel: "💬 Bericht van de beheerder", tekst: kort, tag, url, aan: "uid:" + uid });
-              } else if (!gedempt(b, "beheer")) berichten.push({ titel: `💬 ${x.van || "Medewerker"}`, tekst: kort, tag, url, aan: "beheer" });
+                if (uid && !gedempt(b, uid)) berichten.push({ titel: "💬 Bericht van de beheerder", tekst: kort, tag, url, aan: "uid:" + uid, soort: "chat-beheer" });
+              } else if (!gedempt(b, "beheer")) berichten.push({ titel: `💬 ${x.van || "Medewerker"}`, tekst: kort, tag, url, aan: "beheer", soort: "chat-prive" });
             } else {
               const titel = soort === "med" ? "📢 Mededeling" : `👥 ${x.van || "Teamchat"}`;
               const noem = new Set(x.noem || []);
               for (const u of medewerkers) {
                 if (u === afz) continue;
                 if (gedempt(b, u) && !noem.has(u)) continue;
-                berichten.push({ titel: noem.has(u) ? titel + " – noemt jou" : titel, tekst: kort, tag, url, aan: "uid:" + u });
+                berichten.push({ titel: noem.has(u) ? titel + " – noemt jou" : titel, tekst: kort, tag, url, aan: "uid:" + u, soort: soort === "med" ? "chat-med" : "chat-team" });
               }
-              if (!x.beheer && (!gedempt(b, "beheer") || [...noem].some((u) => adminIds.has(u)))) berichten.push({ titel, tekst: kort, tag, url, aan: "beheer" });
+              if (!x.beheer && (!gedempt(b, "beheer") || [...noem].some((u) => adminIds.has(u)))) berichten.push({ titel, tekst: kort, tag, url, aan: "beheer", soort: "chat-team" });
             }
             nieuw.push(sleutel);
           }
@@ -236,14 +240,18 @@ Deno.serve(async (req) => {
       }
 
       let n = 0;
-      const dood = new Set(); // aanmeldingen die niet meer bestaan (app verwijderd, nieuwe telefoon)
+      const dood = new Set();
+      const uitB = push.uit || {}, profs = haal("profielen");
+      const soortVan = (tag) => { const t = String(tag || ""); return t.startsWith("her-") ? "chat-her" : t === "levering" ? "levering" : t === "week" ? "week" : t.startsWith("tb-") ? t : t.startsWith("uitb-") ? "uit-bh" : t.startsWith("uit-") ? "uitklok" : t.startsWith("cl-") ? "checklist" : ""; };
+      const magNaar = (t, soort) => { if (!soort) return true; if (toestellen.includes(t)) return !uitB[soort]; return !(((profs[t.uid] || {}).pushUit) || {})[soort]; }; // aanmeldingen die niet meer bestaan (app verwijderd, nieuwe telefoon)
       for (const b of berichten) {
         const doel = b.aan === "levering" ? [...toestellen, ...teamToestellen]
           : String(b.aan).startsWith("uid:") ? (team.subs || []).filter((t) => t.uid === String(b.aan).slice(4))
           : toestellen;
-        const gezien = new Set();
+        const gezien = new Set(), srt = b.soort || soortVan(b.tag);
         for (const t of doel) {
           if (gezien.has(t.endpoint)) continue; gezien.add(t.endpoint);
+          if (!body.test && !magNaar(t, srt)) continue;
           try { await webpush.sendNotification({ endpoint: t.endpoint, keys: t.keys }, JSON.stringify({ titel: winkel.meer ? `${b.titel} – ${winkel.naam}` : b.titel, tekst: b.tekst, tag: b.tag, url: b.url }), { TTL: 3600 }); n++; }
           catch (e) { console.log("push mislukt", e?.statusCode || e); if (e?.statusCode === 404 || e?.statusCode === 410) dood.add(t.endpoint); }
         }
