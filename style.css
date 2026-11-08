@@ -1,0 +1,512 @@
+:root{--oranje:#f17d04;--oranjeLicht:#fff1e2;--tekst:#222;--grijs:#8a8a8a;--lijn:#ececec;--kaart:#fff;--achter:#fafafa;--rood:#c62828;--groen:#2e7d32;--op:#fff}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--oranjeLicht:#3a2610;--tekst:#f2f2f2;--grijs:#9a9a9a;--lijn:#333;--kaart:#1c1c1e;--achter:#000;--rood:#ef5350;--groen:#66bb6a}}
+:root[data-theme="dark"]{--oranjeLicht:#3a2610;--tekst:#f2f2f2;--grijs:#9a9a9a;--lijn:#333;--kaart:#1c1c1e;--achter:#000;--rood:#ef5350;--groen:#66bb6a}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*:before,*:after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+body{margin:0;height:100%;background:var(--achter);color:var(--tekst);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+button,input{font-family:inherit}
+#app{height:100%;display:flex;flex-direction:column;max-width:640px;margin:0 auto}
+main{flex:1;overflow-y:auto;padding-bottom:28px}
+.test{background:var(--oranjeLicht);color:var(--oranje);font-size:13px;text-align:center;padding:6px 12px}
+.kop{padding:12px 20px 10px}.kop h1{font-size:30px;font-weight:800;margin:0}.kop p{margin:2px 0 0;color:var(--grijs);font-size:15px;line-height:1.35}
+.segment{display:flex;margin:0 16px 8px;border-radius:10px;background:var(--oranjeLicht);padding:3px}
+.segment button{flex:1;border:0;background:none;padding:9px 0;border-radius:8px;font-weight:600;font-size:15px;color:var(--oranje)}
+.segment button.aan{background:var(--oranje);color:var(--op)}
+.sectie{margin:14px 16px 0;background:var(--kaart);border:1px solid var(--lijn);border-radius:12px;overflow:hidden}
+.karkop{background:var(--oranje);color:var(--op);padding:11px 16px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.karkop b{font-size:17px;font-weight:800}.karkop span{font-size:14px;font-weight:600;white-space:nowrap}
+.karkop input{flex:1;background:none;border:0;color:var(--op);font-weight:800;font-size:17px;padding:0;min-width:0}
+.karkop input::placeholder{color:rgba(255,255,255,.7)}
+.rij{border-top:1px solid var(--lijn)}
+.regel{display:flex;align-items:center;padding:12px 14px;width:100%;background:none;border:0;text-align:left;color:inherit}
+.plaat{min-width:52px;height:44px;border:2px solid var(--oranje);border-radius:8px;display:flex;align-items:center;justify-content:center;margin-right:14px;padding:0 4px;font-size:17px;font-weight:800;color:var(--oranje);flex:none}
+.klaar .plaat{background:var(--grijs);border-color:var(--grijs);color:#fff}
+.naam{font-size:17px;font-weight:600}.sub{font-size:14px;color:var(--grijs);margin-top:2px}
+.klaar .naam{text-decoration:line-through;color:var(--grijs)}
+.let{color:var(--rood);font-weight:600}
+.vinkvak{width:30px;height:30px;border-radius:50%;border:2px solid var(--lijn);margin-left:10px;flex:none;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800}
+.klaar .vinkvak{background:var(--oranje);border-color:var(--oranje)}
+.groei{flex:1;min-width:0}
+.groep{font-size:13px;color:var(--oranje);font-weight:700;margin-left:6px}
+.pijl{font-size:26px;color:var(--grijs);margin-left:8px}
+.hist{display:block;width:100%;border:0;background:var(--oranjeLicht);color:var(--tekst);text-align:left;padding:8px 14px 8px 80px;font-size:13px;line-height:1.35}
+.hist b{color:var(--oranje)}
+.histtab{padding:4px 14px 10px 80px;background:var(--oranjeLicht);font-size:13px}
+.histtab table{border-collapse:collapse;width:100%}.histtab td,.histtab th{padding:3px 4px;text-align:right}.histtab th{color:var(--grijs);font-weight:600}.histtab td:first-child,.histtab th:first-child{text-align:left}
+.toevoegen{display:block;width:100%;border:0;border-top:1px solid var(--lijn);background:none;padding:14px;color:var(--oranje);font-weight:700;font-size:16px}
+.knoppen{display:flex;justify-content:center;gap:12px;margin-top:22px;padding:0 16px;flex-wrap:wrap}
+.knop{background:var(--oranje);color:var(--op);border:2px solid var(--oranje);border-radius:10px;padding:11px 20px;font-weight:700;font-size:16px}
+.knop.rand{background:var(--kaart);color:var(--oranje)}
+.leeg{margin:24px;color:var(--grijs);font-size:16px;line-height:1.4}
+.link{background:none;border:0;color:#fff;text-decoration:underline;font-size:14px}
+.inv{display:flex;align-items:center;gap:10px;padding:10px 14px}
+.inv input{width:70px;border:1px solid var(--lijn);border-radius:10px;padding:10px 0;font-size:18px;text-align:center;background:var(--achter);color:var(--tekst)}
+.inv input::placeholder{color:var(--grijs)}
+.karchip{border:1.5px solid var(--oranje);color:var(--oranje);background:none;border-radius:12px;padding:2px 8px;font-size:12px;font-weight:700;margin-left:6px}
+.karchip.anders{background:var(--oranje);color:var(--op)}
+.advies{border:0;background:var(--oranjeLicht);color:var(--oranje);border-radius:8px;padding:3px 8px;font-size:13px;font-weight:700;margin-top:4px}
+.stepper{display:flex;align-items:center;gap:6px;flex:none}
+.stepper button{width:40px;height:40px;border-radius:50%;border:2px solid var(--oranje);background:none;color:var(--oranje);font-size:22px;font-weight:700;line-height:1}
+.stepper input{width:54px;border:1px solid var(--lijn);border-radius:10px;padding:9px 0;font-size:18px;text-align:center;background:var(--achter);color:var(--tekst)}
+.datumrij{display:flex;align-items:center;gap:8px;margin:0 16px 6px}
+.datumrij input{flex:1;border:1px solid var(--lijn);border-radius:10px;padding:10px;font-size:16px;background:var(--kaart);color:var(--tekst)}
+.datumrij button{width:44px;height:44px;border-radius:10px;border:2px solid var(--oranje);background:var(--kaart);color:var(--oranje);font-size:20px;font-weight:700}
+.samenvat{margin:6px 16px 0;font-size:15px;color:var(--grijs)}
+nav{display:flex;background:var(--kaart);border-top:1px solid var(--lijn)}
+nav button{flex:1;border:0;background:none;padding:0 0 12px;font-weight:600;font-size:14px;color:var(--grijs)}
+nav button:before{content:"";display:block;height:3px;width:60%;margin:0 auto 10px;border-radius:2px}
+nav button.aan{color:var(--oranje)}nav button.aan:before{background:var(--oranje)}
+#sheet{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:flex-end;justify-content:center;z-index:10}
+#sheet.open{display:flex}
+.paneel{background:var(--kaart);width:100%;max-width:640px;max-height:92%;border-radius:14px 14px 0 0;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom,0px)}
+.pkop{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--lijn)}
+.pkop b{font-size:17px}.pkop button{border:0;background:none;color:var(--oranje);font-size:17px}
+.pinhoud{overflow-y:auto;padding:4px 20px 40px}
+label{display:block;font-size:14px;font-weight:700;color:var(--grijs);margin:20px 0 8px}
+input.veld{width:100%;border:1px solid var(--lijn);border-radius:10px;padding:12px 14px;font-size:17px;background:var(--achter);color:var(--tekst)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:2px solid var(--oranje);border-radius:20px;padding:8px 14px;background:none;color:var(--oranje);font-weight:700;font-size:14px}
+.chip.aan{background:var(--oranje);color:var(--op)}
+.hulp{font-size:13px;color:var(--grijs);margin-top:8px;line-height:1.4}
+.minmax{display:flex;gap:16px}.minmax div{flex:1}
+.fout{color:var(--rood);font-size:14px;margin-top:8px;min-height:1em}
+.schakel{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--lijn);font-size:16px}
+.schakel input{width:48px;height:28px;accent-color:var(--oranje)}
+.login{padding:24px 20px}.login h1{font-size:30px;font-weight:800;margin:0 0 4px}.login p{color:var(--grijs);margin:0 0 20px;line-height:1.4}
+.naamknop{display:flex;align-items:center;justify-content:space-between;width:100%;border:1px solid var(--lijn);background:var(--kaart);color:var(--tekst);border-radius:12px;padding:16px;margin-bottom:10px;font-size:17px;font-weight:600;text-align:left}
+.naamknop.aan{border:2px solid var(--oranje)}
+.rol{font-size:13px;color:var(--oranje);font-weight:700}
+.pinveld{letter-spacing:10px;text-align:center;font-size:24px!important}
+.verwijder{display:block;margin:32px auto 0;border:0;background:none;color:var(--rood);font-weight:600;font-size:16px}
+#timers:empty{display:none}
+#timers{padding:6px 12px 0;display:flex;flex-direction:column;gap:6px}
+.timer{display:flex;align-items:center;gap:10px;background:var(--kaart);border:2px solid var(--oranje);border-radius:12px;padding:8px 12px}
+.timer .tijd{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--oranje);min-width:70px}
+.timer .info{flex:1;font-size:13px;line-height:1.3;min-width:0}
+.timer button{border:0;background:var(--oranje);color:var(--op);border-radius:8px;padding:8px 10px;font-weight:700;font-size:14px}
+.timer.klaar{background:var(--rood);border-color:var(--rood);color:#fff;animation:knipper 1s infinite}
+.timer.klaar .tijd{color:#fff}.timer.klaar button{background:#fff;color:var(--rood)}
+@keyframes knipper{50%{opacity:.75}}
+.datumnav{display:flex;align-items:center;gap:8px;margin:0 16px 8px}
+.datumnav button.pijlk{width:44px;height:44px;border-radius:10px;border:2px solid var(--oranje);background:var(--kaart);color:var(--oranje);font-size:20px;font-weight:700;flex:none}
+.datumnav .dlabel{flex:1;text-align:center;border:0;background:none;color:var(--tekst);font-size:17px;font-weight:700}
+.dlabel small{display:block;font-size:13px;color:var(--oranje);font-weight:600}
+.pil{display:inline-block;background:var(--oranje);color:var(--op);border-radius:12px;padding:3px 10px;font-size:13px;font-weight:700;margin:0 16px 8px}
+.notities{margin:6px 16px 0;background:var(--kaart);border:1px solid var(--lijn);border-radius:12px;padding:10px 12px}
+.notitie{font-size:15px;padding:6px 0;border-bottom:1px solid var(--lijn);display:flex;gap:8px;align-items:flex-start}
+.notitie:last-of-type{border-bottom:0}.notitie .wie{font-size:12px;color:var(--grijs)}
+.notitie button{border:0;background:none;color:var(--grijs);font-size:18px;margin-left:auto;padding:0 4px}
+.notitieform{display:flex;gap:8px;margin-top:6px}
+.notitieform input{flex:1;border:1px solid var(--lijn);border-radius:10px;padding:10px;font-size:16px;background:var(--achter);color:var(--tekst);min-width:0}
+.notitieform button{border:0;background:var(--oranje);color:var(--op);border-radius:10px;padding:0 14px;font-weight:700;font-size:15px}
+.acties{display:flex;gap:10px;margin:12px 16px 0}
+.acties .knop{flex:1;padding:12px 8px;font-size:15px}
+.regel.gekozen{background:var(--oranjeLicht)}
+.kiesvak{width:30px;height:30px;border-radius:8px;border:2px solid var(--oranje);margin-left:10px;flex:none;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800}
+.gekozen .kiesvak{background:var(--oranje)}
+.ovenbalk{position:sticky;bottom:0;margin:16px 0 0;background:var(--kaart);border-top:2px solid var(--oranje);padding:12px 16px;display:flex;flex-direction:column;gap:8px}
+.ovenbalk .rijtje{display:flex;gap:10px;align-items:center}
+.ovenbalk input{width:64px;border:1px solid var(--lijn);border-radius:10px;padding:9px 0;font-size:17px;text-align:center;background:var(--achter);color:var(--tekst)}
+select.veld{width:100%;border:1px solid var(--lijn);border-radius:10px;padding:12px 14px;font-size:17px;background:var(--kaart);color:var(--tekst);-webkit-appearance:none;appearance:none}
+.planbalk{margin:0 16px 8px}
+.menu .regel{padding:16px}
+.terug{border:0;background:none;color:var(--oranje);font-size:17px;padding:10px 16px 0;font-weight:600}
+.tabel{width:100%;border-collapse:collapse;font-size:14px}
+.tabel th{text-align:right;color:var(--grijs);font-weight:600;padding:8px 6px;border-bottom:1px solid var(--lijn)}
+.tabel td{text-align:right;padding:9px 6px;border-bottom:1px solid var(--lijn)}
+.tabel th:first-child,.tabel td:first-child{text-align:left}
+.tabelwrap{overflow-x:auto}
+.hoog{color:var(--rood);font-weight:700}.goed{color:var(--groen);font-weight:700}
+.kaartje{margin:14px 16px 0;background:var(--kaart);border:1px solid var(--lijn);border-radius:12px;padding:12px 14px}
+.kaartje h3{margin:0 0 6px;font-size:16px}
+.cijfers{display:flex;gap:10px;margin:10px 16px 0}
+.cijfer{flex:1;background:var(--kaart);border:1px solid var(--lijn);border-radius:12px;padding:10px;text-align:center}
+.cijfer b{display:block;font-size:22px;color:var(--oranje)}.cijfer span{font-size:12px;color:var(--grijs)}
+.logregel{padding:10px 14px;border-top:1px solid var(--lijn);font-size:14px}
+.logregel .wie{color:var(--grijs);font-size:12px}
+.daglabel{padding:8px 14px;background:var(--oranjeLicht);font-size:13px;font-weight:700;color:var(--oranje)}
+.dagchips{display:flex;gap:6px;flex-wrap:wrap}
+.dagchips .chip{padding:8px 12px}
+#werk{position:fixed;inset:0;background:var(--achter);z-index:20;display:none;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+#werk.open{display:flex}
+.wkop{display:flex;justify-content:space-between;align-items:center;padding:12px 18px}
+.wkop button{border:0;background:none;color:var(--oranje);font-size:17px;font-weight:600}
+.wkop span{color:var(--grijs);font-weight:600}
+.wbalk{height:6px;background:var(--lijn);margin:0 18px;border-radius:3px;overflow:hidden}.wbalk div{height:100%;background:var(--oranje)}
+.winhoud{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column}
+.wkar{color:var(--grijs);font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:.5px}
+.wplaat{font-size:64px;font-weight:900;color:var(--oranje);line-height:1.05;margin:4px 0 14px}
+.wplaat small{font-size:22px;color:var(--grijs);font-weight:700;display:block}
+.witem{background:var(--kaart);border:1px solid var(--lijn);border-radius:14px;padding:14px 16px;margin-bottom:10px}
+.witem .n{font-size:24px;font-weight:800}.witem .a{font-size:18px;color:var(--grijs);margin-top:4px}
+.witem.ok{opacity:.55}.witem.ok .n{text-decoration:line-through}
+.wknoppen{padding:12px 18px 16px;display:flex;flex-direction:column;gap:10px}
+.wgroot{border:0;background:var(--oranje);color:var(--op);border-radius:14px;padding:20px;font-size:21px;font-weight:800}
+.wklein{display:flex;gap:10px}.wklein button{flex:1;border:2px solid var(--oranje);background:var(--kaart);color:var(--oranje);border-radius:12px;padding:12px;font-size:16px;font-weight:700}
+.klaarscherm{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px}
+.klaarscherm b{font-size:60px;color:var(--oranje)}
+.statusrij{margin-top:4px;font-size:12px;color:var(--grijs);display:flex;flex-wrap:wrap;gap:4px}
+.st{border-radius:8px;padding:1px 7px;font-weight:700;font-size:12px}
+.st.oven{background:var(--rood);color:#fff}.st.gebak{background:var(--oranje);color:#fff}.st.schap{background:var(--groen);color:#fff}
+.regel.uit{opacity:.45}
+.ovenstep{display:flex;align-items:center;gap:10px;padding:8px 14px 10px 80px;background:var(--oranjeLicht);font-size:14px}
+.ovenstep input{width:48px}
+.avondkaart{display:flex;justify-content:space-between;align-items:center;width:calc(100% - 32px);margin:10px 16px 0;border:2px solid var(--oranje);background:var(--oranjeLicht);color:var(--tekst);border-radius:12px;padding:12px 14px;font-size:15px;text-align:left}
+.avondkaart span{color:var(--oranje);font-weight:700;font-size:14px}
+textarea.veld{font-family:inherit;resize:vertical;line-height:1.4}
+.fotorij{display:flex;gap:14px;align-items:center}
+#fotoVoorbeeld{width:110px;height:110px;border-radius:12px;border:1px solid var(--lijn);background:var(--achter);display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--grijs);font-size:13px;flex:none}
+#fotoVoorbeeld img{width:100%;height:100%;object-fit:cover}
+.duim{width:44px;height:44px;border-radius:8px;object-fit:cover;margin-right:12px;flex:none}
+.wfoto{width:100%;max-height:200px;object-fit:cover;border-radius:10px;margin-bottom:10px}
+.wprog{margin-top:8px;font-size:17px;color:var(--tekst)}.wprog b{color:var(--oranje)}
+.winstr{margin-top:8px;font-size:16px;line-height:1.45;background:var(--oranjeLicht);border-radius:10px;padding:10px 12px}
+
+#opslagmelding{display:none;background:var(--rood);color:#fff;font-size:14px;padding:8px 14px;text-align:center}
+.status{font-size:13px;padding:6px 12px;text-align:center;color:var(--grijs)}
+.status.ok{color:var(--groen)}.status.uit{background:var(--rood);color:#fff}
+#statusplek .status:empty{display:none}
+.kaartje .status{text-align:left;padding:2px 0 6px}
+.rijflex{display:flex;align-items:stretch}.rijflex .regel{flex:1;min-width:0}
+.pot{width:46px;flex:none;border:0;border-left:1px solid var(--lijn);background:none;color:var(--grijs);font-size:20px}
+.st.extra{background:var(--oranje);color:#fff}.st.aangepast{background:var(--oranjeLicht);color:var(--oranje);border:1px solid var(--oranje)}
+.grootstep{display:flex;align-items:center;justify-content:center;gap:16px;margin:14px 0}
+.grootstep button{width:56px;height:56px;border-radius:50%;border:2px solid var(--oranje);background:none;color:var(--oranje);font-size:28px;font-weight:700}
+.grootstep input{width:100px;border:1px solid var(--lijn);border-radius:12px;padding:12px 0;font-size:28px;font-weight:800;text-align:center;background:var(--achter);color:var(--tekst)}
+.vrknop{flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;border:2px solid var(--oranje);background:var(--kaart);color:var(--tekst);border-radius:12px;padding:8px 10px;min-width:104px}
+.vrknop small{font-size:11px;color:var(--grijs)}.vrknop b{font-size:14px;color:var(--oranje)}
+.linkgrijs{border:0;background:none;color:var(--grijs);text-decoration:underline;font-size:14px}
+html{touch-action:manipulation;-webkit-text-size-adjust:100%}
+button,a,input,select,textarea,label{touch-action:manipulation}
+input,select,textarea{font-size:max(16px,1em)}
+.koprij{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.info{flex:none;width:30px;height:30px;border-radius:50%;border:2px solid var(--oranje);background:var(--kaart);color:var(--oranje);font-weight:800;font-size:16px;line-height:1}
+.op-slot{opacity:.45}
+nav button.op-slot{color:var(--grijs)}
+.slotje{vertical-align:-2px}
+#toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);background:#222;color:#fff;padding:10px 16px;border-radius:12px;font-size:15px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:40;max-width:86%;text-align:center}
+#toast.zichtbaar{opacity:1;transform:translateX(-50%) translateY(0)}
+.duim.klein{width:44px;height:44px;margin-right:10px}
+.st.ontd{background:var(--kaart);color:var(--grijs);border:1px solid var(--lijn)}
+.hhstep{display:flex;align-items:center;gap:6px;width:100%;justify-content:flex-end;margin-top:6px;font-size:14px;color:var(--grijs)}
+.hhstep button{width:36px;height:36px;border-radius:50%;border:2px solid var(--oranje);background:none;color:var(--oranje);font-size:20px;font-weight:700}
+.hhstep b{min-width:22px;text-align:center;color:var(--tekst);font-size:17px}
+.hhstep span{margin-left:8px}
+.uitlegtekst{padding:0 16px 14px;font-size:15px;line-height:1.5;color:var(--tekst)}
+.knop.klein{padding:8px 12px;font-size:14px}
+.knop.rood{color:var(--rood);border-color:var(--rood)}
+
+.bijregel{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:8px 14px 12px 14px;background:var(--oranjeLicht);font-size:14px}
+.bijregel>div{display:flex;align-items:center;gap:8px}
+.bijregel .stepper button{width:36px;height:36px}.bijregel .stepper input{width:46px}
+.bijtot{margin-left:auto;color:var(--oranje)}
+.bijvoet{padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px));border-top:2px solid var(--oranje);background:var(--kaart);font-size:15px}
+.bijitem{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:15px}
+.duim.mini{width:30px;height:30px;margin:0;border-radius:6px}
+.plaat.stuks{flex-direction:column;line-height:1;font-size:18px}.plaat.stuks small{font-size:11px;font-weight:700;margin-top:2px}
+
+
+
+/* ===== uitstraling v7 ===== */
+:root{--oranje:#f17d04}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--oranjeLicht:#3b2a18;--tekst:#f4ece4;--grijs:#a8998a;--lijn:#3a2f25;--kaart:#2a221b;--achter:#1d1712;--rood:#ef6a5a;--groen:#7cc47f}}
+:root[data-theme="dark"]{--oranjeLicht:#3b2a18;--tekst:#f4ece4;--grijs:#a8998a;--lijn:#3a2f25;--kaart:#2a221b;--achter:#1d1712;--rood:#ef6a5a;--groen:#7cc47f}
+:root[data-theme="light"]{--oranjeLicht:#fff1e2;--tekst:#222;--grijs:#8a8a8a;--lijn:#ececec;--kaart:#fff;--achter:#fafafa;--rood:#c62828;--groen:#2e7d32}
+html{background:var(--oranje)}
+:root{padding-bottom:0}
+nav{padding-bottom:env(safe-area-inset-bottom,0px)}
+main{background-color:var(--achter);background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22140%22%20height%3D%22130%22%20viewBox%3D%220%200%20140%20130%22%3E%3Cg%20opacity%3D%220.075%22%3E%3Cg%20transform%3D%22translate%2810%2012%29%20scale%280.22%29%22%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23f17d04%22%20stroke-width%3D%2210%22%20stroke-linejoin%3D%22round%22%3E%3Cellipse%20cx%3D%2234%22%20cy%3D%22150%22%20rx%3D%2217%22%20ry%3D%2224%22%20transform%3D%22rotate%28-58%2034%20150%29%22/%3E%3Cellipse%20cx%3D%22266%22%20cy%3D%22150%22%20rx%3D%2217%22%20ry%3D%2224%22%20transform%3D%22rotate%2858%20266%20150%29%22/%3E%3Cellipse%20cx%3D%2262%22%20cy%3D%22128%22%20rx%3D%2227%22%20ry%3D%2236%22%20transform%3D%22rotate%28-42%2062%20128%29%22/%3E%3Cellipse%20cx%3D%22238%22%20cy%3D%22128%22%20rx%3D%2227%22%20ry%3D%2236%22%20transform%3D%22rotate%2842%20238%20128%29%22/%3E%3Cellipse%20cx%3D%22102%22%20cy%3D%22106%22%20rx%3D%2238%22%20ry%3D%2252%22%20transform%3D%22rotate%28-20%20102%20106%29%22/%3E%3Cellipse%20cx%3D%22198%22%20cy%3D%22106%22%20rx%3D%2238%22%20ry%3D%2252%22%20transform%3D%22rotate%2820%20198%20106%29%22/%3E%3Cellipse%20cx%3D%22150%22%20cy%3D%2296%22%20rx%3D%2248%22%20ry%3D%2264%22/%3E%3C/g%3E%3C/g%3E%3Cg%20transform%3D%22translate%2882%2076%29%22%20fill%3D%22none%22%20stroke%3D%22%23f17d04%22%20stroke-width%3D%222.5%22%20stroke-linecap%3D%22round%22%3E%3Cellipse%20cx%3D%2220%22%20cy%3D%2214%22%20rx%3D%2220%22%20ry%3D%2213%22/%3E%3Cpath%20d%3D%22M10%2010l6%208M18%208l6%208M26%207l6%208%22/%3E%3C/g%3E%3Cg%20transform%3D%22translate%2898%206%29%22%20fill%3D%22none%22%20stroke%3D%22%23f17d04%22%20stroke-width%3D%222.2%22%20stroke-linecap%3D%22round%22%3E%3Cpath%20d%3D%22M10%2040V4%22/%3E%3Cellipse%20cx%3D%226%22%20cy%3D%2212%22%20rx%3D%223%22%20ry%3D%226%22%20transform%3D%22rotate%28-25%206%2012%29%22/%3E%3Cellipse%20cx%3D%2214%22%20cy%3D%2212%22%20rx%3D%223%22%20ry%3D%226%22%20transform%3D%22rotate%2825%2014%2012%29%22/%3E%3Cellipse%20cx%3D%226%22%20cy%3D%2222%22%20rx%3D%223%22%20ry%3D%226%22%20transform%3D%22rotate%28-25%206%2022%29%22/%3E%3Cellipse%20cx%3D%2214%22%20cy%3D%2222%22%20rx%3D%223%22%20ry%3D%226%22%20transform%3D%22rotate%2825%2014%2022%29%22/%3E%3C/g%3E%3Cg%20transform%3D%22translate%2818%2084%29%20rotate%28-20%29%22%20fill%3D%22none%22%20stroke%3D%22%23f17d04%22%20stroke-width%3D%222.5%22%20stroke-linecap%3D%22round%22%3E%3Crect%20x%3D%220%22%20y%3D%220%22%20width%3D%2254%22%20height%3D%2216%22%20rx%3D%228%22/%3E%3Cpath%20d%3D%22M12%2013l6-10M24%2013l6-10M36%2013l6-10%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");background-attachment:local}
+#statusplek{background:var(--oranje)}
+#statusplek .status,#statusplek .status.ok{color:#fff;font-weight:600}
+#statusplek .status.uit{background:#b3261e;color:#fff}
+.kop{background:var(--oranje);color:#fff;padding:12px 18px 16px;margin-bottom:10px}
+.kop h1{color:#fff;font-size:28px}
+.kop p{color:rgba(255,255,255,.88)}
+.kop .groet{font-size:14px;color:rgba(255,255,255,.88)}
+.kop .info{background:transparent;border-color:rgba(255,255,255,.85);color:#fff}
+.koplogo{display:block;width:84px;height:auto;margin-bottom:8px}
+.kop .terug{color:#fff;padding:0 0 8px;display:block}
+.kopeind{display:flex;align-items:center;gap:10px;flex:none}
+.ring{width:62px;height:62px}
+.kop .koprij{align-items:center}
+#app.merkmodus main{background:#f17d04}
+#app.merkmodus nav{display:none}
+.merkscherm{padding:12px 24px 44px;color:#fff}
+.merkkop{display:flex;flex-direction:column;align-items:center;text-align:center}
+.merklogo{width:230px;height:auto;display:block}
+.merkcroissant{width:104px;height:70px;margin-top:2px}
+.merktitel{font-size:28px;font-weight:800;margin-top:6px}
+.merksub{font-size:17px;font-weight:700;opacity:.92;margin-top:2px}
+.merktekst{color:rgba(255,255,255,.93);font-size:15px;line-height:1.45;margin:14px 0 6px}
+.merkscherm label{color:#fff}
+.merkscherm .veld{background:#fff;color:#222;border:0}
+.merkscherm .veld::placeholder{color:#999}
+.merkscherm .naamknop{background:#fff;color:#222;border:0;margin-bottom:12px}
+.merkscherm .naamknop.aan{box-shadow:0 0 0 3px #fff,0 0 0 6px rgba(255,255,255,.35)}
+.merkscherm .rol{color:#f17d04}
+.merkscherm .fout{color:#fff;font-weight:700}
+.merkfout{background:rgba(0,0,0,.22);padding:8px 12px;border-radius:10px;color:#fff}
+.merkknop{display:block;width:100%;margin-top:18px;background:#fff;color:#f17d04;border:0;border-radius:14px;padding:15px;font-size:18px;font-weight:800}
+.merkknop:disabled{opacity:.6}
+.merklink{background:none;border:0;color:#fff;text-decoration:underline;font-size:14px}
+#feest{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:30;padding:24px}
+#feest.open{display:flex}
+.feestkaart{position:relative;overflow:hidden;background:#f17d04;color:#fff;border-radius:24px;padding:30px 22px 26px;width:100%;max-width:360px;display:flex;flex-direction:column;align-items:center;text-align:center}
+.feestkaart .merkknop{width:auto;padding:13px 40px}
+.feesttitel{font-size:28px;font-weight:900;margin-top:10px}
+.feestsub{font-size:16px;opacity:.92;margin-top:4px}
+.confetti{position:absolute;inset:0;pointer-events:none}
+.confetti i{position:absolute;top:-14px;width:8px;height:12px;border-radius:2px;animation:vallen 2.4s ease-in forwards}
+@keyframes vallen{to{transform:translateY(460px) rotate(560deg);opacity:0}}
+
+#app.merkmodus #statusplek{background:#f17d04}
+main,#paneel,#werk{zoom:var(--zoom,1)}
+.plu{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:7px;background:var(--oranjeLicht);color:var(--oranje);font-size:12px;font-weight:800;letter-spacing:.3px;vertical-align:2px;border:1px solid var(--oranje)}
+.wplu{display:inline-block;margin:6px 0 2px;font-size:22px;padding:4px 12px;border-radius:10px}
+#app.geenplu .plu{display:none}
+#app.geenfotos .duim,#app.geenfotos .wfoto{display:none}
+#app.geenpatroon main{background-image:none}
+#app.compact .regel{padding-top:7px;padding-bottom:7px}
+#app.compact .plaat{height:34px;min-width:44px;font-size:15px}
+#app.compact .naam{font-size:15px}
+#app.compact .sub{font-size:13px}
+#app.compact .duim.klein{width:34px;height:34px}
+#app.compact .vinkvak{width:26px;height:26px}
+.plugroot{font-size:24px;font-weight:900;color:var(--oranje);letter-spacing:1px;margin-left:10px;font-variant-numeric:tabular-nums}
+.zoekbalk{margin:0 16px 10px}
+.emojis{display:flex;flex-wrap:wrap;gap:8px}
+.emojiknop{min-width:44px;height:44px;border-radius:12px;border:2px solid var(--lijn);background:var(--kaart);font-size:22px;color:var(--grijs)}
+.emojiknop:first-child{font-size:13px;font-weight:700;padding:0 10px}
+.emojiknop.aan{border-color:var(--oranje);background:var(--oranjeLicht)}
+.kleurknop{display:flex;align-items:center;gap:8px;border:2px solid var(--lijn);background:var(--kaart);color:var(--tekst);border-radius:22px;padding:7px 14px 7px 8px;font-weight:700;font-size:14px}
+.kleurknop i{width:22px;height:22px;border-radius:50%;display:block}
+.kleurknop.aan{border-color:var(--tekst)}
+.naamemoji{margin-right:8px;font-size:20px}
+.naamknop{justify-content:flex-start}.naamknop .rol{margin-left:auto}
+
+#undo{position:fixed;left:12px;right:12px;bottom:calc(64px + env(safe-area-inset-bottom,0px));background:#222;color:#fff;border-radius:14px;padding:10px 12px 10px 16px;display:flex;align-items:center;gap:10px;font-size:14px;z-index:25;opacity:0;transform:translateY(20px);pointer-events:none;transition:opacity .2s,transform .2s;max-width:616px;margin:0 auto}
+#undo.zichtbaar{opacity:1;transform:none;pointer-events:auto}
+#undo span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#undo button{border:0;background:var(--oranje);color:#fff;border-radius:10px;padding:8px 12px;font-weight:800;font-size:14px;flex:none}
+.pot.pinfo{width:38px;font-size:17px}
+.taakregel{padding:7px 16px;font-size:13px;font-weight:700;color:var(--oranje);background:var(--oranjeLicht);border-bottom:1px solid var(--lijn)}
+.taakregel.mijn{background:var(--oranje);color:#fff}
+.pil.groen{background:var(--groen)}
+.weer{margin:0 16px 8px;font-size:14px;color:var(--grijs);text-align:center}
+.weerhint{display:inline-block;margin-top:4px;background:var(--oranjeLicht);color:var(--tekst);border-radius:10px;padding:4px 10px;font-size:13px}
+.weerlabel{margin:0 16px;text-align:center;font-size:12px;color:var(--grijs)}
+.notfoto{border:0;padding:0;background:none;flex:none}.notfoto img{width:52px;height:52px;border-radius:8px;object-fit:cover;display:block}
+.fotoknop{flex:none;width:44px;border-radius:10px;border:1px solid var(--lijn);background:var(--achter);display:flex;align-items:center;justify-content:center;font-size:18px;margin:0;color:var(--tekst)}
+.fotoknop.aan{background:var(--oranje);color:#fff;border-color:var(--oranje)}
+.infofoto{width:100%;max-height:240px;object-fit:cover;border-radius:12px;margin-top:12px;display:block}
+.infotabel{margin-top:12px;border:1px solid var(--lijn);border-radius:12px;overflow:hidden}
+.infotabel div{display:flex;justify-content:space-between;gap:10px;padding:10px 14px;border-top:1px solid var(--lijn);font-size:15px}
+.infotabel div:first-child{border-top:0}.infotabel span{color:var(--grijs)}
+.allerg{display:inline-block;padding:6px 12px;border-radius:16px;background:var(--oranjeLicht);color:var(--tekst);font-weight:700;font-size:14px;border:1px solid var(--oranje)}
+.stapbol{width:30px;height:30px;border-radius:50%;border:2px solid var(--lijn);flex:none;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800}
+.stapbol.ok{background:var(--groen);border-color:var(--groen)}
+.gedaanteller{display:flex;gap:6px;padding:10px 14px;flex-wrap:wrap;font-size:13px;color:var(--grijs)}
+.gedaanteller span{background:var(--oranjeLicht);border-radius:10px;padding:4px 10px}.gedaanteller b{color:var(--tekst)}
+nav button{position:relative}
+.navbol{position:absolute;top:8px;right:calc(50% - 26px);width:9px;height:9px;border-radius:50%;background:#e30613}
+.telbol{display:inline-block;min-width:20px;padding:1px 6px;border-radius:10px;background:#e30613;color:#fff;font-size:12px;text-align:center;margin-left:4px}
+.bolletje{display:inline-block;width:8px;height:8px;border-radius:50%;background:#e30613;margin-right:6px;vertical-align:2px}
+#tour{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:35;padding:22px}
+#tour.open{display:flex}
+.tourkaart{background:#f17d04;color:#fff;border-radius:24px;padding:26px 22px 20px;width:100%;max-width:380px}
+.toursub{font-size:13px;opacity:.85;font-weight:700}.tourtitel{font-size:26px;font-weight:900;margin:4px 0 8px}
+.tourkaart p{font-size:16px;line-height:1.5;margin:0}
+.tourpunten{display:flex;gap:6px;justify-content:center;margin:18px 0 6px}.tourpunten i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.4)}.tourpunten i.aan{background:#fff}
+.tourknoppen{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px}.tourknoppen .merkknop{width:auto;padding:12px 26px;margin:0}
+#printvak{display:none}
+@media print{#app,#sheet,#werk,#feest,#tour,#undo,#toast{display:none!important}#printvak{display:block!important}html,body{background:#fff!important}}
+#printvak{font-family:Arial,sans-serif;color:#000;background:#fff;padding:16px}
+#printvak .printkop{display:flex;justify-content:space-between;border-bottom:3px solid #f17d04;padding-bottom:6px;margin-bottom:10px;font-size:14px}
+#printvak h1{font-size:18px;margin:14px 0 4px}#printvak h2{font-size:15px;margin:12px 0 4px;background:#f17d04;color:#fff;padding:4px 8px}
+#printvak table{width:100%;border-collapse:collapse;font-size:13px;page-break-inside:avoid}
+#printvak th,#printvak td{border:1px solid #999;padding:5px 6px;text-align:left}#printvak td.vak{width:28px}
+
+.printvoorbeeld{background:#fff;color:#000;border-radius:10px;padding:12px;font-family:Arial,sans-serif;font-size:13px}
+.printvoorbeeld .printkop{display:flex;justify-content:space-between;border-bottom:3px solid #f17d04;padding-bottom:6px;margin-bottom:8px;font-size:13px;gap:8px}
+.printvoorbeeld h1{font-size:16px;margin:10px 0 4px}.printvoorbeeld h2{font-size:14px;margin:10px 0 4px;background:#f17d04;color:#fff;padding:4px 8px}
+.printvoorbeeld table{width:100%;border-collapse:collapse}.printvoorbeeld th,.printvoorbeeld td{border:1px solid #999;padding:4px 5px;text-align:left}
+
+.fotozoom{overflow:auto;border-radius:12px;margin-top:8px;max-height:75vh}
+.fotozoom img{width:100%;display:block;border-radius:12px}
+.fotozoom.groot img{width:auto;max-width:none;border-radius:0}
+.exptabel th,.exptabel td{white-space:nowrap;font-size:12px;padding:6px 8px}
+.karkop .link{color:#fff;font-weight:700}
+
+*{touch-action:manipulation}
+#undo{left:auto;right:12px;max-width:min(92%,420px);padding:7px 8px 7px 14px;font-size:14px;z-index:9;bottom:calc(68px + env(safe-area-inset-bottom,0px))}
+#undo button{padding:7px 11px;font-size:13px}
+.conceptlabel{color:var(--oranje);font-weight:800}
+.kassaplu{font-size:22px;font-weight:900;color:var(--oranje);letter-spacing:1px;margin:0 10px;font-variant-numeric:tabular-nums}
+.kassaaantal{min-width:44px;height:40px;border-radius:10px;background:var(--oranjeLicht);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;color:var(--tekst);margin-right:4px}
+
+.levmelding{margin:10px 14px;padding:12px 14px;border-radius:12px;border:2px dashed var(--oranje);background:var(--oranjeLicht);display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.levmelding span{font-size:14px;color:var(--grijs)}
+.linkoranje{border:0;background:none;color:inherit;font-weight:800;text-decoration:underline;padding:0;font-size:13px}
+.snijrij{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 14px;background:var(--oranjeLicht);border-top:1px solid var(--lijn)}
+.snijlabel{font-weight:700;font-size:15px}
+.snijstatus{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 14px 10px;background:var(--oranjeLicht);font-size:14px;font-weight:600}
+.plugroot small{display:block;font-size:14px;text-align:right;color:var(--grijs)}
+.managerkop{background:var(--oranjeLicht)}
+.telbol.grijs{background:var(--grijs)}
+
+.merkscherm.compact{padding-top:6px}
+.merkkop.klein .merklogo{width:170px}
+.merkregel{display:flex;align-items:center;gap:8px;margin-top:8px}
+.merkkop.klein .merkcroissant{width:44px;height:29px;margin:0}
+.merkkop.klein .merktitel{font-size:24px;margin:0}
+.naamkeuze{position:relative;display:flex;align-items:center;gap:10px;background:#fff;border-radius:14px;height:56px;padding:0 16px}
+.naamkeuze select{flex:1;min-width:0;height:100%;border:0;background:transparent;font-size:18px!important;font-weight:700;color:#222;-webkit-appearance:none;appearance:none;font-family:inherit;padding:0}
+.naamkeuze .rol{color:#f17d04;font-size:13px;font-weight:700;margin:0}
+.naamkeuze .naamemoji{font-size:22px;margin:0}
+.pijlneer{color:#999;font-size:16px;pointer-events:none}
+.pinbolletjes{display:flex;justify-content:center;gap:20px;margin:6px 0 4px}
+.pinbolletjes i{width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.85)}
+.pinbolletjes i.vol{background:#fff;border-color:#fff}
+.pinbolletjes.fout{animation:schud .35s}
+@keyframes schud{25%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-4px)}}
+.cijferblok{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}
+.cijferblok button{height:58px;border-radius:16px;border:0;background:rgba(255,255,255,.95);color:#222;font-size:26px;font-weight:500}
+.cijferblok button:active{background:#ffe1bf}
+.cijferblok .wis{background:transparent;color:#fff;font-size:24px}
+.merkhint{text-align:center;color:rgba(255,255,255,.9);font-size:12px;margin:10px 0 0}
+
+.cijfers{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 16px}
+.cijfer{background:var(--kaart);border:1px solid var(--lijn);border-radius:12px;padding:10px;text-align:center}
+.cijfer b{display:block;font-size:18px;color:var(--tekst)}.cijfer span{font-size:12px;color:var(--grijs)}
+.cbnr{min-width:64px;font-size:19px;font-weight:900;color:var(--oranje);font-variant-numeric:tabular-nums;margin-right:10px}
+.cbmelding{border-width:2px;border-color:var(--groen)}.cbmelding.rood{border-color:var(--rood)}
+.hoog{color:var(--rood)}.goed{color:var(--groen)}
+
+.bedragscherm{font-size:34px;font-weight:900;text-align:center;padding:10px 0 6px;color:var(--tekst);font-variant-numeric:tabular-nums}
+.cijferblok.licht button{background:var(--achter);color:var(--tekst);border:1px solid var(--lijn)}
+.cijferblok.licht .wis{background:transparent;border:0;color:var(--tekst)}
+.cijfer small{display:block;font-size:12px;color:var(--oranje);font-weight:700;margin-top:2px}
+
+#bevestig{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 70px);transform:translate(-50%,-10px);background:#2e7d32;color:#fff;font-weight:800;font-size:17px;padding:12px 20px;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:45;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:88%;text-align:center}
+#bevestig.zichtbaar{opacity:1;transform:translate(-50%,0)}
+#oefenbalk{display:none}
+body.oefen #oefenbalk{display:flex;align-items:center;justify-content:center;gap:12px;position:fixed;left:0;right:0;top:env(safe-area-inset-top,0px);z-index:40;padding:8px 12px;color:#fff;font-weight:800;font-size:14px;background:repeating-linear-gradient(45deg,#f17d04 0 14px,#d96f00 14px 28px)}
+body.oefen #oefenbalk button{border:0;background:#fff;color:#d96f00;font-weight:800;border-radius:10px;padding:6px 12px}
+body.oefen #statusplek{padding-top:40px}
+.pinbolletjes.donker i{border-color:var(--grijs)}.pinbolletjes.donker i.vol{background:var(--oranje);border-color:var(--oranje)}
+.pinwijzig .cijferblok{max-width:320px;margin:10px auto 0}
+.eenvoudig .hist,.eenvoudig .weer,.eenvoudig .ring{display:none}
+.eenvoudig .regel .naam{font-size:18px}
+.tourplaatje{width:100%;height:auto;display:block;border-radius:12px;margin:4px 0 12px;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+.nieuwsicoon{font-size:26px;width:40px;text-align:center;flex:none;margin-right:6px}
+.karkleuren{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--lijn);flex-wrap:wrap}
+.kleurbol{width:28px;height:28px;border-radius:50%;border:3px solid transparent;padding:0}
+.kleurbol.aan{border-color:var(--tekst)}
+.kop{position:relative}
+.wisselknop{position:absolute;top:12px;right:14px;border:1.5px solid rgba(255,255,255,.85);background:rgba(255,255,255,.12);color:#fff;font-weight:700;font-size:13px;border-radius:16px;padding:5px 10px}
+.welkomkaart{background:#fff;color:#222;border-radius:14px;padding:16px;border:2px solid #f17d04}
+.welkomkaart ol{padding-left:20px;margin:10px 0;font-size:14px;line-height:1.45}
+.welkomtitel{font-size:19px;font-weight:900;color:#f17d04}
+.welkompin{font-size:16px;margin-top:6px}.welkompin b{font-size:24px;letter-spacing:3px}
+.welkomqr{width:150px;margin:10px auto}.welkomqr.groot{width:240px}.welkomqr svg{width:100%;height:auto;display:block}
+
+.matrij{flex-wrap:wrap}.matrij.op{background:color-mix(in srgb,var(--rood) 10%,var(--kaart))}.matrij.bijna{background:var(--oranjeLicht)}
+.matknoppen{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.st.rood{background:var(--rood);color:#fff}
+.knop.rood{background:var(--rood);border-color:var(--rood);color:#fff}
+.pot.ster{width:44px;font-size:20px;color:var(--grijs)}.pot.ster.aan{color:var(--oranje)}
+.groepkop{display:flex;justify-content:space-between;align-items:center;width:100%;border:0;background:var(--oranje);color:#fff;padding:12px 16px;font-size:16px;font-family:inherit}
+.groepkop span{font-size:13px;font-weight:600}
+.meergroep .meerinhoud{display:none}.meergroep.open .meerinhoud,#meerGroepen.zoekend .meerinhoud{display:block}
+.belknop{position:absolute;top:10px;right:14px;width:40px;height:34px;border-radius:12px;border:1.5px solid rgba(255,255,255,.85);background:rgba(255,255,255,.12);font-size:17px;padding:0}
+.belgetal{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;border-radius:10px;background:#e30613;color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 5px;border:2px solid #f17d04}
+.wisselknop.metbel{right:62px}
+.werkvloer .hist,.werkvloer .taakregel:not(.mijn){display:none}
+
+.dagbalk{margin:6px 16px 8px;padding:10px 14px;border-radius:12px;font-size:15px;text-align:center;color:#fff}
+.dagbalk.morgen{background:#1f6fb2}.dagbalk.vandaag{background:var(--oranje)}.dagbalk.anders{background:#6b6b6b}
+.kaartje.waarschuw{border:2px solid #1f6fb2}
+
+.knop.oplichten{animation:oplicht 1.2s ease-in-out infinite;box-shadow:0 0 0 0 rgba(241,125,4,.6)}
+@keyframes oplicht{50%{box-shadow:0 0 0 10px rgba(241,125,4,0)}}
+.regel.verwerkt{opacity:.55}
+
+.vinkvak,.kiesvak{position:relative}
+.vinkvak::after,.kiesvak::after{content:"";position:absolute;inset:-14px}
+.regel .vinkvak{width:36px;height:36px}
+.rij.flits,.regel.flits{animation:flits .7s ease-out}
+@keyframes flits{0%{background:color-mix(in srgb,var(--oranje) 35%,transparent)}100%{background:transparent}}
+.facebtn{margin-top:14px}
+
+.scanknop{display:block;text-align:center;margin:12px 0 4px}
+.scanlader{display:flex;flex-direction:column;align-items:center;gap:14px;padding:50px 10px;text-align:center}
+.spinner{width:44px;height:44px;border-radius:50%;border:4px solid var(--oranjeLicht);border-top-color:var(--oranje);animation:draai 1s linear infinite}
+@keyframes draai{to{transform:rotate(360deg)}}
+.scanrij .scankeuze{margin-top:6px;font-size:14px;padding:8px 10px;height:auto}
+.rij.aandacht{background:color-mix(in srgb,var(--oranje) 14%,var(--kaart))}
+.scanrij.genegeerd{opacity:.5}
+.oranjetekst{color:var(--oranje);font-weight:700}
+.kaartje.waarschuw.rood{border-color:var(--rood)}
+.scantip{background:var(--oranjeLicht);border-radius:12px;padding:8px 12px;margin:2px 0 8px;font-size:13px;line-height:1.35}
+/* 9.13 */
+.pakbonduim{display:block;max-width:100%;max-height:240px;margin:6px auto 8px;border-radius:10px;border:1px solid var(--lijn);cursor:zoom-in}
+.karkop .karalles{margin-left:10px;background:rgba(255,255,255,.22);color:#fff;border:1.5px solid rgba(255,255,255,.7);border-radius:14px;padding:3px 10px;font-weight:800;font-size:13px;white-space:nowrap}
+.regel.veegt{transition:none!important;position:relative;z-index:2}
+.regel.veegaan{box-shadow:inset 6px 0 0 var(--groen);background:color-mix(in srgb,var(--groen) 14%,var(--kaart))}
+.regel.veeguit{box-shadow:inset -6px 0 0 var(--oranje);background:var(--oranjeLicht)}
+.cijferblok2{position:fixed;left:0;right:0;bottom:0;z-index:1000;background:var(--kaart);border-top:1px solid var(--lijn);box-shadow:0 -8px 30px rgba(0,0,0,.18);border-radius:20px 20px 0 0;padding:12px 16px calc(14px + env(safe-area-inset-bottom));transform:translateY(105%);transition:transform .22s ease;max-width:560px;margin:0 auto}
+.cijferblok2.open{transform:none}
+.cb2kop{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.cb2kop b{display:block;font-size:17px}.cb2kop small{color:var(--grijs);font-size:13px}
+.cb2nr{color:var(--grijs);font-size:13px;white-space:nowrap}
+.cb2waarde{font-size:40px;font-weight:800;text-align:center;margin:6px 0 8px;min-height:48px;color:var(--tekst)}.cb2ph{color:var(--grijs);font-weight:600}
+.cb2toetsen{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.cb2toetsen button{height:58px;font-size:26px;font-weight:700;border-radius:14px;border:1px solid var(--lijn);background:var(--achter);color:var(--tekst)}
+.cb2toetsen button:active{background:var(--oranjeLicht)}.cb2toetsen .cb2klein{font-size:17px}
+.cb2acties{display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:10px}
+.cb2acties button{height:52px;border-radius:14px;font-size:18px;font-weight:800}
+.cb2hoofd{background:var(--oranje);color:#fff;border:0}.cb2rand{background:transparent;color:var(--oranje);border:2px solid var(--oranje)}
+.blokactief{outline:3px solid var(--oranje);outline-offset:-3px;border-radius:12px}
+input[data-blok]{cursor:pointer;caret-color:transparent}
+/* 9.15 Android */
+html.android,html.android body{overscroll-behavior-y:none}
+body.toetsenbord #nav{display:none}
+.installkaart{border:2px solid var(--oranje)}
+.welkomkolom{display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:left;margin-top:8px}.welkomkolom ol{margin:4px 0 0;padding-left:18px;font-size:13px}
+/* 9.17 */
+.updatebalk{display:block;width:100%;border:0;background:#2e7d32;color:#fff;font-weight:700;font-size:14px;padding:10px 14px;text-align:center;cursor:pointer}
+/* 10.0 meerdere winkels */
+.merkscherm .koppeltabs{margin:16px 0 4px;background:rgba(255,255,255,.22)}
+.merkscherm .koppeltabs button{color:#fff}
+.merkscherm .koppeltabs button.aan{background:#fff;color:#f17d04}
+.merkscherm .codeveld,.codeveld{font-size:24px;letter-spacing:4px;text-align:center;text-transform:uppercase;font-weight:800}
+.winkelkies{margin-top:8px}.winkelkies .merkknop{margin-top:12px;text-align:left}.winkelkies small{display:block;font-size:13px;font-weight:600;opacity:.8}
+.winkelbalk{margin:0 0 4px;padding:10px 16px;background:var(--oranjeLicht);color:var(--tekst);font-size:14px;line-height:1.4;font-weight:600}
+.winkelbalk.rood{background:color-mix(in srgb,var(--rood) 16%,var(--kaart));}
+.winkelbalk .link{background:none;border:0;color:var(--oranje);text-decoration:underline;font-weight:700;padding:0;font-size:14px}
+.koppelcode{font-size:30px;font-weight:900;letter-spacing:5px;text-align:center;margin:12px 0 4px;font-variant-numeric:tabular-nums;color:var(--oranje)}
+.tussenkop{font-size:17px;margin:20px 20px 6px}
+.qrvak{width:200px;margin:8px auto}.qrvak svg{width:100%;height:auto;display:block;background:#fff;border-radius:8px}
+.sub.rood{color:var(--rood)}
+/* 10.4 facturen */
+.fstatus{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;font-weight:700;background:var(--lijn);color:var(--tekst)}
+.fstatus.oranje{background:var(--oranjeLicht);color:var(--oranje)}.fstatus.blauw{background:color-mix(in srgb,#1f6fb2 16%,var(--kaart));color:#1f6fb2}
+.fstatus.groen{background:color-mix(in srgb,var(--groen) 16%,var(--kaart));color:var(--groen)}.fstatus.rood{background:color-mix(in srgb,var(--rood) 16%,var(--kaart));color:var(--rood)}
+.cijfer b.rood{color:var(--rood)}
+.factregel{border:1px solid var(--lijn);border-radius:12px;padding:8px;margin-top:8px}
+#factVb{position:fixed;inset:0;z-index:60;background:rgba(20,20,20,.94);display:none;flex-direction:column}
+#factVb.open{display:flex}
+#factVb .vbkop{display:flex;justify-content:space-between;align-items:center;padding:calc(env(safe-area-inset-top) + 12px) 16px 10px;color:#fff;font-size:17px}
+#factVb .vbkop button{background:#fff;color:#f17d04;border:0;border-radius:10px;padding:8px 16px;font-weight:800;font-size:15px}
+#factVb .vbinhoud{flex:1;overflow:auto;padding:4px 10px 10px;-webkit-overflow-scrolling:touch}
+#factVb .vbinhoud img{width:100%;display:block;background:#fff;border-radius:4px;box-shadow:0 2px 12px rgba(0,0,0,.4)}
+#factVb.zoom .vbinhoud img{width:220%;max-width:none}
+#factVb .vbmelding{color:#fff;text-align:center;margin-top:40px}
+#factVb .vbhulp{color:rgba(255,255,255,.7);text-align:center;font-size:13px;margin:0 0 calc(env(safe-area-inset-bottom) + 10px)}
+/* 10.7 bestelboeken */
+.bbvink{width:26px;height:26px;border:2px solid var(--oranje);border-radius:7px;display:inline-flex;align-items:center;justify-content:center;margin-right:10px;flex:none;color:#fff;font-weight:800;font-size:15px}
+.bbvink.aan{background:var(--oranje)}
+/* 10.7.1 foutmelding */
+#foutbalk{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) + 84px);z-index:70;background:#b71c1c;color:#fff;border-radius:14px;padding:12px 14px;font-size:14px;line-height:1.4;box-shadow:0 6px 20px rgba(0,0,0,.35);display:none}
+#foutbalk.open{display:block}#foutbalk div{word-break:break-word;margin-top:4px;opacity:.95}
+#foutbalk button{margin-top:8px;background:#fff;color:#b71c1c;border:0;border-radius:9px;padding:7px 16px;font-weight:800}
