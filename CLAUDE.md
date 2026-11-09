@@ -36,7 +36,7 @@ Web-app (PWA) van Coop Vogelenzang voor broodkarren klaarzetten, derving, bestel
 | app-events.js | gebruiksgemak, Android, updates, alle klik-afhandeling (`case'...'`) |
 | app-start.js | opstarten |
 
-Edge Functions: `stuur-push.js`, `factuur-in.js` (vaste naam, Supabase heeft alleen een stub die ze importeert). `ocr/` = leesprogramma pakbon, niet aanraken.
+Edge Functions: `stuur-push.js`, `factuur-in.js`, `brood-export.js` (alleen lezen: klaargezet, over en voorraad van bake-off voor Coop Besteladvies, beveiligd met koppelcode in de stub) (vaste naam, Supabase heeft alleen een stub die ze importeert). `ocr/` = leesprogramma pakbon, niet aanraken.
 
 ## Nieuwe versie (nummers met één punt: 10.26, 10.27 …)
 1. `index.html`: `APP_BOUW='x.y'` en `?b=x.y` bij style.css en in het laadscript.
