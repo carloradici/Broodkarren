@@ -11,7 +11,7 @@ export function start(createClient, SLEUTEL) {
     try {
       const sb = createClient(Deno.env.get("SUPABASE_URL"), Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"));
       const nu = vandaag(), van = plus(nu, -63), wq = new URL(req.url).searchParams.get("winkel");
-      const a = await sb.from("app_data").select("sleutel,waarde,winkel").in("sleutel", ["instellingen", "voorraad"]);
+      const a = await sb.from("app_data").select("sleutel,waarde,winkel").in("sleutel", ["instellingen", "voorraad", "bestelboeken"]);
       const b = await sb.from("app_data").select("sleutel,waarde,winkel").gte("sleutel", "dag:" + van).lte("sleutel", "dag:9");
       if (a.error || b.error) throw a.error || b.error;
       const per = {};
@@ -30,7 +30,9 @@ export function start(createClient, SLEUTEL) {
       }
       const voorraad = {};
       for (const [id, v] of Object.entries(get("voorraad"))) if (ids.has(id) && v && v.basis != null) voorraad[id] = { n: uit.reduce((n, [i, t, a]) => i === id && t > v.t ? n - a : n, +v.basis), geteld: v.t };
-      return js({ ok: true, nu, winkel: wk || null, soorten, dagen, voorraad });
+      const bb = get("bestelboeken"), boeken = Object.values(bb.boeken || {}).map((b) => ({ naam: b.naam || "Boek", arts: Object.keys(b.arts || {}) }));
+      const eigen = Object.values(bb.eigen || {}).filter((e) => e && e.art).map((e) => ({ art: e.art, naam: e.naam || "", eh: e.eh || "", groep: e.groep || "" }));
+      return js({ ok: true, nu, winkel: wk || null, soorten, dagen, voorraad, boeken, eigen });
     } catch (e) { return js({ ok: false, fout: String(e?.message || e) }, 500); }
   });
 }
