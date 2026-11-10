@@ -1016,7 +1016,7 @@ const PAKKETTEN={basis:[],plus:['scan','push','rapport'],compleet:['scan','push'
 const PAKKET_NAAM={basis:'Basis',plus:'Plus',compleet:'Compleet'};
 const FUNCTIE_NAAM={scan:'Pakbon scannen',push:'Pushmeldingen',rapport:'Rapporten en export',advies:'Bestel-advies',euro:"Derving in euro's",cadeau:'Cadeaubonnen',deeg:'Deegbestelling en voorraad'};
 const FUNCTIE_UITLEG={scan:'Pakbon fotograferen of als pdf inlezen, leesfouten en pakbonnen terugzoeken.',push:'Meldingen op de telefoon: levering nog invullen, materiaal op, weekoverzicht.',rapport:'Weekrapport, weekoverzicht, nieuwe producten volgen en exporteren naar Excel.',advies:'Advies per soort en per weekdag op basis van de derving.',euro:"Inkoopprijzen invullen en de derving in euro's zien.",cadeau:'Cadeaubonnen uitgeven, innemen en bijhouden.',deeg:'Voorraad diepvries tellen en dozen bestellen.'};
-const MEER_FUNCTIE={rapport:'rapport',nieuw:'rapport',export:'rapport',weekoverzicht:'rapport',bestel:'deeg',cadeau:'cadeau',push:'push',pakbonnen:'scan',leesfouten:'scan',besteladvies:'advies',prijzen:'euro'};
+const MEER_FUNCTIE={rapport:'rapport',nieuw:'rapport',export:'rapport',weekoverzicht:'rapport',kassa:'advies',bestel:'deeg',cadeau:'cadeau',push:'push',pakbonnen:'scan',leesfouten:'scan',besteladvies:'advies',prijzen:'euro'};
 const heeft=f=>L.modus==='lokaal'||!WINKEL||(WINKEL.functies||[]).includes(f);
 const isEigenaar=()=>L.modus!=='lokaal'&&WINKEL?.rol==='eigenaar';
 const isAanbieder=()=>L.modus!=='lokaal'&&!!WINKEL?.aanbieder;
@@ -1358,14 +1358,16 @@ function snapshot(){
   const lg=Date.now()-60*864e5;for(const[id,l]of Object.entries(S.log))if(l.t<lg)delete S.log[id];
 }
 function historie(s,groep){
-  return Object.keys(S.derving).filter(d=>dagGroep(d)===groep&&!S.afwijkend[d]&&!S.historie[d]?.afw&&S.derving[d]?.[s.id]!=null).sort().reverse().slice(0,8)
-    .map(d=>{const gezet=S.historie[d]?.gezet?.[s.id]??0,der=S.derving[d][s.id],bij=bijbakStuks(d,s.id);return{d,gezet,der,bij,verkocht:Math.max(0,gezet-der),verkochtAdv:Math.max(0,Math.min(gezet-bij,gezet-der))}});
+  const kd=KV&&KV.dagen&&kaalPlu(s.plu)?Object.keys(KV.dagen).filter(d=>S.historie[d]?.gezet?.[s.id]>0):[];
+  return[...new Set([...Object.keys(S.derving).filter(d=>S.derving[d]?.[s.id]!=null),...kd])].filter(d=>dagGroep(d)===groep&&!S.afwijkend[d]&&!S.historie[d]?.afw).sort().reverse().slice(0,8)
+    .map(d=>{const gezet=S.historie[d]?.gezet?.[s.id]??0,dv=S.derving[d]?.[s.id],bij=bijbakStuks(d,s.id),k=kassaVan(d,s),der=dv??Math.max(0,gezet-k);
+      return{d,gezet,der,bij,k,verkocht:k??Math.max(0,gezet-der),verkochtAdv:k!=null?Math.min(k,Math.max(0,gezet-bij)):Math.max(0,Math.min(gezet-bij,gezet-der)),op:dv!=null?dv===0:k>=gezet}});
 }
 function advies(s,groep){
   if(!heeft('advies'))return null;
   const h=historie(s,groep).slice(0,4);if(h.length<2)return null;
   const gemDer=h.reduce((t,x)=>t+x.der,0)/h.length,gemGezet=h.reduce((t,x)=>t+x.gezet,0)/h.length;
-  if(h.every(x=>x.der===0))return{h,gemDer,gemGezet,op:true};
+  if(h.every(x=>x.op))return{h,gemDer,gemGezet,op:true};
   const gw=[4,3,2,1].slice(0,h.length),som=gw.reduce((a,b)=>a+b,0),gew=h.reduce((t,x,i)=>t+x.verkochtAdv*gw[i],0)/som;
   let trend='';if(h.length>=4){const nu=(h[0].verkochtAdv+h[1].verkochtAdv)/2,oud=(h[2].verkochtAdv+h[3].verkochtAdv)/2;if(oud>0&&(nu-oud)/oud>=0.1)trend='↑';else if(oud>0&&(nu-oud)/oud<=-0.1)trend='↓'}
   return{h,gemDer,gemGezet,trend,aantal:Math.max(s.min||0,Math.ceil(gew))};
@@ -1395,7 +1397,7 @@ function bestelBerekening(){
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const APP_VERSIE='10.0',APP_BOUW='10.26';
+const APP_VERSIE='10.0',APP_BOUW='10.27';
 const NIEUWS=[['🏪','Brood Opzet per winkel','De app werkt nu per winkel. Alles wat je al had, hoort bij je eigen winkel. Voor jou verandert er niets.'],
  ['🔑','Koppelen met een code','Een nieuwe telefoon koppel je voortaan met de koppelcode van de winkel, zonder wachtwoord. De beheerder vindt de code onder Meer.'],
  ['🌤️','Weer en bakker','De beheerder kiest bij Broodsoorten en instellingen de plaats voor het weer en de naam van de bakker.'],
@@ -1497,7 +1499,7 @@ function maakDb(){
   };
 }
 function splitsen(){
-  const o={'beheer:gebruikers':{lijst:S.gebruikers},instellingen:{bakker:S.bakker||'',locatie:S.locatie||null,winkelLogo:S.winkelLogo||null,soorten:S.soorten,karren:S.karren,momenten:S.momenten,ovenMax:S.ovenMax,leverdagen:S.leverdagen,programmas:S.programmas,omschakel:S.omschakel??null,versDagen:S.versDagen,versUitz:S.versUitz,pakbonNegeer:S.pakbonNegeer||[],pakbonNamen:S.pakbonNamen||{},pakbonCijfers:S.pakbonCijfers||{},herinnering:S.herinnering,uitlogMin:S.uitlogMin},
+  const o={'beheer:gebruikers':{lijst:S.gebruikers},instellingen:{bakker:S.bakker||'',locatie:S.locatie||null,winkelLogo:S.winkelLogo||null,kassaKop:S.kassaKop||null,soorten:S.soorten,karren:S.karren,momenten:S.momenten,ovenMax:S.ovenMax,leverdagen:S.leverdagen,programmas:S.programmas,omschakel:S.omschakel??null,versDagen:S.versDagen,versUitz:S.versUitz,pakbonNegeer:S.pakbonNegeer||[],pakbonNamen:S.pakbonNamen||{},pakbonCijfers:S.pakbonCijfers||{},herinnering:S.herinnering,uitlogMin:S.uitlogMin},
     plan:{plan:S.plan,karOverride:S.karOverride,feestNee:S.feestNee},afwijkend:S.afwijkend,voorraad:S.voorraad,profielen:S.profielen,berichten:S.berichten,pins:S.pins,materiaal:S.materiaal,pakbonfouten:S.pbFouten,pushteam:S.pushTeam,...(Object.keys(S.uren||{}).length?{uren:S.uren}:{})};
   const dagen=new Set();for(const k of DAGVELDEN)for(const d of Object.keys(S[k]))dagen.add(d);
   for(const d of dagen){const x={};for(const k of DAGVELDEN)if(S[k][d]!==undefined)x[k]=S[k][d];o['dag:'+d]=x}
@@ -1522,7 +1524,7 @@ function splitsen(){
 function pasToe(k,v){
   if(!isObj(v))return;v=zonderRev(v);
   if(k==='beheer:gebruikers')S.gebruikers=Array.isArray(v.lijst)?v.lijst:[];
-  else if(k==='instellingen'){for(const f of['bakker','locatie','winkelLogo','soorten','karren','momenten','ovenMax','leverdagen','programmas','omschakel','versDagen','versUitz','pakbonNegeer','pakbonNamen','pakbonCijfers','herinnering','uitlogMin'])if(v[f]!==undefined)S[f]=v[f]}
+  else if(k==='instellingen'){for(const f of['bakker','locatie','winkelLogo','kassaKop','soorten','karren','momenten','ovenMax','leverdagen','programmas','omschakel','versDagen','versUitz','pakbonNegeer','pakbonNamen','pakbonCijfers','herinnering','uitlogMin'])if(v[f]!==undefined)S[f]=v[f]}
   else if(k==='plan'){S.plan=v.plan||{};S.karOverride=v.karOverride||{};S.feestNee=v.feestNee||{}}
   else if(k==='afwijkend')S.afwijkend=v;
   else if(k==='voorraad')S.voorraad=v;
@@ -2207,6 +2209,7 @@ let timerSig='';
 
 
 const UITLEG=[
+ ['kassa','Kassaverkoop','Het advies voor klaarzetten rekent met wat er echt over de kassa ging. Daarvoor haalt Brood Opzet elke paar uur de kassaverkoop per PLU uit Coop Besteladvies. Vul bij Beheer → Kassaverkoop één keer het adres en de koppelcode in en zorg dat elke bake-off-soort zijn PLU heeft (Soorten). Is er geen kassagegeven voor een dag, dan rekent het advies zoals vroeger met de derving. Onder Kassa-controle zie je per soort de kassa naast klaargezet min over; oranje betekent een groot verschil.'],
  ['klaarzetten','Klaarzetten','Hier zie je per kar wat er vandaag klaargezet moet worden, met het plaatnummer links. Tik op een regel om hem af te vinken; tik nog eens om het vinkje weg te halen. Met ‹ › blader je naar een andere dag. Met ⋯ rechts bij een regel zie je productinfo of pas je het aantal aan. Met ⋯ bovenin vind je Zoeken, Afvinken (schermvullend), Oven vullen en de dagnotitie.'],
  ['aanpassen','Aantal aanpassen en extra','Met ⋯ → Aantal aanpassen bij een regel pas je het aantal van een soort alleen voor die dag aan, bijvoorbeeld 15 kaiser omdat er maar 15 zijn. De lijst toont dan "gepland 16". Zet je het op 0, dan verdwijnt de soort. Met "+ Extra klaarzetten" zet je voor die dag iets bij dat niet gepland stond.'],
  ['werkmodus','Afvinken (schermvullend)','Tik op Klaarzetten bovenin op ⋯ en dan Afvinken. Schermvullend, één plaat tegelijk met grote letters, foto, ovenprogramma en werkinstructie. Tik op "Klaar – volgende" om de plaat af te vinken en door te gaan.'],
@@ -2304,12 +2307,12 @@ function matGemeld(){return[...Object.entries(S.materiaal.meld).map(([id,x])=>({
 const MAT_LABEL={bijna:['Bijna op','aangepast'],op:['Op!','rood'],besteld:['Besteld','schap']};
 const MEER_GROEP={mijnuren:'dagelijks',uren:'beheer',berichten:'dagelijks',vraag:'dagelijks',materiaal:'dagelijks',notities:'dagelijks',dervlijsten:'dagelijks',ontdooi:'dagelijks',pakbonnen:'dagelijks',afsluiten:'dagelijks',plu:'dagelijks',
   afwijkend:'planning',bestel:'planning',bestelboeken:'planning',rapport:'rapporten',dervingeuro:'rapporten',nieuw:'rapporten',export:'rapporten',gedaan:'rapporten',log:'rapporten',
-  soorten:'instellingen',programmas:'instellingen',team:'instellingen',instellingen:'instellingen',klaar:'beheer',qrwinkel:'beheer',cadeau:'beheer',push:'beheer',leesfouten:'beheer',weekoverzicht:'beheer',besteladvies:'beheer',prijzen:'beheer',backup:'beheer',winkels:'beheer',winkel:'beheer',kantoor:'kantoor',facturen:'beheer',tebetalen:'beheer',hometeam:'beheer',abonnement:'beheer',aanbieder:'beheer',uitleg:'hulp'};
-const KANTOOR=new Set(['facturen','tebetalen','cadeau','uren','rapport','dervingeuro','weekoverzicht','nieuw','export','besteladvies','prijzen','leesfouten','backup','klaar','qrwinkel','push','hometeam','winkels','winkel','abonnement','aanbieder']);
+  soorten:'instellingen',programmas:'instellingen',team:'instellingen',instellingen:'instellingen',klaar:'beheer',qrwinkel:'beheer',cadeau:'beheer',push:'beheer',leesfouten:'beheer',kassa:'beheer',weekoverzicht:'beheer',besteladvies:'beheer',prijzen:'beheer',backup:'beheer',winkels:'beheer',winkel:'beheer',kantoor:'kantoor',facturen:'beheer',tebetalen:'beheer',hometeam:'beheer',abonnement:'beheer',aanbieder:'beheer',uitleg:'hulp'};
+const KANTOOR=new Set(['facturen','tebetalen','cadeau','uren','rapport','dervingeuro','weekoverzicht','nieuw','export','besteladvies','kassa','prijzen','leesfouten','backup','klaar','qrwinkel','push','hometeam','winkels','winkel','abonnement','aanbieder']);
 const GROEPEN=[['dagelijks','Dagelijks'],['planning','Planning'],['rapporten','Rapporten'],['instellingen','Instellingen'],['beheer','Beheer'],['hulp','Hulp']];
 function meerLijstHtml(items,kt){
   if(isAdmin()&&kanBeheren())items=[...items,['klaar','✅ Klaar voor gebruik',"Wat nog ontbreekt: foto's, PLU, programma's, pincodes",()=>true],['qrwinkel','📱 QR-code voor de winkel','A4 om op te hangen bij de broodafdeling',()=>true,null,'qrwinkel'],
-    ['cadeau','🎁 Cadeaubonnen',`${cadeauTellers().uit} uitgegeven · ${euro(cadeauTellers().open)} openstaand`,()=>true],['push','🔔 Pushmeldingen',pushStatus()==='granted'&&S.push.subs?.length?'Staan aan':'Meldingen op je telefoon',()=>true],['leesfouten','📷 Leesfouten pakbon',`${Object.keys(S.pbFouten).length} gemeld`,()=>true],['weekoverzicht','📊 Weekoverzicht','Derving, verschillen met de bakker, advies',()=>true],['besteladvies','🧮 Bestel-advies','Per weekdag, op basis van derving',()=>true],['prijzen','💶 Inkoopprijzen',"Derving in euro's",()=>true],['backup','💾 Back-up','Elke nacht een kopie op de server',()=>true],
+    ['cadeau','🎁 Cadeaubonnen',`${cadeauTellers().uit} uitgegeven · ${euro(cadeauTellers().open)} openstaand`,()=>true],['push','🔔 Pushmeldingen',pushStatus()==='granted'&&S.push.subs?.length?'Staan aan':'Meldingen op je telefoon',()=>true],['leesfouten','📷 Leesfouten pakbon',`${Object.keys(S.pbFouten).length} gemeld`,()=>true],['weekoverzicht','📊 Weekoverzicht','Derving, verschillen met de bakker, advies',()=>true],['kassa','🧾 Kassaverkoop',KV?`Gekoppeld · ${Object.keys(KV.dagen).length} ${Object.keys(KV.dagen).length===1?'dag':'dagen'}`:'Koppelen met Besteladvies',()=>true],['besteladvies','🧮 Bestel-advies','Per weekdag, op basis van derving',()=>true],['prijzen','💶 Inkoopprijzen',"Derving in euro's",()=>true],['backup','💾 Back-up','Elke nacht een kopie op de server',()=>true],
     ...(isEigenaar()?[['winkels','🏪 Winkels',`${(WK.lijst||[]).length} ${(WK.lijst||[]).length===1?'winkel':'winkels'} · wisselen, toestellen koppelen, overzicht`,()=>true]]:WINKEL&&WINKEL.rol==='bedrijfsleider'?[['winkel','🏪 Winkel en toestellen','Koppelcode voor de toestellen van de winkel',()=>true]]:[]),
     ...(isEigenaar()?[['abonnement','⭐ Abonnement',`Pakket ${PAKKET_NAAM[WINKEL.pakket]||''}${WINKEL.proef_pakket&&WINKEL.proef_tot>=iso()?' · proef '+PAKKET_NAAM[WINKEL.proef_pakket]:''}`,()=>true]]:[]),
     ...(isAdmin()?[['uren','⏱ Urenregistratie',(()=>{const n=urenNu().length,c=Object.values(isObj(S.uren?.corr)?S.uren.corr:{}).filter(x=>x.status==='open').length;return[n?`${n} nu ingeklokt`:'',c?`${c} correctie${c===1?'':'s'}`:''].filter(Boolean).join(' · ')||(urenInst().iedereen?'Overzicht per dag, week of maand':'Overzicht per dag, week of maand · testfase')})(),()=>true]]:[]),
@@ -3427,6 +3430,26 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-cl]');if(
     if(!isObj(S.checklists))S.checklists={};S.checklists.lijsten=nieuw;if(!Object.values(nieuw).some(x=>!x.weg))clKeuze=null;bewaar();sluit();render();toast('Opgeslagen');return}
   }}catch(z){meldFout(z,'Checklists')}});
 /* ================= 10.17 derving in euro's ================= */
+/* ================= 10.27 kassaverkoop uit Coop Besteladvies ================= */
+function kaalPlu(p){return String(p??'').trim().replace(/^0+(?=\d)/,'')}
+var KV=(()=>{try{return JSON.parse(localStorage.getItem('bo-kassa')||'null')}catch(e){return null}})();
+function kassaVan(d,s){const p=kaalPlu(s.plu);if(!p||!KV||!KV.dagen||!KV.dagen[d])return null;return KV.dagen[d][p]??0}
+async function kassaHaal(forceer){const k=S&&S.kassaKop;if(!k||!k.url||!k.code||OEFEN)return;if(!forceer&&KV&&Date.now()-KV.t<3*36e5)return;
+  const plus=[...new Set(S.soorten.map(s=>kaalPlu(s.plu)).filter(Boolean))];if(!plus.length){if(forceer)throw new Error('Vul eerst de PLU in bij de soorten');return}
+  try{const r=await fetch(k.url+(k.url.includes('?')?'&':'?')+'plu='+plus.join(','),{headers:{'x-sleutel':k.code}});const d=await r.json().catch(()=>({fout:'Geen antwoord ('+r.status+')'}));if(!d.ok)throw new Error(d.fout||r.status);
+    KV={t:Date.now(),dagen:d.dagen||{}};try{localStorage.setItem('bo-kassa',JSON.stringify(KV))}catch(e){}if(!forceer&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName||''))render();return KV}catch(e){if(forceer)throw e}}
+setTimeout(()=>kassaHaal(),5000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)kassaHaal()});
+function kassaHtml(){const k=S.kassaKop||{},zonder=S.soorten.filter(s=>s.type!=='vers'&&s.naam.trim()&&!kaalPlu(s.plu));
+  return`<div class="kop"><div class="koprij"><h1>Kassaverkoop</h1>${info('kassa')}</div><p>Haalt de kassaverkoop per PLU uit Coop Besteladvies. Het advies voor klaarzetten rekent daarmee.</p></div>
+  <div class="kaartje"><label>Adres</label><input class="veld" id="kvUrl" type="url" value="${esc(k.url||'')}" placeholder="https://….supabase.co/functions/v1/…"><label style="display:block;margin-top:8px">Koppelcode</label><input class="veld" id="kvCode" value="${esc(k.code||'')}" autocomplete="off">
+  <button class="knop" data-kv="1" style="width:100%;margin-top:12px">Opslaan en ophalen</button><div class="sub" id="kvSt" style="margin-top:8px">${KV?`✓ Opgehaald ${new Date(KV.t).toLocaleString('nl-NL',{weekday:'short',day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'})} · ${Object.keys(KV.dagen).length} ${Object.keys(KV.dagen).length===1?'dag':'dagen'}`:'Nog niet opgehaald'}</div></div>
+  ${zonder.length?`<div class="kaartje waarschuw"><b>${zonder.length} ${zonder.length===1?'soort heeft':'soorten hebben'} nog geen PLU</b><div class="sub">${zonder.map(s=>esc(s.naam)).join(', ')}. Vul de PLU in bij Soorten, anders rekent het advies voor die soort met de derving.</div></div>`:''}${kassaControleHtml()}`}
+document.addEventListener('click',async e=>{if(!e.target.closest('[data-kv]')||!isAdmin())return;const url=document.getElementById('kvUrl').value.trim(),code=document.getElementById('kvCode').value.trim(),st=document.getElementById('kvSt');
+  if(!/^https:\/\/.+/.test(url)||!code){toast('Vul het adres en de koppelcode in');return}S.kassaKop={url,code};bewaar();st.textContent='Bezig…';
+  try{const d=await kassaHaal(true);if(!d){st.textContent='Niet in de oefenmodus';return}toast(`✓ Kassaverkoop van ${Object.keys(d.dagen).length} ${Object.keys(d.dagen).length===1?'dag':'dagen'} opgehaald`);render()}catch(x){st.textContent='✗ '+x.message}});
+function kassaControleHtml(){if(!KV||!KV.dagen)return'';const van=plusDagen(iso(),-28),rs=[];
+  for(const s of S.soorten.filter(x=>x.type!=='vers'&&x.naam.trim()&&kaalPlu(x.plu))){let k=0,w=0,n=0;for(const d of Object.keys(KV.dagen)){if(d<van||d>=iso())continue;const g=S.historie[d]?.gezet?.[s.id],o=S.derving[d]?.[s.id];if(g==null||o==null)continue;k+=kassaVan(d,s)||0;w+=Math.max(0,g-o);n++}if(n)rs.push({s,k,w})}
+  return rs.length?`<div class="sectie"><div class="karkop"><b>Kassa-controle · laatste 4 weken</b></div><div class="tabelwrap"><table class="tabel"><tr><th>Soort</th><th>Kassa</th><th>Gezet − over</th></tr>${rs.map(r=>`<tr><td>${esc(r.s.naam)}</td><td>${fmt(r.k)}</td><td class="${Math.abs(r.k-r.w)>Math.max(3,0.15*Math.max(r.k,r.w))?'hoog':''}">${fmt(r.w)}</td></tr>`).join('')}</table></div><p class="hulp" style="margin:8px 12px">Oranje = groot verschil: er is iets kapot gegaan, opgegeten of verkeerd gescand.</p></div>`:''}
 function dervEuroHtml(){const metPrijs=heeft('euro')&&Object.keys(S.prijzen||{}).length>0,w0=maandag(iso()),weken=[...Array(12)].map((_,i)=>plusDagen(w0,-7*(11-i))),c=weken.map(w=>({w,...weekCijfers(w)}));
   const waarde=x=>metPrijs?x.eur:x.over,max=Math.max(1,...c.map(waarde)),W=340,H=150,bw=W/12;
   let h=`<div class="kop"><div class="koprij"><h1>Derving in ${metPrijs?'euro’s':'stuks'}</h1></div><p>De laatste 12 weken${metPrijs?', met de inkoopprijzen':''}. ${metPrijs?'':'Vul inkoopprijzen in (Beheer → Inkoopprijzen) om bedragen te zien.'}</p></div>
@@ -3441,7 +3464,8 @@ function dervEuroHtml(){const metPrijs=heeft('euro')&&Object.keys(S.prijzen||{})
   h+=`<div class="sectie"><div class="karkop"><b>Advies opzet</b></div>${adv.length?adv.map((a,i)=>`<div class="rij inv" style="flex-wrap:wrap"><div class="groei"><div class="naam" style="font-size:16px">${esc(a.s.naam)} op ${esc(GROEP[a.g])}</div><div class="sub">nu ${a.nu} per dag → advies <b>${a.a.aantal}</b> · gem. ${fmt(Math.round(a.a.gemDer*10)/10)} over${metPrijs&&prijs(a.s.id)?` · scheelt ± ${euro2((a.nu-a.a.aantal)*prijs(a.s.id)*(a.g==='mv'?5:1))} per week`:''}</div></div><button class="knop klein" data-de="toepas" data-v="${i}">Toepassen</button></div>`).join(''):`<p class="leeg" style="margin:10px">${heeft('advies')?'Geen aanpassingen nodig.':'Advies zit niet in het pakket.'}</p>`}</div>`;
   const vers=(typeof bestelAdvies==='function'?bestelAdvies():[]).filter(x=>x.soort==='minder');
   if(vers.length)h+=`<div class="kaartje"><h3>Vers brood (bestellen bij de bakker)</h3>${vers.map(x=>`<div class="sub"><b>${esc(x.s.naam)}</b> op ${WDL[x.w]}: ${esc(x.advies)} <span class="hulp" style="margin:0">(${Math.round(x.pct)}% over)</span></div>`).join('')}</div>`;
-  return h+'<p class="hulp" style="margin:12px 20px">Advies op basis van de laatste weken van dezelfde soort dag. Toepassen past de planning aan voor alle dagen in die groep.</p>'}
+  h+=kassaControleHtml();
+  return h+`<p class="hulp" style="margin:12px 20px">Advies op basis van de laatste weken van dezelfde soort dag${KV?', met de kassaverkoop uit Besteladvies':''}. Toepassen past de planning aan voor alle dagen in die groep.</p>`}
 let deAdv=[];
 function dervAdvies(){deAdv=[];if(!heeft('advies'))return deAdv;const groepen={mv:['ma','di','wo','do','vr'],za:['za'],zo:['zo']};
   for(const s of S.soorten.filter(x=>x.type!=='vers'&&x.naam.trim()))for(const[g,pks]of Object.entries(groepen)){const a=advies(s,g);if(!a||a.op)continue;const nu=Math.max(...pks.map(pk=>dagTotaal(pk,s)));if(a.aantal<nu)deAdv.push({s,g,pks,nu,a})}
@@ -4347,6 +4371,7 @@ function meerHtml(){
   if(sub==='leesfouten'&&isAdmin()&&kanBeheren())return terug+leesfoutenHtml();
   if(sub==='weekoverzicht'&&isAdmin()&&kanBeheren())return terug+weekoverzichtHtml();
   if(sub==='besteladvies'&&isAdmin()&&kanBeheren())return terug+bestelAdviesHtml();
+  if(sub==='kassa'&&isAdmin()&&kanBeheren())return terug+kassaHtml();
   if(sub==='prijzen'&&isAdmin()&&kanBeheren())return terug+prijzenHtml();
   if(sub==='backup'&&isAdmin()&&kanBeheren())return terug+backupHtml();
   const kt=sub==='kantoor'&&isAdmin();sub=kt?sub:null;const g=ik();
