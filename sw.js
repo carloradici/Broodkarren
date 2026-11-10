@@ -2,8 +2,7 @@
 const VERSIE='broodopzet-10.26';
 const OCR_CACHE = 'broodopzet-ocr-1'; // leesprogramma voor pakbon scannen (blijft bewaard tussen versies)
 const SUPA_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js';
-const APP = ['style.css', 'app-basis.js', 'app-logo.js', 'app-basis2.js', 'app-facturen.js', 'app-bestelboek.js', 'app-winkels.js', 'app-planning.js', 'app-opslag.js', 'app-scherm.js', 'app-pakbon.js', 'app-meldingen.js', 'app-uren.js', 'app-betalen.js', 'app-rooster.js', 'app-chat.js', 'app-overdracht-print.js', 'app-schermen.js', 'app-events.js', 'app-start.js'].map(f => f + '?b=' + VERSIE.split('-')[1]);
-const BESTANDEN = ['./', 'index.html', 'manifest.webmanifest', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', SUPA_JS, ...APP];
+const BESTANDEN = ['./', 'index.html', 'manifest.webmanifest', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', SUPA_JS];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSIE).then(c => c.addAll(BESTANDEN)).then(() => self.skipWaiting()));
 });
