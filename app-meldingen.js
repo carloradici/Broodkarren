@@ -213,7 +213,8 @@ function openInfo(id){
 }
 
 /* ---------- zoeken op Klaarzetten ---------- */
-let zoekOpen=false,zoekTerm='';
+let zoekOpen=false,zoekTerm='',kzMeer=false,dervMeer=false;
+const potKnop=(id,ap)=>ap?`<button class="pot" data-a="rijmenu" data-v="${id}" aria-label="Meer">⋯</button>`:`<button class="pot pinfo" data-a="pinfo" data-v="${id}" aria-label="Productinfo">ⓘ</button>`;
 function zoekFilter(){const z=zoekTerm.trim().toLowerCase(),m=document.getElementById('scherm');
   m.querySelectorAll('.rij[data-zoek]').forEach(r=>{r.style.display=!z||r.dataset.zoek.includes(z)?'':'none'});
   m.querySelectorAll('.sectie').forEach(sec=>{const rijen=[...sec.querySelectorAll('.rij[data-zoek]')];if(rijen.length)sec.style.display=rijen.some(r=>r.style.display!=='none')?'':'none'})}
@@ -237,3 +238,5 @@ function openKarTaak(nr){
 }
 
 /* ---------- berichten aan beheerder ---------- */
+
+

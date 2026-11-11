@@ -167,7 +167,7 @@ function homeHtml(){const uur=new Date().getHours(),groet=uur<12?'Goedemorgen':u
     t.push(['tab','derving','🗑','Derving',klaar?'✓ Lijst van vandaag opgeslagen':od?`${od} over datum vandaag`:'Derving invullen',!klaar&&od>0])}
   if(urenMag()){const n=urenNu().length;t.push(['tab','uren','⏱','Uren',n?`${n} aan het werk`:'Niemand ingeklokt',false])}
   {const[st,wl]=clHomeStatus();t.push(['tab','check','✅','Checklists',st,wl])}
-  {const o=chatTotaal();t.push(['sub2','berichten','💬','Chat',o?`${o} ongelezen`:'Berichten',o>0])}
+  {const o=chatTotaal();t.push(['sub2','berichten','💬','Chat',o?`${o} ongelezen`:'Team en beheerder',o>0])}
   return`<div class="kop"><div class="koprij"><div><div class="groet">${groet}</div><h1>${esc(naam)} ${esc(prof().emoji||'👋')}</h1><p>${esc(dagNaamLang(iso()))}</p></div></div></div>
    ${installHtml()}${roosterHomeHtml()}${homeTegelsHtml()}`}
 (function(){const st=document.createElement('style');st.textContent=`.hometegels{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:6px 16px 16px}
@@ -184,3 +184,5 @@ const schermPlek={};
 const schermSleutel=()=>tab==='meer'?'meer|'+(sub||''):tab==='uren'?'uren|'+urenView:tab;
 function plekBewaar(){const m=document.getElementById('scherm');if(m)schermPlek[schermSleutel()]=m.scrollTop}
 function plekTerug(nul){const m=document.getElementById('scherm');if(!m)return;m.scrollTop=nul?0:(schermPlek[schermSleutel()]||0)}
+
+

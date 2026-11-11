@@ -66,3 +66,5 @@ if(S&&S.sessie&&!L.sessie){L.sessie=S.sessie;L.laatsteActie=S.laatsteActie}
 if(!window.__BEGINSTAAT__&&L.gekoppeld&&L.modus!=='lokaal'&&!(S&&Array.isArray(S.soorten))){S=leegS();basis={};revs={};L.syncTot=null;L.herstel=true;try{localStorage.setItem(OPSLAG_LOKAAL,JSON.stringify(L))}catch(e){}}
 if(!S||!S.soorten){let v1=null;if(!NS)try{v1=JSON.parse(localStorage.getItem('broodkarren-v1')||'null')}catch(e){}S=NS?leegS():vanV1(v1&&v1.items?v1:DEFAULTS)}
 S=vulAan(naarV6(naarV3(S)));
+
+

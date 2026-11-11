@@ -226,7 +226,7 @@ async function chatPdf(){const b=S.berichten[chatId];if(!b)return;toast('PDF mak
   await deelBestand(new File([doc.output('blob')],`gesprek-${chatTitel(b).replace(/[^A-Za-z0-9]+/g,'-').replace(/^-|-$/g,'').toLowerCase()||'chat'}-${iso()}.pdf`,{type:'application/pdf'}))}catch(e){console.warn(e);toast('PDF maken lukte niet')}}
 /* ---------- lijst met gesprekken ---------- */
 function berichtenHtml(){chatCssLaad();const adm=isAdmin(),inst=chatInst(),alle=chatBer().filter(chatZichtbaar),z=chatZoek.trim().toLowerCase();
-  let h=`<div class="kop"><div class="koprij"><h1>Berichten</h1>${adm?info('berichten'):''}</div><p>${adm?'Gesprekken met medewerkers, de teamchat en mededelingen.':'Je gesprekken met de beheerder, de teamchat en mededelingen.'}</p></div>
+  let h=`<div class="kop"><div class="koprij"><h1>Chat</h1>${adm?info('berichten'):''}</div><p>${adm?'Gesprekken met medewerkers, de teamchat en mededelingen.':'Je gesprekken met de beheerder, de teamchat en mededelingen.'}</p></div>
    <div class="zoekbalk"><input class="veld" id="chatZoekIn" type="search" placeholder="🔍 Zoeken in berichten" autocomplete="off" value="${esc(chatZoek)}"></div>`;
   if(z){const res=[];for(const b of alle)for(const m of chatMsgs(b))if(!m.weg&&(m.tekst||'').toLowerCase().includes(z))res.push({b,m});res.sort((a,c)=>c.m.tm-a.m.tm);
     return h+(res.length?`<div class="sectie">${res.slice(0,60).map(({b,m})=>`<div class="rij"><button class="regel" data-c="open" data-v="${esc(b.id)}" data-m="${esc(m.id)}"><div class="groei"><div class="naam" style="font-size:15px">${esc(chatTitel(b))} · ${esc(chatNaam(m))}</div><div class="sub">${esc(m.tekst.slice(0,120))} · ${esc(chatDagKop(m.tm))} ${tijdTekst(m.tm)}</div></div></button></div>`).join('')}</div>`:'<p class="leeg">Niets gevonden.</p>')}
@@ -345,3 +345,4 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 function chatPlanPush(){const nu=Date.now();if(nu-(L.chatPlanPush||0)<10*60000)return;if(chatBer().some(b=>Object.values(isObj(b.r)?b.r:{}).some(m=>isObj(m)&&m.op&&m.op<=nu&&nu-m.op<12*3600e3))){L.chatPlanPush=nu;bewaarL();setTimeout(()=>stuurPush({}),3000)}}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')try{chatPlanPush()}catch(e){}});
 setTimeout(()=>{try{chatPlanPush()}catch(e){}},5000);
+

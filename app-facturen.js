@@ -136,3 +136,5 @@ async function factVoorbeeld(f,concept){
     if(!ov.classList.contains('open'))return;ov.querySelector('.vbinhoud').innerHTML=`<img src="${c.toDataURL('image/jpeg',.9)}" alt="Voorbeeld van de factuur" data-a="factvbzoom">`}
   catch(e){console.warn(e);const el=ov.querySelector('.vbinhoud');if(el)el.innerHTML='<p class="vbmelding">Het voorbeeld lukt nu niet. Controleer je internetverbinding.</p>'}}
 function sluitVoorbeeld(){if(typeof bbVbOpruim==='function'&&bbVbOpruim)bbVbOpruim();const ov=document.getElementById('factVb');if(ov){ov.classList.remove('open','zoom');ov.innerHTML=''}}
+
+

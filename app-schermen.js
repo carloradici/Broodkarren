@@ -113,10 +113,10 @@ function gezetOverDatum(d,s){const n=+s.tht||0;return n>0?gezetOp(plusDagen(d,-n
 function thtTekst(s,d,g,vd){const n=+s.tht||0,p=[];if(vd)p.push(`<b class="oranjetekst">over datum vandaag</b> (opgezet ${esc(datumTekst(plusDagen(d,-n)))}: ${fmt(vd)})`);
   if(g||!vd)p.push(`${fmt(g)} opgezet${n&&g?` · houdbaar t/m ${esc(datumTekst(plusDagen(d,n)))}`:''}`);return p.join(' · ')}
 function dervingHtml(){
-  const d=dervDatum,hist=S.historie[d],con=conceptVan(d);
-  let h=`<div class="kop"><div class="koprij"><h1>Derving</h1>${info('derving')}</div><p>Vul in en tik op <b>Lijst opslaan</b>. De lijst neem je over in de kassa.</p></div>
-    <div class="datumrij"><button data-a="dd" data-v="-1">‹</button><input type="date" id="dervdatum" value="${d}" max="${iso()}"><button data-a="dd" data-v="1">›</button></div>
-    <div class="segment">${BESTEMMING.map(([k,l])=>`<button data-a="best" data-v="${k}" class="${best===k?'aan':''}">${l}</button>`).join('')}</div>`;
+  const d=dervDatum,hist=S.historie[d],con=conceptVan(d),vol=dervMeer||d!==iso()||best!=='weg';
+  let h=`<div class="kop"><div class="koprij"><h1>Derving</h1><div class="kopeind"><button class="info" data-a="dervmeer" aria-label="Meer opties">⋯</button>${info('derving')}</div></div><p>Vul in en tik op <b>Lijst opslaan</b>. De lijst neem je over in de kassa.</p></div>
+    ${vol?`<div class="datumrij"><button data-a="dd" data-v="-1">‹</button><input type="date" id="dervdatum" value="${d}" max="${iso()}"><button data-a="dd" data-v="1">›</button></div>
+    <div class="segment">${BESTEMMING.map(([k,l])=>`<button data-a="best" data-v="${k}" class="${best===k?'aan':''}">${l}</button>`).join('')}</div>`:''}`;
   let rijen='',totGezet=0,totOver=0,totGev=0;
   const blok=(titel,lijst)=>{if(!lijst.length)return;rijen+=`<div class="sectie"><div class="karkop"><b>${esc(titel)}</b></div>`;
     for(const{s,g,vd}of lijst){const over=S.derving[d]?.[s.id],gev=0,c=con[s.id];if(over!=null){totGezet+=g;totOver+=over}
@@ -135,7 +135,7 @@ function dervingHtml(){
   h+=`<p class="samenvat">${datumTekst(d)}${S.afwijkend[d]?` (${esc(S.afwijkend[d].naam)})`:''}${totGezet?` – ${fmt(totOver)} derving van ${fmt(totGezet)} opgezet (${Math.round(totOver/totGezet*100)}%)`:''}</p>`;
   const regs=regLijst(d);
   if(regs.length)h+=`<div class="knoppen" style="margin-top:4px"><button class="knop rand" data-a="dlijsten" data-v="${d}">Opgeslagen lijsten (${regs.length})</button></div>`;
-  h+=notitiesHtml(d)+(ooit?`<div style="margin:6px 16px 0"><input class="veld" id="dervZoek" type="search" placeholder="🔍 Zoeken" autocomplete="off" value="${esc(dervZoek)}">${volgChips()}</div>`:'')
+  h+=(vol||Object.keys(S.notities[d]||{}).length?notitiesHtml(d):'')+(ooit?`<div style="margin:6px 16px 0"><input class="veld" id="dervZoek" type="search" placeholder="🔍 Zoeken" autocomplete="off" value="${esc(dervZoek)}">${vol?volgChips():''}</div>`:'')
     +(rijen||(ooit?'<p class="leeg">Niets gevonden.</p>':`<p class="leeg">Er is op deze dag niets klaargezet.</p>`))
     +(mag('derving')?`<div class="knoppen"><button class="knop rand" data-a="dervextra">+ Andere soort</button></div><p class="hulp" style="text-align:center;margin-top:0">Voor iets wat vandaag niet op de lijst stond, bijv. pecanbroodjes van maandag.</p>`:'');
   const n=Object.keys(con).length;
@@ -177,7 +177,7 @@ function dervSub(d,id,g){const x=dervDetail(d,id),v=x?BESTEMMING.filter(([k])=>x
 
 /* ---------- Meer ---------- */
 function meerHtml(){
-  const terug=`<button class="terug" data-a="sub" data-v="">‹ Meer</button>`;
+  const terug=KANTOOR.has(sub)&&isAdmin()?`<button class="terug" data-a="sub" data-v="kantoor">‹ Kantoor</button>`:`<button class="terug" data-a="sub" data-v="">‹ Meer</button>`;
   if(sub==='vraag'){sub=null;setTimeout(openVraag,0)}
   if(MEER_FUNCTIE[sub]&&!heeft(MEER_FUNCTIE[sub]))sub=null;
   if(sub==='winkels'&&isEigenaar()&&isAdmin())return terug+winkelsHtml();
@@ -218,16 +218,18 @@ function meerHtml(){
   if(sub==='leesfouten'&&isAdmin()&&kanBeheren())return terug+leesfoutenHtml();
   if(sub==='weekoverzicht'&&isAdmin()&&kanBeheren())return terug+weekoverzichtHtml();
   if(sub==='besteladvies'&&isAdmin()&&kanBeheren())return terug+bestelAdviesHtml();
+  if(sub==='kassa'&&isAdmin()&&kanBeheren())return terug+kassaHtml();
   if(sub==='prijzen'&&isAdmin()&&kanBeheren())return terug+prijzenHtml();
   if(sub==='backup'&&isAdmin()&&kanBeheren())return terug+backupHtml();
-  sub=null;const g=ik();
+  const kt=sub==='kantoor'&&isAdmin();sub=kt?sub:null;const g=ik();
   const o=ongelezen();
-  const om=ongelezenM(),items=[...(isAdmin()?[['berichten',`Berichten${o?` <span class="telbol">${o}</span>`:''}`,'Gesprekken met medewerkers',()=>true]]:[['berichten',`Berichten${om?` <span class="telbol">${om}</span>`:''}`,'Vraag of melding aan de beheerder, en antwoorden',()=>true]]),
+  const om=ongelezenM(),items=[...(isAdmin()?[['berichten',`Chat${o?` <span class="telbol">${o}</span>`:''}`,'Gesprekken met medewerkers',()=>true]]:[['berichten',`Chat${om?` <span class="telbol">${om}</span>`:''}`,'Vraag of melding aan de beheerder, en antwoorden',()=>true]]),
     ['afsluiten','Dag afsluiten','Checklist voor het eind van de dag',()=>mag('derving')],['materiaal','Materiaal','Verpakking bijna op? Meld het hier',()=>true],['notities','Notities','Alle dagnotities terugzoeken',()=>true],['dervlijsten','Dervinglijsten','Opgeslagen derving om in de kassa te zetten',()=>mag('derving')],['ontdooi','Ontdooien zoet','Wat moet er uit de vriezer',()=>mag('vinken')],['pakbonnen','Pakbonnen','Leveringen terugzoeken: pakbon, geteld, verschil',()=>mag('vinken')],['rapport','Weekrapport','Derving per soort per week',()=>mag('rapport')],...(isAdmin()?[['dervingeuro','💶 Derving in euro’s','12 weken, per soort en advies voor de opzet',()=>true]]:[]),
     ['bestel','Deegbestelling en voorraad','Voorraad tellen en dozen bestellen',()=>mag('bestellen')],['afwijkend','Afwijkende dagen','Feestdagen, gesloten dagen',()=>mag('invullen')],
     ['soorten','Broodsoorten en instellingen','Soorten, karren, bakmomenten, oven',()=>mag('soorten')],['programmas',"Bakprogramma's","Programma's koppelen aan producten",()=>mag('soorten')],['team','Medewerkers en rechten','Accounts beheren',()=>isAdmin()&&kanBeheren(),isAdmin()?'Alleen op je eigen telefoon':null],
     ['gedaan','Vandaag gedaan','Per persoon wat er is gedaan',()=>isAdmin()],['log','Logboek','Wie deed wat en wanneer',()=>isAdmin()],
     ['bestelboeken','📘 Bestelboeken','Eigen bestelboeken uit het bestelboek van de leverancier',()=>bbMag()],['nieuw','Nieuwe producten','Verkoop van nieuwe producten volgen',()=>mag('rapport')],['export','Exporteren naar Excel','Planning, derving of weekrapport',()=>mag('rapport')],['plu','PLU-lijst','PLU-nummers opzoeken',()=>true],['instellingen','App-instellingen','Weergave en persoonlijke keuzes',()=>true],['uitleg','Uitleg','Hoe werkt de app?',()=>true]];
+  if(kt)return`<button class="terug" data-a="sub" data-v="">‹ Meer</button><div class="kop"><div class="koprij"><h1>🗂 Kantoor</h1>${info('kantoor')}</div><p>Alleen voor jou. Medewerkers zien dit niet.</p></div>${meerLijstHtml(items,true)}`;
   return`<div class="kop"><div class="koprij"><h1>Meer</h1>${info('meer')}</div><p>Ingelogd als <b>${esc(g.naam)}</b> (${g.rol==='admin'?'beheerder':'medewerker'})</p></div>
     ${meerLijstHtml(items)}
     ${kanBeheren()?`<div class="rij"><button class="regel" data-a="gebruiker" data-v="${g.id}"><div class="groei"><div class="naam">Mijn pincode wijzigen</div></div><span class="pijl">›</span></button></div>`:''}</div>
@@ -534,3 +536,4 @@ function verkleinFoto(file){
 }
 function verschuif(r){const a=S.soorten,i=a.findIndex(x=>x.id===bewerk.id);if(i<0)return;let j=i+r;
   while(j>=0&&j<a.length&&a[j].kar!==a[i].kar)j+=r;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];bewaar();render()}
+

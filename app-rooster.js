@@ -109,6 +109,26 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-cl]');if(
     if(!isObj(S.checklists))S.checklists={};S.checklists.lijsten=nieuw;if(!Object.values(nieuw).some(x=>!x.weg))clKeuze=null;bewaar();sluit();render();toast('Opgeslagen');return}
   }}catch(z){meldFout(z,'Checklists')}});
 /* ================= 10.17 derving in euro's ================= */
+/* ================= 10.27 kassaverkoop uit Coop Besteladvies ================= */
+function kaalPlu(p){return String(p??'').trim().replace(/^0+(?=\d)/,'')}
+var KV=(()=>{try{return JSON.parse(localStorage.getItem('bo-kassa')||'null')}catch(e){return null}})();
+function kassaVan(d,s){const p=kaalPlu(s.plu);if(!p||!KV||!KV.dagen||!KV.dagen[d])return null;return KV.dagen[d][p]??0}
+async function kassaHaal(forceer){const k=S&&S.kassaKop;if(!k||!k.url||!k.code||OEFEN)return;if(!forceer&&KV&&Date.now()-KV.t<3*36e5)return;
+  const plus=[...new Set(S.soorten.map(s=>kaalPlu(s.plu)).filter(Boolean))];if(!plus.length){if(forceer)throw new Error('Vul eerst de PLU in bij de soorten');return}
+  try{const r=await fetch(k.url+(k.url.includes('?')?'&':'?')+'plu='+plus.join(','),{headers:{'x-sleutel':k.code}});const d=await r.json().catch(()=>({fout:'Geen antwoord ('+r.status+')'}));if(!d.ok)throw new Error(d.fout||r.status);
+    KV={t:Date.now(),dagen:d.dagen||{}};try{localStorage.setItem('bo-kassa',JSON.stringify(KV))}catch(e){}if(!forceer&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName||''))render();return KV}catch(e){if(forceer)throw e}}
+setTimeout(()=>kassaHaal(),5000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)kassaHaal()});
+function kassaHtml(){const k=S.kassaKop||{},zonder=S.soorten.filter(s=>s.type!=='vers'&&s.naam.trim()&&!kaalPlu(s.plu));
+  return`<div class="kop"><div class="koprij"><h1>Kassaverkoop</h1>${info('kassa')}</div><p>Haalt de kassaverkoop per PLU uit Coop Besteladvies. Het advies voor klaarzetten rekent daarmee.</p></div>
+  <div class="kaartje"><label>Adres</label><input class="veld" id="kvUrl" type="url" value="${esc(k.url||'')}" placeholder="https://….supabase.co/functions/v1/…"><label style="display:block;margin-top:8px">Koppelcode</label><input class="veld" id="kvCode" value="${esc(k.code||'')}" autocomplete="off">
+  <button class="knop" data-kv="1" style="width:100%;margin-top:12px">Opslaan en ophalen</button><div class="sub" id="kvSt" style="margin-top:8px">${KV?`✓ Opgehaald ${new Date(KV.t).toLocaleString('nl-NL',{weekday:'short',day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'})} · ${Object.keys(KV.dagen).length} ${Object.keys(KV.dagen).length===1?'dag':'dagen'}`:'Nog niet opgehaald'}</div></div>
+  ${zonder.length?`<div class="kaartje waarschuw"><b>${zonder.length} ${zonder.length===1?'soort heeft':'soorten hebben'} nog geen PLU</b><div class="sub">${zonder.map(s=>esc(s.naam)).join(', ')}. Vul de PLU in bij Soorten, anders rekent het advies voor die soort met de derving.</div></div>`:''}${kassaControleHtml()}`}
+document.addEventListener('click',async e=>{if(!e.target.closest('[data-kv]')||!isAdmin())return;const url=document.getElementById('kvUrl').value.trim(),code=document.getElementById('kvCode').value.trim(),st=document.getElementById('kvSt');
+  if(!/^https:\/\/.+/.test(url)||!code){toast('Vul het adres en de koppelcode in');return}S.kassaKop={url,code};bewaar();st.textContent='Bezig…';
+  try{const d=await kassaHaal(true);if(!d){st.textContent='Niet in de oefenmodus';return}toast(`✓ Kassaverkoop van ${Object.keys(d.dagen).length} ${Object.keys(d.dagen).length===1?'dag':'dagen'} opgehaald`);render()}catch(x){st.textContent='✗ '+x.message}});
+function kassaControleHtml(){if(!KV||!KV.dagen)return'';const van=plusDagen(iso(),-28),rs=[];
+  for(const s of S.soorten.filter(x=>x.type!=='vers'&&x.naam.trim()&&kaalPlu(x.plu))){let k=0,w=0,n=0;for(const d of Object.keys(KV.dagen)){if(d<van||d>=iso())continue;const g=S.historie[d]?.gezet?.[s.id],o=S.derving[d]?.[s.id];if(g==null||o==null)continue;k+=kassaVan(d,s)||0;w+=Math.max(0,g-o);n++}if(n)rs.push({s,k,w})}
+  return rs.length?`<div class="sectie"><div class="karkop"><b>Kassa-controle · laatste 4 weken</b></div><div class="tabelwrap"><table class="tabel"><tr><th>Soort</th><th>Kassa</th><th>Gezet − over</th></tr>${rs.map(r=>`<tr><td>${esc(r.s.naam)}</td><td>${fmt(r.k)}</td><td class="${Math.abs(r.k-r.w)>Math.max(3,0.15*Math.max(r.k,r.w))?'hoog':''}">${fmt(r.w)}</td></tr>`).join('')}</table></div><p class="hulp" style="margin:8px 12px">Oranje = groot verschil: er is iets kapot gegaan, opgegeten of verkeerd gescand.</p></div>`:''}
 function dervEuroHtml(){const metPrijs=heeft('euro')&&Object.keys(S.prijzen||{}).length>0,w0=maandag(iso()),weken=[...Array(12)].map((_,i)=>plusDagen(w0,-7*(11-i))),c=weken.map(w=>({w,...weekCijfers(w)}));
   const waarde=x=>metPrijs?x.eur:x.over,max=Math.max(1,...c.map(waarde)),W=340,H=150,bw=W/12;
   let h=`<div class="kop"><div class="koprij"><h1>Derving in ${metPrijs?'euro’s':'stuks'}</h1></div><p>De laatste 12 weken${metPrijs?', met de inkoopprijzen':''}. ${metPrijs?'':'Vul inkoopprijzen in (Beheer → Inkoopprijzen) om bedragen te zien.'}</p></div>
@@ -123,7 +143,8 @@ function dervEuroHtml(){const metPrijs=heeft('euro')&&Object.keys(S.prijzen||{})
   h+=`<div class="sectie"><div class="karkop"><b>Advies opzet</b></div>${adv.length?adv.map((a,i)=>`<div class="rij inv" style="flex-wrap:wrap"><div class="groei"><div class="naam" style="font-size:16px">${esc(a.s.naam)} op ${esc(GROEP[a.g])}</div><div class="sub">nu ${a.nu} per dag → advies <b>${a.a.aantal}</b> · gem. ${fmt(Math.round(a.a.gemDer*10)/10)} over${metPrijs&&prijs(a.s.id)?` · scheelt ± ${euro2((a.nu-a.a.aantal)*prijs(a.s.id)*(a.g==='mv'?5:1))} per week`:''}</div></div><button class="knop klein" data-de="toepas" data-v="${i}">Toepassen</button></div>`).join(''):`<p class="leeg" style="margin:10px">${heeft('advies')?'Geen aanpassingen nodig.':'Advies zit niet in het pakket.'}</p>`}</div>`;
   const vers=(typeof bestelAdvies==='function'?bestelAdvies():[]).filter(x=>x.soort==='minder');
   if(vers.length)h+=`<div class="kaartje"><h3>Vers brood (bestellen bij de bakker)</h3>${vers.map(x=>`<div class="sub"><b>${esc(x.s.naam)}</b> op ${WDL[x.w]}: ${esc(x.advies)} <span class="hulp" style="margin:0">(${Math.round(x.pct)}% over)</span></div>`).join('')}</div>`;
-  return h+'<p class="hulp" style="margin:12px 20px">Advies op basis van de laatste weken van dezelfde soort dag. Toepassen past de planning aan voor alle dagen in die groep.</p>'}
+  h+=kassaControleHtml();
+  return h+`<p class="hulp" style="margin:12px 20px">Advies op basis van de laatste weken van dezelfde soort dag${KV?', met de kassaverkoop uit Besteladvies':''}. Toepassen past de planning aan voor alle dagen in die groep.</p>`}
 let deAdv=[];
 function dervAdvies(){deAdv=[];if(!heeft('advies'))return deAdv;const groepen={mv:['ma','di','wo','do','vr'],za:['za'],zo:['zo']};
   for(const s of S.soorten.filter(x=>x.type!=='vers'&&x.naam.trim()))for(const[g,pks]of Object.entries(groepen)){const a=advies(s,g);if(!a||a.op)continue;const nu=Math.max(...pks.map(pk=>dagTotaal(pk,s)));if(a.aantal<nu)deAdv.push({s,g,pks,nu,a})}
@@ -149,7 +170,7 @@ function homeBasisTegels(){const t={};
     t.derving={k:'derving',a:'tab',v:'derving',ic:'🗑',l:'Derving',s:klaar?'✓ Lijst van vandaag opgeslagen':od?`${od} over datum vandaag`:'Derving invullen',wl:!klaar&&od>0}}
   if(urenMag()){const n=urenNu().length;t.uren={k:'uren',a:'tab',v:'uren',ic:'⏱',l:'Uren',s:n?`${n} aan het werk`:'Niemand ingeklokt'}}
   {const[st,wl]=clHomeStatus();t.check={k:'check',a:'tab',v:'check',ic:'✅',l:'Checklists',s:st,wl}}
-  {const o=chatTotaal();t.chat={k:'chat',a:'sub2',v:'berichten',ic:'💬',l:'Chat',s:o?`${o} ongelezen`:'Berichten',wl:o>0}}
+  {const o=chatTotaal();t.chat={k:'chat',a:'sub2',v:'berichten',ic:'💬',l:'Chat',s:o?`${o} ongelezen`:'Team en beheerder',wl:o>0}}
   return t}
 function meerCatalogus(){const s=sub,t=tab;try{sub=null;window.__meerItems=[];meerHtml()}catch(e){}finally{sub=s;tab=t}
   const uit={};for(const x of window.__meerItems||[]){const[k,tl,sb,,,act]=x;if(act&&act!=='sub')continue;if(k==='berichten')continue;
@@ -241,7 +262,8 @@ const PUSH_M=[['levering','🥖 Levering nog niet ingevuld'],['chat-beheer','�
 function pushSoortenHtml(){const uit=isObj(S.push?.uit)?S.push.uit:{};
   return`<div class="kaartje"><h3>Welke meldingen</h3><div class="sub">Zet uit wat je niet op je telefoon wilt krijgen.</div>${PUSH_B.map(([k,l])=>`<label class="schakel" style="margin:10px 0 0;color:var(--tekst);font-weight:400">${l}<input type="checkbox" data-pushsoort="${k}" ${uit[k]?'':'checked'}></label>`).join('')}</div>`}
 function pushSoortenMHtml(){const uit=isObj(prof().pushUit)?prof().pushUit:{},l=PUSH_M.filter(([k])=>k!=='levering'||mag('vinken')).filter(([k])=>k!=='uitklok'||urenMag()||roosterAlle().some(r=>r.uid===L.sessie));
-  return`<div class="kaartje"><h3>Welke meldingen</h3><div class="sub">Werkt als pushmeldingen op deze telefoon aan staan.</div>${l.map(([k,t])=>`<label class="schakel" style="margin:10px 0 0;color:var(--tekst);font-weight:400">${t}<input type="checkbox" data-pushsoortm="${k}" ${uit[k]?'':'checked'}></label>`).join('')}</div>`}
+  return`<details class="kaartje"><summary><b>Welke meldingen</b></summary><div class="sub" style="margin-top:6px">Werkt als pushmeldingen op deze telefoon aan staan.</div>${l.map(([k,t])=>`<label class="schakel" style="margin:10px 0 0;color:var(--tekst);font-weight:400">${t}<input type="checkbox" data-pushsoortm="${k}" ${uit[k]?'':'checked'}></label>`).join('')}</details>`}
 document.addEventListener('change',e=>{const d=e.target.dataset||{};
   if(d.pushsoort&&isAdmin()){if(!isObj(S.push))S.push={};if(!isObj(S.push.uit))S.push.uit={};if(e.target.checked)delete S.push.uit[d.pushsoort];else S.push.uit[d.pushsoort]=true;bewaar();toast(e.target.checked?'Melding aan':'Melding uit')}
   if(d.pushsoortm){const id=L.sessie;if(!id)return;const u={...(isObj(prof().pushUit)?prof().pushUit:{})};if(e.target.checked)delete u[d.pushsoortm];else u[d.pushsoortm]=true;S.profielen[id]={...(S.profielen[id]||{}),pushUit:u};bewaar();toast(e.target.checked?'Melding aan':'Melding uit')}});
+

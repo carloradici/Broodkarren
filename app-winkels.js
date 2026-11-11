@@ -12,7 +12,7 @@ const PAKKETTEN={basis:[],plus:['scan','push','rapport'],compleet:['scan','push'
 const PAKKET_NAAM={basis:'Basis',plus:'Plus',compleet:'Compleet'};
 const FUNCTIE_NAAM={scan:'Pakbon scannen',push:'Pushmeldingen',rapport:'Rapporten en export',advies:'Bestel-advies',euro:"Derving in euro's",cadeau:'Cadeaubonnen',deeg:'Deegbestelling en voorraad'};
 const FUNCTIE_UITLEG={scan:'Pakbon fotograferen of als pdf inlezen, leesfouten en pakbonnen terugzoeken.',push:'Meldingen op de telefoon: levering nog invullen, materiaal op, weekoverzicht.',rapport:'Weekrapport, weekoverzicht, nieuwe producten volgen en exporteren naar Excel.',advies:'Advies per soort en per weekdag op basis van de derving.',euro:"Inkoopprijzen invullen en de derving in euro's zien.",cadeau:'Cadeaubonnen uitgeven, innemen en bijhouden.',deeg:'Voorraad diepvries tellen en dozen bestellen.'};
-const MEER_FUNCTIE={rapport:'rapport',nieuw:'rapport',export:'rapport',weekoverzicht:'rapport',bestel:'deeg',cadeau:'cadeau',push:'push',pakbonnen:'scan',leesfouten:'scan',besteladvies:'advies',prijzen:'euro'};
+const MEER_FUNCTIE={rapport:'rapport',nieuw:'rapport',export:'rapport',weekoverzicht:'rapport',kassa:'advies',bestel:'deeg',cadeau:'cadeau',push:'push',pakbonnen:'scan',leesfouten:'scan',besteladvies:'advies',prijzen:'euro'};
 const heeft=f=>L.modus==='lokaal'||!WINKEL||(WINKEL.functies||[]).includes(f);
 const isEigenaar=()=>L.modus!=='lokaal'&&WINKEL?.rol==='eigenaar';
 const isAanbieder=()=>L.modus!=='lokaal'&&!!WINKEL?.aanbieder;
@@ -86,21 +86,21 @@ function wisselWinkel(id){if(!id||id===WK.id)return;bewaarNu();WK.id=id;bewaarWK
 function koppelHtml(){
   const fout=koppelFout||L.melding||'';
   if(L.uitnodiging&&koppelTab!=='mail')return uitnodigingHtml(fout);
-  const tabs=`<div class="segment koppeltabs"><button data-a="koppeltab" data-v="code" class="${koppelTab==='code'?'aan':''}">Met koppelcode</button><button data-a="koppeltab" data-v="mail" class="${koppelTab==='mail'?'aan':''}">Met e-mail</button></div>`;
+  const mail=koppelTab==='mail';
   return`<div class="merkscherm">${merkKop('Brood Opzet','Toestel koppelen')}
    ${db?'':'<p class="merkfout">Geen verbinding met de online opslag. Controleer je internet en open de app opnieuw.</p>'}
-   ${tabs}
-   ${koppelTab==='code'?`<p class="merktekst">Vraag de beheerder om de koppelcode van de winkel (Meer → Winkel). Daarna zien alle toestellen van de winkel dezelfde gegevens.</p>
+   ${!mail?`<p class="merktekst">Vul de koppelcode van de winkel in. Die krijg je van de beheerder.</p>
      <label>Koppelcode</label><input class="veld codeveld" id="kCode" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="12" placeholder="Bijv. K7MX4PQ2" value="${esc(L.koppelcode||'')}">
      <div class="fout" id="fout">${esc(fout)}</div>
-     <button class="merkknop" data-a="koppelcode" ${db?'':'disabled'}>Koppelen</button>`
+     <button class="merkknop" data-a="koppelcode" ${db?'':'disabled'}>Koppelen</button>
+     <p style="margin-top:26px;text-align:center"><button class="merklink" data-a="koppeltab" data-v="mail">Andere manier</button></p>`
    :`<p class="merktekst">Voor de eigenaar of met de winkel-login. Log één keer in; daarna blijft dit toestel gekoppeld.</p>
      <label>E-mailadres</label><input class="veld" id="kMail" type="email" autocomplete="username" autocapitalize="off" placeholder="naam@voorbeeld.nl">
      <label>Wachtwoord</label><input class="veld" id="kWw" type="password" autocomplete="current-password">
      <div class="fout" id="fout">${esc(fout)}</div>
      <button class="merkknop" data-a="koppel" ${db?'':'disabled'}>Koppelen</button>
-     ${L.uitnodiging?'<p style="margin-top:14px;text-align:center"><button class="merklink" data-a="koppeltab" data-v="code">Terug naar de uitnodiging</button></p>':''}`}
-   <p style="margin-top:26px;text-align:center"><button class="merklink" data-a="lokaalmodus">Zonder koppeling gebruiken (alleen dit toestel)</button></p></div>`}
+     <p style="margin-top:14px;text-align:center"><button class="merklink" data-a="koppeltab" data-v="code">${L.uitnodiging?'Terug naar de uitnodiging':'Terug naar koppelcode'}</button></p>
+     <p style="margin-top:20px;text-align:center"><button class="merklink" data-a="lokaalmodus">Zonder koppeling gebruiken (alleen dit toestel)</button></p>`}</div>`}
 function uitnodigingHtml(fout){const f=L.uitForm||{};
   return`<div class="merkscherm">${merkKop('Brood Opzet','Welkom!')}
    <p class="merktekst">Je bent uitgenodigd om Brood Opzet te gebruiken. Vul je gegevens in. Je e-mailadres en wachtwoord gebruik je om je eigen telefoon te koppelen; medewerkers koppelen later met een koppelcode.</p>
@@ -175,7 +175,7 @@ async function vernieuwWinkels(){try{const l=await db.rpc('mijn_winkels');if(Arr
 function codeTekst(c){return String(c||'').replace(/^(.{4})(.+)$/,'$1 $2')}
 function toestellenHtml(){const w=WINKEL,i=wkInfo||{};if(!i.toe&&!i.laden&&!i.fout){laadWinkelInfo()}
   const code=i.code;
-  return`<div class="kaartje"><h3>📱 Toestellen koppelen</h3><div class="sub">Medewerkerstelefoons en de winkeltelefoon koppel je met deze code. Open Brood Opzet op het toestel, kies <b>Met koppelcode</b> en vul hem in.</div>
+  return`<div class="kaartje"><h3>📱 Toestellen koppelen</h3><div class="sub">Medewerkerstelefoons en de winkeltelefoon koppel je met deze code. Open Brood Opzet op het toestel en vul hem in.</div>
     ${i.laden&&!i.toe?'<div class="sub" style="margin-top:8px">Ophalen…</div>':i.fout?`<div class="sub rood" style="margin-top:8px">${esc(i.fout)}</div>`:code?`<div class="koppelcode">${esc(codeTekst(code.code))}</div><div class="sub" style="text-align:center">Geldig tot ${esc(datumNL(code.verloopt))} · vaker te gebruiken</div>
      <div class="knoppen" style="padding:0;margin-top:10px;flex-wrap:wrap"><button class="knop klein" data-a="codedeel">Delen</button><button class="knop rand klein" data-a="codenieuw">${afwStap==='codenieuw'?'Zeker? Oude code vervalt':'Nieuwe code'}</button></div>`
      :`<div class="knoppen" style="justify-content:flex-start;padding:0;margin-top:10px"><button class="knop klein" data-a="codenieuw">Koppelcode maken</button></div>`}</div>
@@ -249,4 +249,6 @@ function toonUitnLink(c){if(!window.qrcode)laadQr().then(()=>{if(document.getEle
   ${window.qrcode?`<div class="qrvak">${qrSvg(uitnLink(c),5)}</div>`:''}<div class="koppelcode">${esc(c)}</div><p class="sub" id="uitnLink" data-c="${esc(c)}" style="text-align:center;word-break:break-all">${esc(uitnLink(c))}</p>
   <div class="knoppen"><button class="knop" data-a="uitnodigingdeel" data-v="${esc(c)}">Delen</button></div></div>`)}
 const uitnTekst=c=>`Je bent uitgenodigd voor Brood Opzet, de app voor de broodafdeling.\n\nOpen deze link op je telefoon en vul je gegevens in:\n${uitnLink(c)}\n\nLukt de link niet? Open ${appUrl()} en gebruik code ${c}.`;
-const codeDeelTekst=c=>`Brood Opzet koppelen voor ${winkelNaam()}:\n1. Open ${appUrl()} en zet de app op je beginscherm.\n2. Open de app en kies "Met koppelcode".\n3. Vul deze code in: ${codeTekst(c)}\nDaarna kies je je naam en vul je je pincode in.`;
+const codeDeelTekst=c=>`Brood Opzet koppelen voor ${winkelNaam()}:\n1. Open ${appUrl()} en zet de app op je beginscherm.\n2. Open de app en vul deze code in: ${codeTekst(c)}\nDaarna kies je je naam en vul je je pincode in.`;
+
+

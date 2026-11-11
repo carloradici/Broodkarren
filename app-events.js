@@ -43,7 +43,7 @@ const IS_STANDALONE=()=>matchMedia('(display-mode: standalone)').matches||naviga
 document.documentElement.classList.toggle('android',IS_ANDROID);
 const INSTALL_IPHONE=['Open de link (of scan de QR-code) met Safari.','Tik onderaan op de deelknop (vierkantje met pijl omhoog).','Kies "Zet op beginscherm" en tik op "Voeg toe".'];
 const INSTALL_ANDROID=['Open de link (of scan de QR-code) met Chrome.','Tik rechtsboven op de drie puntjes.','Kies "App installeren" of "Toevoegen aan startscherm".'];
-const INSTALL_SLOT='Open Brood Opzet vanaf je beginscherm. Eerste keer op dit toestel? Kies "Met koppelcode" en vul de code van de winkel in (vraag de beheerder). Kies daarna je naam, vul de tijdelijke pincode in en kies je eigen pincode.';
+const INSTALL_SLOT='Open Brood Opzet vanaf je beginscherm. Eerste keer op dit toestel? Vul de koppelcode van de winkel in (vraag de beheerder). Kies daarna je naam, vul de tijdelijke pincode in en kies je eigen pincode.';
 const pushNietTekst=()=>IS_ANDROID?'Dit werkt als Brood Opzet als app op je beginscherm staat (via Chrome → drie puntjes → App installeren).':'Dit werkt alleen als Brood Opzet op het beginscherm staat, op iOS 16.4 of nieuwer.';
 const pushGeweigerdTekst=()=>IS_ANDROID?'Meldingen zijn geweigerd. Zet ze aan via Instellingen → Apps → Brood Opzet (of Chrome) → Meldingen.':'Meldingen zijn geweigerd. Zet ze aan via Instellingen → Meldingen → Brood Opzet.';
 /* installeren op Android: Chrome geeft een installatievraag die we op een knop zetten */
@@ -149,7 +149,7 @@ document.addEventListener('click',async e=>{
     try{await db.rpc('maak_koppelcode',{w:WINKEL.id,r:'winkel'});log('Nieuwe koppelcode gemaakt');await laadWinkelInfo()}catch(e){toast(foutTekst(e))}return}
   case'codedeel':if(wkInfo?.code)deelTekst(codeDeelTekst(wkInfo.code.code),'Brood Opzet koppelen');return;
   case'blcode':{if(!isEigenaar())return;try{const c=await db.rpc('maak_koppelcode',{w:WINKEL.id,r:'bedrijfsleider'});wkInfo={...(wkInfo||{}),blCode:c};render()}catch(e){toast(foutTekst(e))}return}
-  case'bldeel':if(wkInfo?.blCode)deelTekst(`Je bent bedrijfsleider van ${winkelNaam()} in Brood Opzet.\n1. Open ${appUrl()} en zet de app op je beginscherm.\n2. Kies "Met koppelcode" en vul in: ${codeTekst(wkInfo.blCode)}\nDe code is 24 uur geldig.`,'Brood Opzet');return;
+  case'bldeel':if(wkInfo?.blCode)deelTekst(`Je bent bedrijfsleider van ${winkelNaam()} in Brood Opzet.\n1. Open ${appUrl()} en zet de app op je beginscherm.\n2. Open de app en vul de koppelcode in: ${codeTekst(wkInfo.blCode)}\nDe code is 24 uur geldig.`,'Brood Opzet');return;
   case'toestelweg':{if(!WINKEL||!kanBeheren())return;if(afwStap!=='toestelweg:'+v){afwStap='toestelweg:'+v;render();return}afwStap=null;
     try{await db.rpc('verwijder_toestel',{w:WINKEL.id,lid:+v});log('Toestel losgekoppeld');await laadWinkelInfo()}catch(e){toast(foutTekst(e))}return}
   case'ovweek':ovWeek=v==='0'?plusDagen(maandag(iso()),-7):plusDagen(ovWeek,+v);ovData=null;render();return;
@@ -451,6 +451,9 @@ document.addEventListener('click',async e=>{
   case'bekijkdag':tab='lijst';datum=v;volgVandaag=v===iso();sub=null;render();m.scrollTop=0;return;
   case'zoek':zoekOpen=!zoekOpen;if(!zoekOpen)zoekTerm='';render();if(zoekOpen)setTimeout(()=>document.getElementById('kzZoek')?.focus(),30);return;
   case'pinfo':openInfo(v);return;
+  case'rijmenu':{const s=S.soorten.find(x=>x.id===v);if(!s)return;toonSheet(`<div class="pkop"><span style="width:70px"></span><b>${esc(s.naam)}</b><button data-a="sluit" style="font-weight:700">Sluiten</button></div><div class="pinhoud"><div class="knoppen" style="flex-direction:column"><button class="knop rand" data-a="pinfo" data-v="${v}">ⓘ Productinfo</button><button class="knop rand" data-a="aanpas" data-v="${v}">✎ Aantal aanpassen</button></div></div>`);return}
+  case'kzmeer':kzMeer=!kzMeer;if(!kzMeer&&zoekOpen){zoekOpen=false;zoekTerm=''}render();return;
+  case'dervmeer':dervMeer=!dervMeer;if(!dervMeer){dervDatum=iso();best='weg'}render();return;
   case'notfoto':{for(const d in S.notities){const n=S.notities[d][v];if(n&&notFotoSrc(n)){toonFoto(notFotoSrc(n));return}}return}
   case'fotozoom':b.closest('.fotozoom').classList.toggle('groot');return;
   case'feestkopie':case'feestnul':{if(S.afwijkend[v])return;const dk=dagKey(v),plan={};if(a==='feestkopie')for(const mo of S.momenten){plan[mo.id]={};for(const s of S.soorten){const x=stuksIn(dk,mo.id,s);if(x>0)plan[mo.id][s.id]=x}}
@@ -644,3 +647,4 @@ document.addEventListener('keydown',e=>{if(blok){if(/^[0-9]$/.test(e.key)){blokT
 document.addEventListener('visibilitychange',()=>{if(document.hidden){if(L.sessie){L.wegSinds=Date.now();bewaarL()}bewaarNu();if(nieuweBouw&&!updatesTonen()&&kanUpdaten())setTimeout(()=>{if(document.hidden)werkBij(true)},1500);return}const was=!!L.sessie;weerLaden();volgHash();zoekUpdate(true);if(volgVandaag)datum=standaardDatum();controleerSessie();if(was&&!L.sessie){werk=null;document.getElementById('werk').classList.remove('open');sluit();sluitBlok()}if(L.gekoppeld&&db)sync();if(WINKEL&&db?.rpc&&Date.now()-(L.winkelsT||0)>36e5){L.winkelsT=Date.now();vernieuwWinkels().then(()=>renderZacht())}render();nieuwsNaStart()});
 window.addEventListener('pagehide',()=>{if(L.sessie){L.wegSinds=Date.now();bewaarL()}});
 setInterval(()=>{const was=!!L.sessie;controleerSessie();if(was&&!L.sessie){werk=null;document.getElementById('werk').classList.remove('open');sluit();render()}},60000);
+

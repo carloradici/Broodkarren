@@ -8,6 +8,7 @@ Web-app (PWA) van Coop Vogelenzang voor broodkarren klaarzetten, derving, bestel
 - Pas gericht aan (Edit), herschrijf geen hele bestanden. Houd code compact.
 - Nieuw scherm = meteen een eigen hulptekst.
 - Stuur tijdens langer werk korte voortgangsberichten met percentage ("⏳ 40% · nu testen").
+- **Bouw altijd verder op de bestanden in deze repo** (eerst ophalen van GitHub), nooit op een eigen kopie of één samengevoegd index.html. Werk niet in twee chats tegelijk aan deze app: dan overschrijft de ene upload de andere.
 
 ## Opbouw
 - `index.html`: alleen HTML-geraamte + laadscript. Daarin staat `const APP_BOUW='x.y'` (de updatecheck leest dit uit index.html) en `LADEN` = de lijst met app-bestanden.
@@ -29,7 +30,7 @@ Web-app (PWA) van Coop Vogelenzang voor broodkarren klaarzetten, derving, bestel
 | app-meldingen.js | meldingen, euro's, bestel-advies, weekoverzicht, back-up, cadeaubonnen |
 | app-uren.js | urenregistratie, Home, plek onthouden |
 | app-betalen.js | Te betalen (inkoopfacturen) |
-| app-rooster.js | rooster, checklists, derving in euro's, Home indelen, meldingsoorten |
+| app-rooster.js | rooster, checklists, derving in euro's, kassaverkoop uit Besteladvies (KV, kassaHaal, kassa-controle), Home indelen, meldingsoorten |
 | app-chat.js | chat |
 | app-overdracht-print.js | overdracht, rondleiding, dag afsluiten, printen, feestdagen, weer, export |
 | app-schermen.js | Invullen, Derving, Meer, accounts |
@@ -39,13 +40,14 @@ Web-app (PWA) van Coop Vogelenzang voor broodkarren klaarzetten, derving, bestel
 Edge Functions: `stuur-push.js`, `factuur-in.js`, `brood-export.js` (alleen lezen: klaargezet, over en voorraad van bake-off voor Coop Besteladvies, beveiligd met koppelcode in de stub) (vaste naam, Supabase heeft alleen een stub die ze importeert). `ocr/` = leesprogramma pakbon, niet aanraken.
 
 ## Nieuwe versie (nummers met één punt: 10.26, 10.27 …)
-1. `index.html`: `APP_BOUW='x.y'` en `?b=x.y` bij style.css en in het laadscript.
+1. `index.html`: `APP_BOUW='x.y'` en `?b=x.y` bij style.css (het laadscript gebruikt APP_BOUW zelf).
 2. `sw.js`: `VERSIE='broodopzet-x.y'`.
 3. Nieuws voor de gebruiker: `APP_VERSIE` + tekst in app-opslag.js (alleen bij grote versies).
 
 ## Testen
 - Grote versie: volledige Playwright-test, ook een ronde als medewerker; testversie in Claude bijwerken.
 - Kleine fix: snelle controle (app laadt zonder fouten, het aangepaste scherm werkt).
+- Testversie in Claude (artifact "Brood Opzet") is één los HTML-bestand: neem index.html, zet style.css in een `<style>` en vervang het laadscript door één `<script>` met `APP_BOUW` + alle bestanden uit `LADEN` achter elkaar.
 - Testen lokaal: `python3 -m http.server`, dan `http://localhost:8000/` (laadt niet via file://). "Zonder koppeling gebruiken" geeft een lokale testwinkel.
 - Rapporteer alleen de uitkomst.
 

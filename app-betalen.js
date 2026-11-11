@@ -387,3 +387,5 @@ document.addEventListener('change',e=>{if(e.target.id==='tbIncAan'){const v=docu
 .tbsnel{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.tblaatst{font-style:italic}
 .tbtotaal .tbgroot{font-size:30px;font-weight:900;font-variant-numeric:tabular-nums}.groentekst{color:var(--groen)}
 @media(max-width:420px){.tbrij{flex-wrap:wrap}.tbrechts{width:100%;flex-direction:row;justify-content:space-between;align-items:center}}`;document.head.appendChild(st)})();
+
+

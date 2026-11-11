@@ -231,3 +231,4 @@ async function pdfVoorbeeldBestand(file,titel){let ov=document.getElementById('f
     for(let i=1;i<=pdf.numPages&&ov.classList.contains('open');i++){const pg=await pdf.getPage(i),vp=pg.getViewport({scale:1.6}),c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
       el.insertAdjacentHTML('beforeend',`<img src="${c.toDataURL('image/jpeg',.85)}" alt="Pagina ${i}" data-a="factvbzoom" style="margin-bottom:10px">`)}}
   catch(e){const el=ov.querySelector('.vbinhoud');if(el)el.innerHTML='<p class="vbmelding">Bekijken lukt nu niet.</p>'}}
+

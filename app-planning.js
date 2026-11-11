@@ -100,14 +100,16 @@ function snapshot(){
   const lg=Date.now()-60*864e5;for(const[id,l]of Object.entries(S.log))if(l.t<lg)delete S.log[id];
 }
 function historie(s,groep){
-  return Object.keys(S.derving).filter(d=>dagGroep(d)===groep&&!S.afwijkend[d]&&!S.historie[d]?.afw&&S.derving[d]?.[s.id]!=null).sort().reverse().slice(0,8)
-    .map(d=>{const gezet=S.historie[d]?.gezet?.[s.id]??0,der=S.derving[d][s.id],bij=bijbakStuks(d,s.id);return{d,gezet,der,bij,verkocht:Math.max(0,gezet-der),verkochtAdv:Math.max(0,Math.min(gezet-bij,gezet-der))}});
+  const kd=KV&&KV.dagen&&kaalPlu(s.plu)?Object.keys(KV.dagen).filter(d=>S.historie[d]?.gezet?.[s.id]>0):[];
+  return[...new Set([...Object.keys(S.derving).filter(d=>S.derving[d]?.[s.id]!=null),...kd])].filter(d=>dagGroep(d)===groep&&!S.afwijkend[d]&&!S.historie[d]?.afw).sort().reverse().slice(0,8)
+    .map(d=>{const gezet=S.historie[d]?.gezet?.[s.id]??0,dv=S.derving[d]?.[s.id],bij=bijbakStuks(d,s.id),k=kassaVan(d,s),der=dv??Math.max(0,gezet-k);
+      return{d,gezet,der,bij,k,verkocht:k??Math.max(0,gezet-der),verkochtAdv:k!=null?Math.min(k,Math.max(0,gezet-bij)):Math.max(0,Math.min(gezet-bij,gezet-der)),op:dv!=null?dv===0:k>=gezet}});
 }
 function advies(s,groep){
   if(!heeft('advies'))return null;
   const h=historie(s,groep).slice(0,4);if(h.length<2)return null;
   const gemDer=h.reduce((t,x)=>t+x.der,0)/h.length,gemGezet=h.reduce((t,x)=>t+x.gezet,0)/h.length;
-  if(h.every(x=>x.der===0))return{h,gemDer,gemGezet,op:true};
+  if(h.every(x=>x.op))return{h,gemDer,gemGezet,op:true};
   const gw=[4,3,2,1].slice(0,h.length),som=gw.reduce((a,b)=>a+b,0),gew=h.reduce((t,x,i)=>t+x.verkochtAdv*gw[i],0)/som;
   let trend='';if(h.length>=4){const nu=(h[0].verkochtAdv+h[1].verkochtAdv)/2,oud=(h[2].verkochtAdv+h[3].verkochtAdv)/2;if(oud>0&&(nu-oud)/oud>=0.1)trend='↑';else if(oud>0&&(nu-oud)/oud<=-0.1)trend='↓'}
   return{h,gemDer,gemGezet,trend,aantal:Math.max(s.min||0,Math.ceil(gew))};
@@ -133,3 +135,4 @@ function bestelBerekening(){
     const tekort=Math.max(0,nodig-Math.max(0,vr||0));return{s,nodig,vr,dozen:s.perDoos?Math.ceil(tekort/s.perDoos):null}}).filter(r=>r.nodig>0||r.vr!=null);
   return{L1,L2,van:dagen[0],tot:dagen[dagen.length-1],regels};
 }
+
