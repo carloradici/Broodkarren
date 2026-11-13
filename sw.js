@@ -1,5 +1,5 @@
 // Brood Opzet: werkt ook zonder internet. Verhoog VERSIE bij elke nieuwe versie.
-const VERSIE='broodopzet-10.29';
+const VERSIE='broodopzet-10.30';
 const OCR_CACHE = 'broodopzet-ocr-1'; // leesprogramma voor pakbon scannen (blijft bewaard tussen versies)
 const SUPA_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js';
 const APP = ['style.css', 'app-basis.js', 'app-logo.js', 'app-basis2.js', 'app-facturen.js', 'app-bestelboek.js', 'app-winkels.js', 'app-planning.js', 'app-opslag.js', 'app-scherm.js', 'app-pakbon.js', 'app-meldingen.js', 'app-uren.js', 'app-betalen.js', 'app-rooster.js', 'app-chat.js', 'app-overdracht-print.js', 'app-schermen.js', 'app-events.js', 'app-start.js'].map(f => f + '?b=' + VERSIE.split('-')[1]);

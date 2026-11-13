@@ -11,12 +11,12 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
 <title>Brood Opzet</title>
-<link rel="stylesheet" href="style.css?b=10.29">
+<link rel="stylesheet" href="style.css?b=10.30">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script></head>
 <body><div id="app"><div id="statusplek"></div><div id="opslagmelding">Opslaan mislukt: het geheugen is vol. Verwijder een paar foto's bij Broodsoorten.</div><main id="scherm"></main><nav id="nav"></nav></div>
 <div id="sheet"><div class="paneel" id="paneel"></div></div><div id="werk"></div><div id="feest"></div><div id="undo"></div><div id="bevestig"></div><div id="oefenbalk"></div><div id="tour"></div><div id="printvak"></div>
 <script>
-const APP_VERSIE='10.0',APP_BOUW='10.29';
+const APP_VERSIE='10.0',APP_BOUW='10.30';
 /* Laadt de app-bestanden en voert ze uit als één geheel (zoals vroeger in één index.html). */
 (()=>{const LADEN=["app-basis.js", "app-logo.js", "app-basis2.js", "app-facturen.js", "app-bestelboek.js", "app-winkels.js", "app-planning.js", "app-opslag.js", "app-scherm.js", "app-pakbon.js", "app-meldingen.js", "app-uren.js", "app-betalen.js", "app-rooster.js", "app-chat.js", "app-overdracht-print.js", "app-schermen.js", "app-events.js", "app-start.js"];
 Promise.all(LADEN.map(n=>fetch(n+'?b='+APP_BOUW).then(r=>{if(!r.ok)throw n;return r.text()}))).then(t=>{const s=document.createElement('script');s.textContent=t.join('\n');document.body.appendChild(s)}).catch(e=>document.body.insertAdjacentHTML('beforeend','<p style="padding:24px;font:18px sans-serif">De app kon niet laden ('+e+'). Controleer je internet en open de app opnieuw.</p>'))})();

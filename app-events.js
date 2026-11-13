@@ -158,6 +158,7 @@ document.addEventListener('click',async e=>{
   case'ovweek':ovWeek=v==='0'?plusDagen(maandag(iso()),-7):plusDagen(ovWeek,+v);ovData=null;render();return;
   case'slotfunctie':openSlotFunctie(v);return;
   case'factfilter':factFilter=v;render();return;
+  case'bbhaal':bbAuto(true);return;
   case'bbnieuw':{if(!bbMag())return;const n=(prompt('Naam van het boek (bijv. Brood, AGF of Vers)')||'').trim();if(!n)return;const id='bb'+Date.now().toString(36);S.bestelboeken.boeken[id]={id,naam:n.slice(0,40),arts:{}};log(`Bestelboek ${n} aangemaakt`);bewaar();bbBoek=id;bbZoek='';bbFilter='alle';bbOpen={};sub='bbkies';render();m.scrollTop=0;return}
   case'bbkies':if(!bbMag())return;bbBoek=v;bbZoek='';bbFilter='alle';bbOpen={};sub='bbkies';render();m.scrollTop=0;return;
   case'bbfilter':bbFilter=v;render();return;
