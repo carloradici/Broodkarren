@@ -476,7 +476,7 @@ function gebruikerOpslaan(){
 }
 
 /* ---------- sheets ---------- */
-function toonSheet(html){undoVerberg();document.getElementById('paneel').innerHTML=html;document.getElementById('sheet').classList.add('open');setTimeout(terugBewaak,0)}
+function toonSheet(html){undoVerberg();if(!document.activeElement?.matches('input,textarea,select'))schermTerug();document.getElementById('paneel').innerHTML=html;document.getElementById('sheet').classList.add('open');setTimeout(terugBewaak,0)}
 function sluit(){document.getElementById('sheet').classList.remove('open');bewerk=null}
 function openSoort(s){
   bewerk={...s,soort:'brood',foto:S.fotos[s.id]||null,type:s.type||'afbakken',gesneden:s.gesneden||'voor',programmaId:s.programmaId||null,allergenen:[...(s.allergenen||[])]};verwStap=false;

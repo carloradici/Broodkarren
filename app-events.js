@@ -69,6 +69,9 @@ function terugStap(){
   if(tab!=='home'){plekBewaar();tab='home';render();plekTerug();return true}
   return false}
 window.addEventListener('popstate',()=>{if(!IS_ANDROID)return;const was=terugWacht;terugWacht=false;if(!was)return;if(terugStap())setTimeout(terugBewaak,0);else history.back()});
+/* iPhone: na sluiten toetsenbord blijft het scherm verschoven, tikken komt dan te laag → terugzetten */
+function schermTerug(){if(scrollY||document.documentElement.scrollTop||document.body.scrollTop)scrollTo(0,0)}
+document.addEventListener('focusout',()=>setTimeout(()=>{const a=document.activeElement;if(!a||!a.matches('input,textarea,select'))schermTerug()},80));
 /* toetsenbord open: menubalk onderin verbergen (Android) */
 document.addEventListener('focusin',e=>{if(IS_ANDROID&&e.target.matches('input:not([readonly]):not([type=checkbox]):not([type=radio]):not([type=file]),textarea'))document.body.classList.add('toetsenbord')});
 document.addEventListener('focusout',()=>{if(IS_ANDROID)setTimeout(()=>{const a=document.activeElement;if(!a||!a.matches('input:not([readonly]),textarea'))document.body.classList.remove('toetsenbord')},120)});
