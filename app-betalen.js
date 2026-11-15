@@ -56,7 +56,7 @@ function tbFilterHtml(){const st=tbTab==='open'?[['alle','Alles'],['laat','Te la
     <label>Leverancier<select class="veld" id="tbLevSel"><option value="">Alle leveranciers</option>${tbLeveranciers().map(l=>`<option ${tbF.lev.toLowerCase()===l.toLowerCase()?'selected':''}>${esc(l)}</option>`).join('')}</select></label>
     <div class="minmax"><div><label>Factuurdatum van</label><input class="veld" type="date" id="tbFvan" value="${esc(tbF.van)}"></div><div><label>tot en met</label><input class="veld" type="date" id="tbFtot" value="${esc(tbF.tot)}"></div></div></div>`}
 function betalenHtml(){if(!betalenMag())return'';const o=tbOpen(),b=tbBetaald(),tot=o.reduce((t,x)=>t+tbRest(x),0),laat=o.filter(tbTeLaat),inc=o.filter(tbInc);
-  let h=`<div class="kop"><div class="koprij"><h1>Te betalen</h1></div><p>Je inkoopfacturen. Alleen voor jou zichtbaar.</p></div>
+  let h=`<div class="kop"><div class="koprij"><h1>Te betalen</h1><div class="kopeind"><button class="info" data-a="haalbij" aria-label="Vernieuwen">⟳</button>${info('tebetalen')}</div></div><p>Je inkoopfacturen. Alleen voor jou zichtbaar.</p></div>
    <div class="segment"><button data-tb="tab" data-v="open" class="${tbTab==='open'?'aan':''}">Open (${o.length})</button><button data-tb="tab" data-v="planning" class="${tbTab==='planning'?'aan':''}">Planning</button><button data-tb="tab" data-v="betaald" class="${tbTab==='betaald'?'aan':''}">Betaald (${b.length})</button></div>`;
   if(tbTab==='open')h+=tbInboxHtml();
   if(tbTab==='open')h+=`<div class="kaartje tbtotaal"><div class="tbgroot">${fEuro(tot)}</div><div class="sub">nog te betalen · ${o.length} ${o.length===1?'factuur':'facturen'}</div>
@@ -171,9 +171,10 @@ const tbNrN=x=>String(x||'').toLowerCase().replace(/[\s.\-\/]/g,'');
 const tbLevN=x=>String(x||'').toLowerCase().replace(/\b(b\.?\s?v\.?|v\.?o\.?f\.?|n\.?v\.?|holding)\b/g,'').replace(/[^a-z0-9]/g,'');
 function tbDubbel(nr,lev,tot,eigen){const n=tbNrN(nr);if(n.length<3)return null;const l=tbLevN(lev);
   return tbAlle().find(y=>y.id!==eigen&&tbNrN(y.nr)===n&&((l&&tbLevN(y.lev)&&(tbLevN(y.lev).includes(l)||l.includes(tbLevN(y.lev))))||(tot&&+y.tot===+tot)))||null}
-function tbDubHtml(d){if(!d)return'';return`<div class="kaartje tbdub"><b>⚠️ Deze factuur staat er al in</b><div class="sub">${esc(d.lev||'?')} · ${esc(d.nr||'')} · ${fEuro(+d.tot||0)} · factuur ${tbD(d.fdat)} · ${tbIsBetaald(d)?'<b>betaald '+tbD(d.betaald)+'</b>':'<b>nog open</b>'}</div>
-   <div class="knoppen" style="justify-content:flex-start;gap:6px;flex-wrap:wrap;padding:8px 0 0"><button class="knop klein" data-tb="dubweg">${tbInActief?'Weggooien':'Niet toevoegen'}</button><button class="knop rand klein" data-tb="dubok">Toch toevoegen</button></div></div>`}
-function tbDubToon(d){const v=document.getElementById('tbDubVak');if(v)v.innerHTML=tbDubHtml(d);document.querySelector('#paneel .pinhoud')?.scrollTo({top:0,behavior:'smooth'})}
+let tbDubId=null;
+function tbDubHtml(d,sv){if(!d)return'';tbDubId=d.id;return`<div class="kaartje tbdub"><b>⚠️ Deze factuur staat er al in</b><div class="sub">${esc(d.lev||'?')} · ${esc(d.nr||'')} · ${fEuro(+d.tot||0)} · factuur ${tbD(d.fdat)} · ${tbIsBetaald(d)?'<b>betaald '+tbD(d.betaald)+'</b>':'<b>nog open</b>'}</div>
+   <div class="knoppen" style="justify-content:flex-start;gap:6px;flex-wrap:wrap;padding:8px 0 0">${sv?'<button class="knop klein" data-tb="dubsamen">Samenvoegen</button>':''}<button class="knop ${sv?'rand ':''}klein" data-tb="dubweg">${tbInActief?'Weggooien':'Niet toevoegen'}</button><button class="knop rand klein" data-tb="dubok">Toch toevoegen</button></div></div>`}
+function tbDubToon(d,sv){const v=document.getElementById('tbDubVak');if(v)v.innerHTML=tbDubHtml(d,sv);document.querySelector('#paneel .pinhoud')?.scrollTo({top:0,behavior:'smooth'})}
 async function tbToonPdf(src){let ov=document.getElementById('tbBijlOv');if(!ov){ov=document.createElement('div');ov.id='tbBijlOv';ov.setAttribute('role','dialog');document.body.appendChild(ov);ov.addEventListener('click',e=>{if(e.target.closest('[data-tbsluit]')||e.target===ov)ov.classList.remove('open')})}
   ov.innerHTML=`<div class="tbbijlbalk"><b>Factuur</b><span class="tbbijlhulp" id="tbPag">laden…</span><button data-tbsluit="1" class="knop wit klein">Sluiten</button></div><div class="tbbijlvak" id="tbPdfVak"></div>`;ov.classList.add('open');
   try{await laadPdfjs();const bin=atob(src.split(',')[1]),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
@@ -190,7 +191,7 @@ async function tbToonPdf(src){let ov=document.getElementById('tbBijlOv');if(!ov)
 /* ---------- formulieren ---------- */
 function tbFormulier(x,pre){const n=!x;if(n){tbScanKlaar=!!pre;tbStap=null}x=x||{fdat:iso(),verval:plusDagen(iso(),30),...(pre||{})};const inc=tbInc(x);
   toonSheet(`<div class="pkop"><button data-a="sluit">Annuleren</button><b>${n?'Nieuwe factuur':'Factuur'}</b><button data-tb="bewaar" data-v="${esc(x.id||'')}" style="font-weight:700">Bewaren</button></div><div class="pinhoud">
-   <div id="tbDubVak">${n?tbDubHtml(tbDubbel(x.nr,x.lev,x.tot,'')):''}</div>
+   <div id="tbDubVak">${n?tbDubHtml(tbDubbel(x.nr,x.lev,x.tot,''),1):''}</div>
    <label>Leverancier</label><input class="veld" id="tbLev" list="tbLevLijst" maxlength="60" value="${esc(x.lev||'')}" autocomplete="off"><datalist id="tbLevLijst">${tbLeveranciers().map(l=>`<option value="${esc(l)}">`).join('')}</datalist>
    <label>Factuurnummer</label><input class="veld" id="tbNr" maxlength="40" value="${esc(x.nr||'')}" autocomplete="off">
    <div class="minmax"><div><label>Factuurdatum</label><input class="veld" type="date" id="tbFd" value="${esc(x.fdat||'')}"></div><div><label>Vervaldatum</label><input class="veld" type="date" id="tbVv" value="${esc(x.verval||'')}" data-auto="${n&&!pre?.verval?1:''}"></div></div>
@@ -318,7 +319,7 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-tb]');if(
     if(!lev)return tbFout('Vul de leverancier in.');if(!nr)return tbFout('Vul het factuurnummer in.');if(!fd)return tbFout('Vul de factuurdatum in.');if(!(tot>0))return tbFout('Vul het factuurtotaal in.');if(vv&&vv<fd)return tbFout('De vervaldatum ligt voor de factuurdatum.');
     if(incAan&&!(incK>=0))return tbFout('Vul de incassokosten in.');
     const dub=tbDubbel(nr,lev,tot,v);
-    if(dub&&tbStap!=='dubok'){tbDubToon(dub);return}tbStap=null;
+    if(dub&&tbStap!=='dubok'){tbDubToon(dub,!x);return}tbStap=null;
     const id=x?v:urenId(),y=x||(f[id]={id,bet:{},t:Date.now()});
     Object.assign(y,{lev:lev.slice(0,60),nr:nr.slice(0,40),fdat:fd,verval:vv||null,plan:tbVal('tbPlan')||null,tot,not:tbVal('tbNot').slice(0,200)});
     if(!x&&tbScanKlaar&&(tbScanPdf||tbScanBijl)){S.tbBijl[id]=tbScanPdf||tbScanBijl}tbScanBijl=null;tbScanPdf=null;tbScanKlaar=false;if(!x&&tbInActief){S.tbIn[tbInActief]=null;tbInActief=null}
@@ -338,6 +339,13 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-tb]');if(
     for(const[pid,p]of Object.entries(x.bet))if(p.vol)delete x.bet[pid];x.betaald=null;bewaar();render();toast('Teruggezet naar Open');return}
   case'excel':tbExcel();return;
   case'dubweg':{if(tbInActief){S.tbIn[tbInActief]=null;tbInActief=null;bewaar()}tbScanBijl=null;tbScanKlaar=false;tbStap=null;sluit();render();toast('Niet toegevoegd');return}
+  case'dubsamen':{const y=f[tbDubId];if(!y)return;const g=tbVal,tot=fCent(leesBedrag(g('tbTot'))),nt=g('tbNot');let not=y.not||'';
+    if(!y.fdat&&g('tbFd'))y.fdat=g('tbFd');if(!y.verval&&g('tbVv'))y.verval=g('tbVv');if(!y.plan&&g('tbPlan'))y.plan=g('tbPlan');
+    if(nt&&!not.includes(nt))not=(not?not+' · ':'')+nt;if(tot>0&&+y.tot!==tot)not=(not?not+' · ':'')+'Nieuwe factuur: '+fEuro(tot);y.not=not.slice(0,200);
+    if(!y.inc&&document.getElementById('tbIncAan')?.checked)y.inc={bureau:g('tbIncB').slice(0,60),kosten:fCent(leesBedrag(g('tbIncK')))||0,t:Date.now()};
+    if(!S.tbBijl[y.id]&&tbScanKlaar&&(tbScanPdf||tbScanBijl))S.tbBijl[y.id]=tbScanPdf||tbScanBijl;
+    tbScanBijl=null;tbScanPdf=null;tbScanKlaar=false;tbStap=null;if(tbInActief){S.tbIn[tbInActief]=null;tbInActief=null}
+    bewaar();sluit();render();toast('✓ Samengevoegd met bestaande factuur');return}
   case'dubok':{tbStap='dubok';const d=document.getElementById('tbDubVak');if(d)d.innerHTML='';toast('Tik op Bewaren om toch toe te voegen');return}
   case'scan':tbInActief=null;tbKiesBestand(f2=>tbScan(f2));return;
   case'inverwerk':{const d=S.tbIn?.[v];if(!d)return;tbInActief=v;try{tbScan(tbDataFile(d,'factuur-'+v))}catch(z){toast('Dit bestand lukte niet')}return}

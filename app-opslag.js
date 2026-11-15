@@ -263,4 +263,10 @@ async function koppelStart(){
   render();
 }
 window.addEventListener('online',()=>{if(L.gekoppeld&&db)sync()});
+/* 10.31 bijwerken na terugkomen: de iPhone legt de live-verbinding stil zolang de app op de achtergrond is */
+let bijBezig=false,wegT=0;async function haalBij(hand){if(!db||!L.gekoppeld||bijBezig){if(hand&&!L.gekoppeld)toast('Dit toestel is niet gekoppeld');return}bijBezig=true;
+  try{const rows=await db.alles({sinds:L.syncTot?new Date(Date.parse(L.syncTot)-15*60000).toISOString():null,beheerder:!!L.beheerder});for(const r of rows)ontvang(r.sleutel,r.waarde);
+    const max=rows.reduce((m,r)=>r.bijgewerkt&&r.bijgewerkt>m?r.bijgewerkt:m,L.syncTot||'');if(max){L.syncTot=max;bewaarL()}if(rows.length){bewaarSync();bewaarS()}hand?render():rows.length&&renderZacht();if(hand)toast('✓ Bijgewerkt')}
+  catch(e){if(hand)toast('Bijwerken lukte niet. Controleer je internet.')}bijBezig=false}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)wegT=Date.now();else if(wegT&&Date.now()-wegT>3000)haalBij()});
 
