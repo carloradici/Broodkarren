@@ -58,7 +58,7 @@ function tbFilterHtml(){const st=tbTab==='open'?[['alle','Alles'],['laat','Te la
 function betalenHtml(){if(!betalenMag())return'';const o=tbOpen(),b=tbBetaald(),tot=o.reduce((t,x)=>t+tbRest(x),0),laat=o.filter(tbTeLaat),inc=o.filter(tbInc);
   let h=`<div class="kop"><div class="koprij"><h1>Te betalen</h1><div class="kopeind"><button class="info" data-a="haalbij" aria-label="Vernieuwen">⟳</button>${info('tebetalen')}</div></div><p>Je inkoopfacturen. Alleen voor jou zichtbaar.</p></div>
    <div class="segment"><button data-tb="tab" data-v="open" class="${tbTab==='open'?'aan':''}">Open (${o.length})</button><button data-tb="tab" data-v="planning" class="${tbTab==='planning'?'aan':''}">Planning</button><button data-tb="tab" data-v="betaald" class="${tbTab==='betaald'?'aan':''}">Betaald (${b.length})</button></div>`;
-  if(tbTab==='open')h+=tbInboxHtml();
+  if(tbTab==='open')h+=tbInboxHtml()+vlTbKaart();
   if(tbTab==='open')h+=`<div class="kaartje tbtotaal"><div class="tbgroot">${fEuro(tot)}</div><div class="sub">nog te betalen · ${o.length} ${o.length===1?'factuur':'facturen'}</div>
      ${laat.length?`<div class="sub oranjetekst"><b>${laat.length} te laat · ${fEuro(laat.reduce((t,x)=>t+tbRest(x),0))}</b></div>`:''}${inc.length?`<div class="sub" style="color:var(--rood)"><b>${inc.length} bij incasso · ${fEuro(inc.reduce((t,x)=>t+(+tbInc(x).kosten||0),0))} incassokosten</b></div>`:''}</div>`;
   else if(tbTab==='planning')return h+tbPlanHtml();
@@ -130,7 +130,7 @@ function tbLeesFactuur(t,eind){t=String(t||'').replace(/\r/g,'');const low=t.toL
   if(tot!=null)r.tot=fCent(tot);if(!r.verval&&r.fdat)r.verval=plusDagen(r.fdat,30);return r}
 async function tbScan(file){toast('Factuur lezen… even geduld');try{const c=await tbCanvas(file);let tekst=c.tekst;
     if(tekst.replace(/\s/g,'').length<40&&c.canvas){toast('Tekst herkennen…');tekst=await tbOcr(c.canvas)}
-    tbScanBijl=c.canvas?tbVerklein(c.canvas):null;tbScanPdf=c.pdf||null;tbScanN=c.n||1;const v=tbLeesFactuur(tekst,c.eind),gev=['lev','nr','fdat','tot'].filter(k=>v[k]).length;
+    if(vlWeekstaatZet(vlWeekstaat(tekst))){bewaar();toast('Weekstaat ook verwerkt in Vaste lasten')}tbScanBijl=c.canvas?tbVerklein(c.canvas):null;tbScanPdf=c.pdf||null;tbScanN=c.n||1;const v=tbLeesFactuur(tekst,c.eind),gev=['lev','nr','fdat','tot'].filter(k=>v[k]).length;
     const pre={};for(const k of['lev','nr','fdat','verval','tot'])if(v[k]!=null&&v[k]!=='')pre[k]=v[k];tbFormulier(null,pre);toast(gev===4?'Gelezen: controleer de gegevens':`${gev} van 4 gegevens gelezen: vul de rest aan`)}
   catch(z){console.warn(z);toast('Lezen lukte niet: vul de factuur zelf in');tbScanBijl=null;tbFormulier(null)}}
 function tbToonBijl(src){if(!src)return;if(/^data:application\/pdf/.test(src)){tbToonPdf(src);return}let ov=document.getElementById('tbBijlOv');if(!ov){ov=document.createElement('div');ov.id='tbBijlOv';ov.setAttribute('role','dialog');document.body.appendChild(ov);ov.addEventListener('click',e=>{if(e.target.closest('[data-tbsluit]')||e.target===ov)ov.classList.remove('open')})}

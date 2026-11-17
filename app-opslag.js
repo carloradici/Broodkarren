@@ -33,8 +33,8 @@ function idbSchrijf(){idbTimer=null;if(!idb||!idbRij.size)return;const rij=idbRi
 function idbGroep(pre,obj){const nu=new Set();for(const[id,v]of Object.entries(obj||{}))if(typeof v==='string'&&v){nu.add(pre+id);idbZet(pre+id,v)}
   for(const k of new Set([...idbBekend.keys(),...idbRij.keys()]))if(k.startsWith(pre)&&!nu.has(k))idbZet(k,undefined)}
 function wisIdb(){return new Promise(ok=>{idbRij=new Map();idbBekend.clear();if(!idb)return ok();try{const t=idb.transaction('kv','readwrite');t.objectStore('kv').clear();t.oncomplete=t.onerror=t.onabort=()=>ok()}catch(e){ok()}})}
-function lichteS(){const o={...S,fotos:{},notfotos:{},tbBijl:{},tbIn:{}};for(const[id,v]of Object.entries(S.tbIn||{}))if(v===null)o.tbIn[id]=null;for(const[id,v]of Object.entries(S.notfotos))if(v===null)o.notfotos[id]=null;for(const[id,v]of Object.entries(S.tbBijl||{}))if(v===null)o.tbBijl[id]=null;return o}
-function bewaarS(){try{localStorage.setItem(OPSLAG,JSON.stringify(idbOk?lichteS():S));if(idbOk){idbGroep('f:',S.fotos);idbGroep('n:',S.notfotos);idbGroep('t:',S.tbBijl);idbGroep('i:',S.tbIn)}return true}catch(e){return false}}
+function lichteS(){const o={...S,fotos:{},notfotos:{},tbBijl:{},tbIn:{},bank:{}};for(const[id,v]of Object.entries(S.bank||{}))if(v===null)o.bank[id]=null;for(const[id,v]of Object.entries(S.tbIn||{}))if(v===null)o.tbIn[id]=null;for(const[id,v]of Object.entries(S.notfotos))if(v===null)o.notfotos[id]=null;for(const[id,v]of Object.entries(S.tbBijl||{}))if(v===null)o.tbBijl[id]=null;return o}
+function bewaarS(){try{localStorage.setItem(OPSLAG,JSON.stringify(idbOk?lichteS():S));if(idbOk){idbGroep('f:',S.fotos);idbGroep('n:',S.notfotos);idbGroep('t:',S.tbBijl);idbGroep('i:',S.tbIn);idbGroep('k:',S.bank)}return true}catch(e){return false}}
 function opslagFoutZet(f){opslagFout=f;const el=document.getElementById('opslagmelding');if(!el)return;
   el.textContent=L.gekoppeld&&L.modus!=='lokaal'?'Dit toestel kon niet alles bewaren. Je werk staat wel veilig op de server.':'Opslaan op dit toestel is mislukt: het geheugen is vol.';el.style.display=f?'block':'none'}
 /* pakbonfoto's ouder dan 60 dagen blijven alleen op de server (ophalen bij openen) */
@@ -48,10 +48,11 @@ const opslagKlaar=(async()=>{if(window.ReactNativeWebView||window.__BEGINSTAAT__
     else if(k.startsWith('n:')){if(S.notfotos[id]!==null&&!S.notfotos[id]&&!oudePakbonFoto(id))S.notfotos[id]=v}
     else if(k.startsWith('t:')){if(S.tbBijl[id]!==null&&!S.tbBijl[id])S.tbBijl[id]=v}
     else if(k.startsWith('i:')){if(S.tbIn[id]!==null&&!S.tbIn[id])S.tbIn[id]=v}
+    else if(k.startsWith('k:')){if(S.bank[id]!==null&&!S.bank[id])S.bank[id]=v}
     else if(k.startsWith('b:'))basis[id]=v}
   idbOk=true;
   /* overstap van de oude opslag: serverkopie naar IndexedDB, daarna de grote kopieën uit localStorage weg */
-  idbGroep('b:',basis);idbGroep('f:',S.fotos);idbGroep('n:',S.notfotos);idbGroep('t:',S.tbBijl);idbGroep('i:',S.tbIn);idbSchrijf();
+  idbGroep('b:',basis);idbGroep('f:',S.fotos);idbGroep('n:',S.notfotos);idbGroep('t:',S.tbBijl);idbGroep('i:',S.tbIn);idbGroep('k:',S.bank);idbSchrijf();
   if(lsBasis!==null&&idbHeeftBasis)try{localStorage.removeItem(OPSLAG_BASIS)}catch(e){}  /* pas weg als de kopie in IndexedDB zeker staat */
   try{localStorage.setItem(OPSLAG,JSON.stringify(lichteS()))}catch(e){}
   render()})();
@@ -116,6 +117,7 @@ function splitsen(){
   if(betalenMag()&&(Object.keys(S.betalen.f).length||S.betalen.eig))o['prive:betalen']=S.betalen;
   if(betalenMag())for(const[id,f]of Object.entries(S.tbBijl))o['prive:tbbijl:'+id]={data:f||null};
   if(betalenMag())for(const[id,f]of Object.entries(S.tbIn))o['prive:tbin:'+id]={data:f||null};
+  if(betalenMag()){for(const[m,f]of Object.entries(S.bank))o['prive:bank:'+m]={data:f||null};if(Object.keys(S.vaste).length)o['prive:vaste']=S.vaste}
   if(Object.keys(S.checklists).length)o.checklists=S.checklists;
   if(Object.keys(S.homeTeam).length)o.hometeam=S.homeTeam;
   if(Object.keys(S.bestelboeken.boeken).length||S.bestelboeken.editie.naam||Object.keys(S.bestelboeken.eigen).length)o.bestelboeken=S.bestelboeken;
@@ -142,6 +144,8 @@ function pasToe(k,v){
   else if(k==='prive:betalen')S.betalen=vulBetalen(v);
   else if(k.startsWith('prive:tbbijl:')){S.tbBijl[k.slice(13)]=v.data||null}
   else if(k.startsWith('prive:tbin:')){S.tbIn[k.slice(11)]=v.data||null}
+  else if(k.startsWith('prive:bank:')){S.bank[k.slice(11)]=v.data||null}
+  else if(k==='prive:vaste')S.vaste=v;
   else if(k==='checklists')S.checklists=v;
   else if(k==='hometeam')S.homeTeam=v;
   else if(k==='bestelboeken')S.bestelboeken=vulBestelboeken(v);

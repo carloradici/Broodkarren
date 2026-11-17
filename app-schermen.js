@@ -185,6 +185,7 @@ function meerHtml(){
   if(sub==='abonnement'&&isEigenaar()&&isAdmin())return terug+abonnementHtml();
   if(sub==='facturen'&&facturenMag())return terug+facturenHtml();
   if(sub==='tebetalen'&&betalenMag())return terug+betalenHtml();
+  if(sub==='vaste'&&betalenMag())return terug+vasteHtml();
   if(sub==='hometeam'&&isAdmin())return terug+homeTeamHtml();
   if(sub==='dervingeuro'&&isAdmin())return terug+dervEuroHtml();
   if(sub==='uren'&&isAdmin())return terug+urenBeheerHtml();

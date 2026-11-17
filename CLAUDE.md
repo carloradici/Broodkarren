@@ -30,6 +30,7 @@ Web-app (PWA) van Coop Vogelenzang voor broodkarren klaarzetten, derving, bestel
 | app-meldingen.js | meldingen, euro's, bestel-advies, weekoverzicht, back-up, cadeaubonnen |
 | app-uren.js | urenregistratie, Home, plek onthouden |
 | app-betalen.js | Te betalen (inkoopfacturen) |
+| app-vaste.js | Vaste lasten: ING-CSV (S.bank per maand, prive:bank:YYYY-MM), Van Tol-weekstaat, afboeken in Te betalen, Excel (S.vaste → prive:vaste) |
 | app-rooster.js | rooster, checklists, derving in euro's, kassaverkoop uit Besteladvies (KV, kassaHaal, kassa-controle), Home indelen, meldingsoorten |
 | app-chat.js | chat |
 | app-overdracht-print.js | overdracht, rondleiding, dag afsluiten, printen, feestdagen, weer, export |

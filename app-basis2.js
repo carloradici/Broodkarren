@@ -37,7 +37,7 @@ function naarV6(S){
   delete S.sessie;delete S.laatsteActie;S.versie=6;return S;
 }
 function vulAan(S){
-  for(const k of['historie','derving','karOverride','afwijkend','notities','voorraad','vinkjes','status','avond','dervBest','aanpas','timers','log','fotos','snij','ontdooi','dervHH','bijbak','profielen','berichten','karTaak','afsluit','feestNee','notfotos','dervReg','levering','cadeau','pins','push','pbFouten','prijzen','pushTeam','uren','tbBijl','checklists','tbIn','homeTeam'])S[k]=isObj(S[k])?S[k]:{};
+  for(const k of['historie','derving','karOverride','afwijkend','notities','voorraad','vinkjes','status','avond','dervBest','aanpas','timers','log','fotos','snij','ontdooi','dervHH','bijbak','profielen','berichten','karTaak','afsluit','feestNee','notfotos','dervReg','levering','cadeau','pins','push','pbFouten','prijzen','pushTeam','uren','tbBijl','checklists','tbIn','homeTeam','bank','vaste'])S[k]=isObj(S[k])?S[k]:{};
   for(const k of['gebruikers','soorten','karren'])S[k]=Array.isArray(S[k])?S[k]:[];
   S.plan=isObj(S.plan)?S.plan:{};for(const k of['ma','di','wo','do','vr','za','zo'])S.plan[k]=isObj(S.plan[k])?S.plan[k]:{};
   S.leverdagen=Array.isArray(S.leverdagen)?S.leverdagen:[1,3,5];S.ovenMax=S.ovenMax||10;if(S.omschakel===undefined)S.omschakel=14;if(!Array.isArray(S.versDagen))S.versDagen=[1,2,3,4,5,6];if(!isObj(S.versUitz))S.versUitz={};if(!isObj(S.herinnering))S.herinnering={aan:true,uur:10,min:0};if(S.uitlogMin==null)S.uitlogMin=5;
