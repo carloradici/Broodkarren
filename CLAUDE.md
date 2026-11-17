@@ -48,6 +48,7 @@ Edge Functions: `stuur-push.js`, `factuur-in.js`, `bestelboek.js` (haalt bestelb
 ## Testen
 - Grote versie: volledige Playwright-test, ook een ronde als medewerker; testversie in Claude bijwerken.
 - Kleine fix: snelle controle (app laadt zonder fouten, het aangepaste scherm werkt).
+- Altijd eerst: `cat app-*.js > /tmp/alles.js && node --check /tmp/alles.js` (een losse apostrof in een hulptekst breekt de hele app).
 - Testversie in Claude (artifact "Brood Opzet") is één los HTML-bestand: neem index.html, zet style.css in een `<style>` en vervang het laadscript door één `<script>` met `APP_BOUW` + alle bestanden uit `LADEN` achter elkaar.
 - Testen lokaal: `python3 -m http.server`, dan `http://localhost:8000/` (laadt niet via file://). "Zonder koppeling gebruiken" geeft een lokale testwinkel.
 - Rapporteer alleen de uitkomst.
