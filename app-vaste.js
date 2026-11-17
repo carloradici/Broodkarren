@@ -153,18 +153,11 @@ function vlMaandDetail(m,c){const R=vlRek(),l=R.tx.filter(t=>t.m===m&&t.c===c&&t
 function vlTbKaart(){if(!S.vaste)return'';const n=vlCtl().length;return n?`<div class="kaartje tbinbox"><div class="rij inv" style="border:0;padding:0"><div class="groei"><div class="naam">🏦 ${n} ${n===1?'betaling':'betalingen'} uit de bank controleren</div><div class="sub">Kon ik niet zeker aan een factuur koppelen.</div></div><button class="knop klein" data-a="sub" data-v="vaste">Bekijken</button></div></div>`:''}
 /* ---------- Excel ---------- */
 async function vlExcel(){if(!window.XLSX){toast('Excel-onderdeel laden…');try{await laadXlsx()}catch(e){toast('Excel kon niet laden, controleer je internet');return}}
-  const R=vlRek(),wb=XLSX.utils.book_new(),e=c=>Math.round(c||0)/100,cn=c=>VL_N[c].replace(/^\S+\s/,''),MN=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'],mn=m=>MN[+m.slice(5)-1]+' '+m.slice(0,4);
-  const A=(n,r,b)=>{const ws=XLSX.utils.aoa_to_sheet(r);ws['!cols']=b.map(w=>({wch:w}));for(const k in ws)if(k[0]!=='!'&&typeof ws[k].v==='number'&&!ws[k].geen)ws[k].z='#,##0.00';XLSX.utils.book_append_sheet(wb,ws,n)};
-  const ov=k=>{const cats=VL_KOST.filter(c=>R.mnd.some(m=>R.per[m]?.[c]?.[k])),g=l=>Math.round(l.reduce((s,x)=>s+x,0)/Math.max(1,l.length)*100)/100,rij=(n,l)=>[n,...l,g(l)];
-    const r=[[`Kosten per maand ${k==='i'?'met':'zonder'} btw`],[],['',...R.mnd.map(mn),'Gemiddeld'],...cats.map(c=>rij(cn(c),R.mnd.map(m=>e(R.per[m]?.[c]?.[k])))),rij('TOTAAL KOSTEN',R.mnd.map(m=>e(cats.reduce((s,c)=>s+(R.per[m]?.[c]?.[k]||0),0))))];if(R.mnd.some(m=>R.per[m]?.opname))r.push(rij('Opnames (niet in totaal)',R.mnd.map(m=>e(R.per[m]?.opname?.[k]))));
-    if(k==='i')r.push([],rij('Geld in',R.mnd.map(m=>e(R.geld[m]?.in))),rij('Geld uit',R.mnd.map(m=>e(R.geld[m]?.uit))),['Saldo eind maand',...R.mnd.map(m=>R.geld[m]?.saldo!=null?e(R.geld[m].saldo):'')]);
-    r.push([],['Vaste lasten per maand',e(R.vast.reduce((s,x)=>s+(k==='i'?x.pm:x.pme),0))]);return r};
-  A('Overzicht',ov('i'),[24,...R.mnd.map(()=>12),12]);A('Zonder btw',ov('e'),[24,...R.mnd.map(()=>12),12]);
-  const len=R.laatst?.len,vw=R.laatst?.ovv&&len?R.laatst.ovv-len.saldo:0;
-  A('Vaste lasten',[['Categorie','Wat','Hoe vaak','Bedrag per keer','Per maand met btw','Per maand zonder btw'],...R.vast.map(x=>[cn(x.c),x.n,'per '+x.fr,e(x.la),e(x.pm),e(x.pme)]),['TOTAAL','','','',e(R.vast.reduce((s,x)=>s+x.pm,0)),e(R.vast.reduce((s,x)=>s+x.pme,0))],...(R.opn.length?[[],...R.opn.map(x=>['Opnames (niet in totaal)',x.n,'per '+x.fr,e(x.la),e(x.pm),e(x.pm)])]:[]),
-    ...(len?[[],['Lening kassa\'s nog open',e(len.saldo),len.t?'klaar rond '+tbD(plusDagen(R.laatst.d,Math.ceil(len.saldo/len.t)*7)).slice(3):'']]:[]),...(vw>0?[['Voorwaardelijke lening',e(vw),'vervalt € 10.000 per jaar']]:[])],[22,32,12,14,16,18]);
-  A('Transacties',[['Datum','Naam','Omschrijving','Bedrag','Categorie'],...[...R.tx].reverse().map(t=>[tbD(t.d),t.n,t.o,e(t.b),cn(t.c)])],[11,28,50,12,22]);
-  const ter=Object.values(vlV().terug).filter(t=>!t.klaar);if(ter.length)A('Te verrekenen',[['Leverancier','Bedrag','Datum','Waarom'],...ter.map(t=>[t.lev,e(t.b),tbD(t.d),t.o])],[28,12,11,40]);
+  const R=vlRek(),e=c=>Math.round(c||0)/100,n=Math.max(1,R.mnd.length),gem=(c,k)=>e(R.mnd.reduce((s,m)=>s+(R.per[m]?.[c]?.[k]||0),0)/n),cats=VL_KOST.filter(c=>gem(c,'i')),len=R.laatst?.len,o=gem('opname','i');
+  const r=[['Vaste lasten per maand','Met btw','Zonder btw'],...cats.map(c=>[VL_N[c].replace(/^\S+\s/,''),gem(c,'i'),gem(c,'e')]),['TOTAAL',e(cats.reduce((s,c)=>s+Math.round(gem(c,'i')*100),0)),e(cats.reduce((s,c)=>s+Math.round(gem(c,'e')*100),0))]];
+  if(o||len)r.push([]);if(o)r.push(['Opnames (niet in totaal)',o]);if(len)r.push(['Lening kassa\'s nog open',e(len.saldo),len.t?'klaar '+tbD(plusDagen(R.laatst.d,Math.ceil(len.saldo/len.t)*7)).slice(3):'']);
+  r.push([],[`Gemiddelde van ${R.mnd.length} maanden${R.mnd.length?` (${R.mnd[0]} t/m ${R.mnd[R.mnd.length-1]})`:''}`]);
+  const ws=XLSX.utils.aoa_to_sheet(r),wb=XLSX.utils.book_new();ws['!cols']=[{wch:28},{wch:13},{wch:13}];for(const k in ws)if(k[0]!=='!'&&typeof ws[k].v==='number')ws[k].z='#,##0.00';XLSX.utils.book_append_sheet(wb,ws,'Vaste lasten');
   deelBestand(new File([XLSX.write(wb,{bookType:'xlsx',type:'array'})],`vaste-lasten-${iso()}.xlsx`,{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}))}
 /* ---------- klikken ---------- */
 document.addEventListener('click',e=>{const el=e.target.closest('[data-vl]');if(!el||!betalenMag())return;const c=el.dataset.vl,v=el.dataset.v||'',V=vlV(),t=vlTx().find(x=>x.id===v.split('|')[0]);
