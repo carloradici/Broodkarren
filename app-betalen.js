@@ -84,9 +84,10 @@ function tbPlanHtml(){const o=tbOpen(),vd=iso(),w1=plusDagen(maandag(vd),7),w2=p
 function tbKiesBestand(cb){const i=document.createElement('input');i.type='file';i.accept='image/*,application/pdf,.pdf';i.onchange=()=>{if(i.files[0])cb(i.files[0])};i.click()}
 const tbIsPdf=f=>/pdf/i.test(f.type)||/\.pdf$/i.test(f.name||'');
 const tbDataUrl=f=>new Promise((ok,nee)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=nee;r.readAsDataURL(f)});
-async function tbPdfLees(file){await laadPdfjs();const pdf=await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise,n=pdf.numPages,pag=[];
+async function tbPdfLees(file,kaal){await laadPdfjs();const pdf=await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise,n=pdf.numPages,pag=[];
   for(let p=1;p<=n;p++){const pg=await pdf.getPage(p),tc=await pg.getTextContent(),rij={};for(const it of tc.items){if(!it.str.trim())continue;const y=Math.round(it.transform[5]/3)*3;(rij[y]=rij[y]||[]).push(it)}
     pag.push(Object.keys(rij).map(Number).sort((a,b)=>b-a).map(y=>rij[y].sort((a,b)=>a.transform[4]-b.transform[4]).map(i=>i.str).join(' ')).join('\n'))}
+  if(kaal){pdf.destroy?.();return{tekst:pag.join('\n')}}
   const p1=await pdf.getPage(1),v1=p1.getViewport({scale:1}),sc=Math.min(3,1400/v1.width),vp=p1.getViewport({scale:sc}),c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);await p1.render({canvasContext:g,viewport:vp}).promise;
   return{tekst:pag.join('\n'),eind:pag.slice(-2).join('\n'),canvas:c,n}}
 async function tbCanvas(file){if(tbIsPdf(file)){const r=await tbPdfLees(file);return{...r,pdf:file.size<=8*1024*1024?await tbDataUrl(file):null}}return{canvas:await afbNaarCanvas(file),tekst:''}}

@@ -32,10 +32,10 @@ function vlLeesCsv(t){const rij=vlCsvRijen(t);if(rij.length<2)throw'Geen regels 
 function vlZetTx(l){const nieuw=[],perM={};for(const x of l){const m=x.d.slice(0,7);if(!perM[m]){let o;try{o=JSON.parse(S.bank[m]||'{}')||{}}catch(e){throw`De opgeslagen bankgegevens van ${m} zijn beschadigd; ik heb niets overschreven.`}perM[m]=o}
     if(perM[m][x.id])continue;const dag=Object.values(perM[m]).filter(r=>r[0]===x.d).length;perM[m][x.id]=[x.d,x.b,x.n,x.o,x.s,dag*1000+x.q%1000];nieuw.push(x.id)}
   for(const[m,o]of Object.entries(perM))S.bank[m]=JSON.stringify(o);return nieuw}
-async function vlCsvIn(file){if(/\.pdf$/i.test(file.name)){toast('Kies de CSV-export van ING (geen pdf)');return}vlBezig='Bankexport lezen…';render();
-  try{const l=vlLeesCsv(await file.text()),nw=vlZetTx(l);vlV().upl=iso();const k=vlKoppel(new Set(nw));bewaar();vlBezig='';render();
+async function vlCsvIn(fs){fs=fs.filter(f=>!/\.pdf$/i.test(f.name));if(!fs.length){toast('Kies de CSV-export van ING (geen pdf)');return}vlBezig='Bankexport lezen…';render();
+  try{const l=[];for(const f of fs)l.push(...vlLeesCsv(await f.text()));l.sort((a,c)=>a.d.localeCompare(c.d));const nw=vlZetTx(l);vlV().upl=iso();const k=vlKoppel(new Set(nw));bewaar();vlBezig='';render();
     toonSheet(`<div class="pkop"><span style="width:70px"></span><b>Bankexport</b><button data-a="sluit" style="font-weight:700">Klaar</button></div><div class="pinhoud"><div class="kaartje" style="margin:0">
-      <div class="naam">${nw.length} nieuwe transacties</div><div class="sub">${l.length-nw.length?`${l.length-nw.length} stonden er al in · `:''}${tbD(l[0].d)} t/m ${tbD(l[l.length-1].d)}</div>
+      <div class="naam">${nw.length} nieuwe transacties${fs.length>1?` uit ${fs.length} bestanden`:''}</div><div class="sub">${l.length-nw.length?`${l.length-nw.length} stonden er al in · `:''}${tbD(l[0].d)} t/m ${tbD(l[l.length-1].d)}</div>
       <div class="sub" style="margin-top:8px">💶 Te betalen: <b>${k.betaald} ${k.betaald===1?'factuur':'facturen'} betaald</b>${k.deel?` · ${k.deel} deelbetaling`:''}${k.ctl?` · <b>${k.ctl} om te controleren</b>`:''}${k.storno?` · ${k.storno} storno teruggezet`:''}</div></div></div>`)}
   catch(e){vlBezig='';render();toast(typeof e==='string'?e:'Dit bestand kon ik niet lezen');console.warn(e)}}
 /* ---------- Van Tol-weekstaat ---------- */
@@ -49,9 +49,11 @@ function vlWeekstaat(t){t=String(t||'');const nr=(t.match(/Weekstaatnummer\s*:?\
   const ov=t.match(/\n\s*(\d{1,3}(?:\.\d{3})*,\d\d)\s+\d{1,3}(?:\.\d{3})*,\d\d\s+\d{1,3}(?:\.\d{3})*,\d\d[^\n]*\n[^\n]*Overige vorderingen/i);
   return{nr,d,r,len,ovv:ov?fCent(B(ov[1])):null}}
 function vlWeekstaatZet(w){if(!w)return false;const v=vlV();v.wk[w.nr]={d:w.d,r:w.r,len:w.len,ovv:w.ovv};return true}
-async function vlPdfIn(file){vlBezig='Weekstaat lezen…';render();try{const r=await tbPdfLees(file),w=vlWeekstaat(r.tekst);vlBezig='';
-    if(!w){render();toast('Dit is geen Van Tol-weekstaat (geen weekstaatnummer gevonden)');return}vlWeekstaatZet(w);bewaar();render();toast(`✓ Weekstaat ${w.nr}: ${Object.keys(w.r).length} posten${w.len?' + lening':''}`)}
-  catch(e){vlBezig='';render();toast('Deze pdf kon ik niet lezen');console.warn(e)}}
+async function vlPdfIn(fs){const ok=[],nee=[],al=new Set(Object.keys(vlV().wk));
+  for(let i=0;i<fs.length;i++){vlBezig=fs.length>1?`Weekstaat ${i+1} van ${fs.length} lezen…`:'Weekstaat lezen…';render();
+    try{const w=vlWeekstaat((await tbPdfLees(fs[i],1)).tekst);if(w){vlWeekstaatZet(w);ok.push(w.nr)}else nee.push(fs[i].name)}catch(e){console.warn(e);nee.push(fs[i].name)}}
+  vlBezig='';bewaar();render();const u=[...new Set(ok)].sort(),nieuw=u.filter(n=>!al.has(n)).length;if(fs.length===1&&ok.length){const w=vlV().wk[ok[0]];toast(`✓ Weekstaat ${ok[0]}: ${Object.keys(w.r).length} posten${w.len?' + lening':''}`);return}
+  toonSheet(`<div class="pkop"><span style="width:70px"></span><b>Weekstaten</b><button data-a="sluit" style="font-weight:700">Klaar</button></div><div class="pinhoud"><div class="kaartje" style="margin:0"><div class="naam">${ok.length} van ${fs.length} gelezen</div><div class="sub">${nieuw} nieuw${u.length-nieuw?` · ${u.length-nieuw} bijgewerkt`:''}${u.length?` · ${u[0]} t/m ${u[u.length-1]}`:''}</div>${nee.length?`<div class="sub" style="margin-top:8px">Geen weekstaat of niet te lezen:<br>${nee.map(esc).join('<br>')}</div>`:''}</div></div>`)}
 const vlWkL=()=>Object.entries(vlV().wk).map(([nr,w])=>({nr,...w})).sort((a,c)=>a.d.localeCompare(c.d));
 function vlWkWeek(w){const r=[];for(const[p,x]of Object.entries(w.r||{}))if(x.v)r.push([p,'vantol',x.b]);if(w.len){r.push(['Aflossing lening kassa\'s','lening',w.len.t]);r.push(['Rente lening','lening',w.len.rente])}return r}
 const vlWkIncl=(c,b)=>c==='lening'?b:Math.round(b*1.21);
@@ -98,7 +100,7 @@ function vlRek(){const tx=vlTx().map(t=>({...t,c:vlCat(t)})),mnd=[...new Set(tx.
 function vasteHtml(){const v=vlV(),R=vlRek(),ctl=vlCtl(),wb=vlBtw?'i':'e',m=vlMnd&&R.mnd.includes(vlMnd)?vlMnd:R.mnd[R.mnd.length-1],mi=R.mnd.indexOf(m);
   const mndN=x=>{const[j,mm]=x.split('-');return['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'][+mm-1]+' '+j};
   let h=`<div class="kop"><div class="koprij"><h1>Vaste lasten</h1><div class="kopeind">${info('vaste')}</div></div><p>Wat er elke maand vast uitgaat. Alleen voor jou zichtbaar.</p></div>
-   <div class="kaartje"><div style="display:flex;gap:8px;flex-wrap:wrap"><label class="knop klein" style="margin:0">⬆️ Bankexport (CSV)<input type="file" id="vlCsv" accept=".csv,text/csv,text/plain" hidden></label><label class="knop rand klein" style="margin:0">📄 Van Tol-weekstaat<input type="file" id="vlPdf" accept="application/pdf,.pdf" hidden></label>${R.tx.length?'<button class="knop rand klein" style="margin:0" data-vl="excel">📊 Excel</button>':''}</div>
+   <div class="kaartje"><div style="display:flex;gap:8px;flex-wrap:wrap"><label class="knop klein" style="margin:0">⬆️ Bankexport (CSV)<input type="file" id="vlCsv" accept=".csv,text/csv,text/plain" multiple hidden></label><label class="knop rand klein" style="margin:0">📄 Van Tol-weekstaten<input type="file" id="vlPdf" accept="application/pdf,.pdf" multiple hidden></label>${R.tx.length?'<button class="knop rand klein" style="margin:0" data-vl="excel">📊 Excel</button>':''}</div>
    <div class="sub" style="margin-top:8px">${vlBezig?'⏳ '+vlBezig:R.tx.length?`${R.tx.length} transacties t/m ${tbD(R.tx[R.tx.length-1].d)} · laatst geüpload ${tbD(v.upl)}`:'Nog niets ingelezen. Download bij ING een CSV-export van je zakelijke rekening en upload die hier.'}${R.wk.length?` · ${R.wk.length} weekstaat${R.wk.length>1?'en':''} (laatste ${R.laatst.nr})`:''}</div></div>`;
   if(ctl.length)h+=`<div class="kaartje tbinbox"><h3>🏦 Controleren (${ctl.length})</h3><div class="sub">Betalingen die ik niet zeker aan een factuur kon koppelen.</div>${ctl.map(vlCtlHtml).join('')}</div>`;
   const ter=Object.entries(v.terug).filter(([,t])=>!t.klaar);if(ter.length)h+=`<div class="kaartje"><h3>↩️ Te verrekenen · ${fEuro(ter.reduce((s,[,t])=>s+t.b,0))}</h3>${ter.map(([id,t])=>`<div class="rij inv"><div class="groei"><div class="naam" style="font-size:15px">${esc(t.lev)} · ${fEuro(t.b)}</div><div class="sub">${esc(t.o)} · ${tbD(t.d)}</div></div><button class="knop rand klein" data-vl="terugklaar" data-v="${id}">Verrekend</button></div>`).join('')}</div>`;
@@ -147,6 +149,6 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-vl]');if(
    case'terugklaar':if(V.terug[v])V.terug[v].klaar=iso();bewaar();break;
    case'ontkoppel':if(el.dataset.zeker!=='1'){el.dataset.zeker='1';el.textContent='Zeker?';return}vlOntkoppel(v);bewaar();toast('Teruggedraaid: factuur staat weer open');break;default:return}render()});
 document.addEventListener('change',e=>{const id=e.target.id;if(!betalenMag())return;
-  if(id==='vlCsv'||id==='vlPdf'){const f=e.target.files?.[0];e.target.value='';if(f)(id==='vlCsv'?vlCsvIn:vlPdfIn)(f);return}
+  if(id==='vlCsv'||id==='vlPdf'){const f=[...(e.target.files||[])];e.target.value='';if(f.length)(id==='vlCsv'?vlCsvIn:vlPdfIn)(f);return}
   const k=e.target.dataset?.vlcat;if(k){const t=vlTx().find(x=>x.id===k);if(!t)return;vlV().regels[vlKey(t.n)]=e.target.value;bewaar();toast(`Alles van ${t.n||'deze naam'} → ${VL_N[e.target.value]}`);render()}});
 let vlZT;document.addEventListener('input',e=>{if(e.target.id==='vlZoek'){vlZoek=e.target.value;clearTimeout(vlZT);vlZT=setTimeout(()=>{{render();const i=document.getElementById('vlZoek');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}},400)}});
