@@ -47,14 +47,15 @@ function vlWeekstaat(t){t=String(t||'');const nr=(t.match(/Weekstaatnummer\s*:?\
     (r[p]=r[p]||{b:0,v:/^94/.test(m[1])||/STOPKOSTEN/i.test(m[2])?1:0}).b+=b;const tm=m[2].match(/TERMIJN\s*(\d+)/i);if(tm)r[p].t=+tm[1]}
   let len=null;const c=t.match(/Beginsaldo[^\n]*\n[^\d\n]*(\d{1,3}(?:\.\d{3})*,\d\d)\s+(\d{1,3}(?:\.\d{3})*,\d\d)\s+(\d{1,3}(?:\.\d{3})*,\d\d)\s+(\d{1,3}(?:\.\d{3})*,\d\d)\s+(\d{1,3}(?:\.\d{3})*,\d\d)/i);
   if(c)len={begin:fCent(B(c[1])),saldo:fCent(B(c[3])),t:fCent(B(c[4])),rente:fCent(B(c[5]))};
-  const ov=t.match(/\n\s*(\d{1,3}(?:\.\d{3})*,\d\d)\s+\d{1,3}(?:\.\d{3})*,\d\d\s+\d{1,3}(?:\.\d{3})*,\d\d[^\n]*\n[^\n]*Overige vorderingen/i);
-  return{nr,d,r,len,ovv:ov?fCent(B(ov[1])):null}}
-function vlWeekstaatZet(w){if(!w)return false;const v=vlV();v.wk[w.nr]={d:w.d,r:w.r,len:w.len,ovv:w.ovv};return true}
+  const ov=t.match(/\n\s*(\d{1,3}(?:\.\d{3})*,\d\d)\s+\d{1,3}(?:\.\d{3})*,\d\d\s+\d{1,3}(?:\.\d{3})*,\d\d[^\n]*?(\d{1,3}(?:\.\d{3})*,\d\d)\s*\n[^\n]*Overige vorderingen/i),docs=[],bb=[];
+  for(const m of t.matchAll(/(?:^|\n)\s*\d\d\.\d\d\.\d{4}\s+(\d{1,3}(?:\.\d{3})*,\d\d)(-?)\s+(.+?)\s+(\d{8,11})(?=\s|$)/g)){const b=fCent(B(m[1]))*(m[2]?-1:1),w=(m[3].match(/(\d{4}\.\d\d\.\d\d)/)||[])[1];if(/BETALINGSBOEKING|STORNO WEEKSTAAT/i.test(m[3])){if(w)bb.push({ws:w,ref:m[4],b,s:/STORNO/i.test(m[3])?1:0})}else docs.push([m[4],b])}
+  return{nr,d,r,len,ovv:ov?fCent(B(ov[1])):null,ft:ov?fCent(B(ov[2])):null,docs,bb,num:(t.slice(wi).match(/\nNummer\s*:\s*(\d{8,12})/i)||[])[1]||null}}
+function vlWeekstaatZet(w){if(!w)return false;const v=vlV();v.wk[w.nr]={d:w.d,r:w.r,len:w.len,ovv:w.ovv,ft:w.ft,docs:w.docs,bb:w.bb,num:w.num};return true}
 async function vlPdfIn(fs){const ok=[],nee=[],al=new Set(Object.keys(vlV().wk));
   for(let i=0;i<fs.length;i++){vlBezig=fs.length>1?`Weekstaat ${i+1} van ${fs.length} lezen…`:'Weekstaat lezen…';render();
     try{const w=vlWeekstaat((await tbPdfLees(fs[i],1)).tekst);if(w){vlWeekstaatZet(w);ok.push(w.nr)}else nee.push(fs[i].name)}catch(e){console.warn(e);nee.push(fs[i].name)}}
-  vlBezig='';bewaar();render();const u=[...new Set(ok)].sort(),nieuw=u.filter(n=>!al.has(n)).length;if(fs.length===1&&ok.length){const w=vlV().wk[ok[0]];toast(`✓ Weekstaat ${ok[0]}: ${Object.keys(w.r).length} posten${w.len?' + lening':''}`);return}
-  toonSheet(`<div class="pkop"><span style="width:70px"></span><b>Weekstaten</b><button data-a="sluit" style="font-weight:700">Klaar</button></div><div class="pinhoud"><div class="kaartje" style="margin:0"><div class="naam">${ok.length} van ${fs.length} gelezen</div><div class="sub">${nieuw} nieuw${u.length-nieuw?` · ${u.length-nieuw} bijgewerkt`:''}${u.length?` · ${u[0]} t/m ${u[u.length-1]}`:''}</div>${nee.length?`<div class="sub" style="margin-top:8px">Geen weekstaat of niet te lezen:<br>${nee.map(esc).join('<br>')}</div>`:''}</div></div>`)}
+  vlBezig='';const kv=betalenMag()&&ok.length?vlKoppelVT():{betaald:0};bewaar();render();const u=[...new Set(ok)].sort(),nieuw=u.filter(n=>!al.has(n)).length;if(fs.length===1&&ok.length){const w=vlV().wk[ok[0]];toast(`✓ Weekstaat ${ok[0]}: ${Object.keys(w.r).length} posten${w.len?' + lening':''}`);return}
+  toonSheet(`<div class="pkop"><span style="width:70px"></span><b>Weekstaten</b><button data-a="sluit" style="font-weight:700">Klaar</button></div><div class="pinhoud"><div class="kaartje" style="margin:0"><div class="naam">${ok.length} van ${fs.length} gelezen</div><div class="sub">${nieuw} nieuw${u.length-nieuw?` · ${u.length-nieuw} bijgewerkt`:''}${u.length?` · ${u[0]} t/m ${u[u.length-1]}`:''}</div>${kv.betaald?`<div class="sub" style="margin-top:8px">💶 Te betalen: <b>${kv.betaald} facturen afgeboekt</b> via de bank${kv.ctl?` · ${kv.ctl} om te controleren`:''}</div>`:''}${nee.length?`<div class="sub" style="margin-top:8px">Geen weekstaat of niet te lezen:<br>${nee.map(esc).join('<br>')}</div>`:''}</div></div>`)}
 const vlWkL=()=>Object.entries(vlV().wk).map(([nr,w])=>({nr,...w})).sort((a,c)=>a.d.localeCompare(c.d));
 function vlWkWeek(w){const r=[],g=vlV().regels;for(const[p,x]of Object.entries(w.r||{}))if(x.v)r.push([p,'vantol',x.b]);if(w.len){r.push(['Aflossing lening Van Tol','lening',w.len.t]);r.push(['Rente lening','lening',w.len.rente])}return r.map(([p,c,b])=>[p,g['vt:'+p]||c,b]).filter(x=>x[1]!=='prive'&&VL_KOST.includes(x[1]))}
 const vlWkIncl=(c,b)=>c==='lening'?b:Math.round(b*1.21);
@@ -64,8 +65,16 @@ const vlTok=s=>String(s||'').toLowerCase().split(/[^a-z0-9]+/).filter(w=>w.lengt
 const vlLevOk=(lev,naam)=>{const n=new Set(vlTok(naam));return vlTok(lev).some(w=>n.has(w))};
 function vlBetaal(x,b,d,txid){const v=vlV(),pid=urenId();x.bet[pid]={b,d,bank:txid};if(tbRest(x)===0)x.betaald=d;(v.kop[txid]=v.kop[txid]||{d,f:[]}).f.push([x.id,pid])}
 function vlOntkoppel(txid){const v=vlV(),k=v.kop[txid];if(!k)return;const f=tbSchrijf();for(const[fid,pid]of k.f){const x=f[fid];if(!x)continue;delete x.bet[pid];if(x.betaald&&tbRest(x)>0)x.betaald=null}delete v.kop[txid];for(const[id,t]of Object.entries(v.terug))if(t.tx===txid)delete v.terug[id]}
+const vlVT=t=>/van ?tol|groothandel (in )?levensmiddel/i.test(t.n+' '+t.o);
+function vlWsMatch(t,v,f){const wk=v.wk,o=t.n+' '+t.o,b=-t.b;let w=(o.match(/20\d\d\.\d\d\.\d\d/)||[])[0];
+  if(!w){const ref=(o.match(/\b(33\d{8})\b/)||[])[1];if(ref)for(const x of Object.values(wk))for(const y of x.bb||[])if(y.ref===ref&&!y.s)w=y.ws}
+  if(!w)w=Object.entries(wk).find(([,x])=>x.ft&&Math.abs(x.ft-b)<=100&&x.d<=t.d&&x.d>=plusDagen(t.d,-14))?.[0];
+  const W=w&&wk[w];if(!W)return null;const nrs=new Set([...(W.docs||[]).map(d=>tbNrN(d[0])),tbNrN(w),W.num?tbNrN(W.num):'-']);
+  const l=Object.values(f).filter(x=>!tbIsBetaald(x)&&nrs.has(tbNrN(x.nr)));if(!l.length)return null;const som=l.reduce((s,x)=>s+tbRest(x),0);
+  if(Math.abs(som-b)<=100){for(const x of l)vlBetaal(x,tbRest(x),t.d,t.id);return{auto:1,n:l.length}}v.ctl[t.id]={s:'waarsch',f:l.map(x=>x.id),ws:w};return{auto:0}}
+function vlKoppelVT(){const v=vlV(),ids=new Set(vlTx().filter(t=>t.b<0&&vlVT(t)&&!v.kop[t.id]&&!(v.ctl[t.id]?.klaar)).map(t=>t.id));for(const id of ids)delete v.ctl[id];return vlKoppel(ids)}
 function vlKoppel(nw){const v=vlV(),r={betaald:0,deel:0,ctl:0,storno:0};if(!betalenMag())return r;const f=tbSchrijf(),alle=tbAlle(),tx=vlTx();
-  for(const t of tx){if(!nw.has(t.id)||v.kop[t.id]||v.ctl[t.id])continue;const tekst=(t.n+' '+t.o).toLowerCase().replace(/[.\-\/]/g,''),heeft=n=>new RegExp('(^|\\D)'+n.replace(/[^a-z0-9]/g,'')+'(\\D|$)').test(tekst);
+  for(const t of tx){if(!nw.has(t.id)||v.kop[t.id]||v.ctl[t.id])continue;if(t.b<0&&vlVT(t)){const z=vlWsMatch(t,v,f);if(z){z.auto?r.betaald+=z.n:r.ctl++;continue}}const tekst=(t.n+' '+t.o).toLowerCase().replace(/[.\-\/]/g,''),heeft=n=>new RegExp('(^|\\D)'+n.replace(/[^a-z0-9]/g,'')+'(\\D|$)').test(tekst);
     if(t.b>0){if(/storno|terugboeking|retour/i.test(t.o+' '+t.n)){const o=tx.find(y=>y.b===-t.b&&v.kop[y.id]&&y.d<=t.d&&vlKey(y.n)===vlKey(t.n));if(o){vlOntkoppel(o.id);r.storno++}}continue}
     const b=-t.b,nr=alle.filter(x=>{const n=tbNrN(x.nr);return n.length>=4&&heeft(n)&&(!x.fdat||x.fdat<=t.d)});
     const goed=nr.filter(x=>vlLevOk(x.lev,t.n)),open=goed.filter(x=>!tbIsBetaald(x));
@@ -86,7 +95,8 @@ function vlKassa(wk){const l=wk.map(w=>{const p=vlKasP(w.r);return p?{d:w.d,b:w.
   let n=0,ti=-1;l.forEach((x,i)=>{if(x.t){ti=i;n=x.t}});n=ti<0?l.length:n+(l.length-1-ti);const kt=vlV().kasT;if(kt?.n)n=kt.n+Math.max(0,Math.floor((vanIso(iso())-vanIso(kt.d))/(30.44*864e5)));n=Math.min(VL_KT,n);const ex=l[l.length-1].b,pm=Math.round(ex*1.21),rest=VL_KT-n;
   return{ex,pm,n,rest,d:l[l.length-1].d,eind:plusDagen(l[l.length-1].d,Math.round(rest*30.44)),tot:pm*VL_KT,bet:pm*n,open:pm*rest,l}}
 const vlNrs=t=>t.o.match(/\b20\d{6,7}\b/g)||[];
-function vlRek(){const tx=vlTx().map(t=>({...t,c:vlCat(t)})),mnd=[...new Set(tx.map(t=>t.m))].sort(),wk=vlWkL(),per={},geld={};
+let vlRC={k:null,r:null};function vlRek(){vlTx();const k=vlCache.s+'|'+JSON.stringify(S.vaste)+'|'+JSON.stringify(S.betalen?.f||{})+'|'+iso();if(vlRC.k===k)return vlRC.r;vlRC={k,r:vlRek2()};return vlRC.r}
+function vlRek2(){const tx=vlTx().map(t=>({...t,c:vlCat(t)})),mnd=[...new Set(tx.map(t=>t.m))].sort(),wk=vlWkL(),per={},geld={};
   for(const t of tx){const g=geld[t.m]=geld[t.m]||{in:0,uit:0,saldo:null,sd:''};t.b>0?g.in+=t.b:g.uit-=t.b;if(t.s!=null&&(t.d+String(t.q).padStart(6,'0'))>=g.sd){g.saldo=t.s;g.sd=t.d+String(t.q).padStart(6,'0')}
     if(t.b>0||!(VL_KOST.includes(t.c)||t.c==='opname'))continue;const p=per[t.m]=per[t.m]||{};const c=p[t.c]=p[t.c]||{i:0,e:0};c.i-=t.b;c.e-=vlEx(t.b,t.c)}
   const laatst=wk[wk.length-1],ks=vlKassa(wk),kcR=vlV().regels['vt:Kassa en weegschaal']||'vantol',kc=ks&&ks.rest>0&&VL_KOST.includes(kcR)?kcR:null,wekelijks=laatst?vlWkWeek(laatst):[];
@@ -96,7 +106,7 @@ function vlRek(){const tx=vlTx().map(t=>({...t,c:vlCat(t)})),mnd=[...new Set(tx.
   const groep={};for(const t of tx){if(!(VL_KOST.includes(t.c)||t.c==='opname')||t.b>=0)continue;const k=vlKey(t.n)||'?';(groep[k]=groep[k]||{k,n:t.n||'(geen naam op afschrift)',c:t.c,l:[]}).l.push(t)}
   const vast=[],stop=[],sig=[],max=tx.length?tx[tx.length-1].d:iso();
   for(const g of Object.values(groep)){const l=g.l,mn=new Set(l.map(t=>t.m)).size;if(!(l.length>=2&&mn>=2)&&!['verzekering','belasting'].includes(g.c))continue;
-    const gp=x=>x.length>1?(vanIso(x[x.length-1].d)-vanIso(x[0].d))/864e5/(x.length-1):365,lr=l.filter(t=>t.d>=plusDagen(max,-92)),gap=gp(lr.length>=2?lr:l),last=l[l.length-1].d;
+    const gp=x=>x.length>1?(vanIso(x[x.length-1].d)-vanIso(x[0].d))/864e5/(x.length-1):365,gap=gp(l),last=l[l.length-1].d;
     if((vanIso(max)-vanIso(last))/864e5>Math.max(21,2*gap)){stop.push({k:g.k,n:g.n,c:g.c,last,la:-l[l.length-1].b,aantal:l.length});continue}
     const fr=gap<=10?['week',52/12]:gap<=45?['maand',1]:gap<=120?['kwartaal',1/3]:['jaar',1/12],la=-l[l.length-1].b;
     const l6=l.filter(t=>t.d>=plusDagen(max,-183)),bs=l6.map(t=>-t.b),wis=['week','maand'].includes(fr[0])&&bs.length>=2&&Math.max(...bs)>Math.min(...bs)*1.1;let pm=Math.round(la*fr[1]),gem=null;
@@ -110,8 +120,8 @@ function vlRek(){const tx=vlTx().map(t=>({...t,c:vlCat(t)})),mnd=[...new Set(tx.
   const eig=vlV().eigen||{};for(const x of vast)if(eig[x.k]){x.calc=x.pm;x.pm=eig[x.k];x.pme=Math.round(x.pm/(1+(VL_BTW[x.c]||0)/100));x.eig=1}
   vast.sort((a,c)=>VL_KOST.indexOf(a.c)-VL_KOST.indexOf(c.c)||c.pm-a.pm);
   const opn=vast.filter(x=>x.c==='opname');vast.splice(0,vast.length,...vast.filter(x=>x.c!=='opname'));const vo=Math.round(opn.reduce((s,x)=>s+x.pm,0)*28/30.44);
-  const lg=tx.filter(t=>t.s!=null).pop(),open=tbOpen().filter(x=>(x.plan||x.verval||iso())<=plusDagen(iso(),28)),fo=open.reduce((s,x)=>s+tbRest(x),0),vtOpen=open.some(x=>/van ?tol/i.test(x.lev)),vk=Math.round(vast.filter(x=>!(x.vt&&vtOpen)).reduce((s,x)=>s+x.pm,0)*28/30.44);
-  return{tx,mnd,per,geld,vast,stop,opn,sig,wk,laatst,ks,vb:lg?{saldo:lg.s,sd:lg.d,fo,fn:open.length,vk,vo,eind:lg.s-fo-vk-vo}:null}}
+  const oud=tbOpen().filter(x=>(x.verval||x.fdat||iso())<plusDagen(iso(),-60)),lg=tx.filter(t=>t.s!=null).pop(),open=tbOpen().filter(x=>(x.plan||x.verval||iso())<=plusDagen(iso(),28)),fo=open.reduce((s,x)=>s+tbRest(x),0),vtOpen=open.some(x=>/van ?tol/i.test(x.lev)),vk=Math.round(vast.filter(x=>!(x.vt&&vtOpen)).reduce((s,x)=>s+x.pm,0)*28/30.44);
+  return{tx,mnd,per,geld,vast,stop,opn,sig,wk,laatst,ks,vb:lg?{oud:oud.length,oudb:oud.reduce((s,x)=>s+tbRest(x),0),saldo:lg.s,sd:lg.d,fo,fn:open.length,vk,vo,eind:lg.s-fo-vk-vo}:null}}
 /* ---------- scherm ---------- */
 let vlHer=false;function vlHerkoppel(){const v=vlV(),ids=new Set(Object.entries(v.ctl).filter(([,c])=>!c.klaar).map(([id])=>id));if(!ids.size)return;for(const id of ids)delete v.ctl[id];vlKoppel(ids);bewaar()}
 function vasteHtml(){if(!vlHer&&betalenMag()&&S.vaste){vlHer=true;vlHerkoppel()}const v=vlV(),R=vlRek(),ctl=vlCtl(),wb=vlBtw?'i':'e',m=vlMnd&&R.mnd.includes(vlMnd)?vlMnd:R.mnd[R.mnd.length-1],mi=R.mnd.indexOf(m);
@@ -122,7 +132,7 @@ function vasteHtml(){if(!vlHer&&betalenMag()&&S.vaste){vlHer=true;vlHerkoppel()}
   if(ctl.length)h+=`<details class="kaartje tbinbox"><summary><b>🏦 Controleren (${ctl.length})</b></summary><div class="sub">Betalingen die ik niet zeker aan een factuur kon koppelen.</div>${ctl.map(vlCtlHtml).join('')}</details>`;
   const ter=Object.entries(v.terug).filter(([,t])=>!t.klaar);if(ter.length)h+=`<div class="kaartje"><h3>↩️ Te verrekenen · ${fEuro(ter.reduce((s,[,t])=>s+t.b,0))}</h3>${ter.map(([id,t])=>`<div class="rij inv"><div class="groei"><div class="naam" style="font-size:15px">${esc(t.lev)} · ${fEuro(t.b)}</div><div class="sub">${esc(t.o)} · ${tbD(t.d)}</div></div><button class="knop rand klein" data-vl="terugklaar" data-v="${id}">Verrekend</button></div>`).join('')}</div>`;
   if(R.sig.length)h+=`<div class="kaartje"><h3>📈 Let op</h3>${R.sig.slice(0,8).map(s=>`<div class="sub" style="margin-top:4px">• ${esc(s)}</div>`).join('')}</div>`;
-  if(R.vb)h+=`<div class="kaartje"><h3>🔭 Komende 4 weken</h3><div class="sub">Saldo ${tbD(R.vb.sd)}: <b>${fEuro(R.vb.saldo)}</b><br>− ${R.vb.fn} open facturen die vervallen: ${fEuro(R.vb.fo)}<br>− vaste lasten 4 weken: ${fEuro(R.vb.vk)}${R.vb.vo?`<br>− opnames 4 weken: ${fEuro(R.vb.vo)}`:''}</div><div class="tbgroot" style="font-size:26px;margin-top:6px;${R.vb.eind<0?'color:var(--rood)':''}">${fEuro(R.vb.eind)}</div><div class="sub">over na 4 weken (zonder nieuwe omzet en inkoop)</div></div>`;
+  if(R.vb)h+=`<div class="kaartje"><h3>🔭 Komende 4 weken</h3><div class="sub">Saldo ${tbD(R.vb.sd)}: <b>${fEuro(R.vb.saldo)}</b><br>− ${R.vb.fn} open facturen die vervallen: ${fEuro(R.vb.fo)}<br>− vaste lasten 4 weken: ${fEuro(R.vb.vk)}${R.vb.vo?`<br>− opnames 4 weken: ${fEuro(R.vb.vo)}`:''}</div><div class="tbgroot" style="font-size:26px;margin-top:6px;${R.vb.eind<0?'color:var(--rood)':''}">${fEuro(R.vb.eind)}</div><div class="sub">over na 4 weken (zonder nieuwe omzet en inkoop)</div>${R.vb.oud?`<div class="sub" style="margin-top:6px;color:var(--rood)">⚠️ ${R.vb.oud} facturen staan langer dan 2 maanden open (${fEuro(R.vb.oudb)}). Zijn die al betaald? Controleer Te betalen, anders klopt dit getal niet.</div>`:''}</div>`;
   const ind=R.tx.filter(t=>t.c==='overig'&&t.b<0).length;
   h+=`<div class="segment" style="margin-top:14px">${[['overzicht','Per maand'],['vast','Vaste lasten'],['geld','In en uit'],['tx','Transacties']].map(([k,t])=>`<button data-vl="tab" data-v="${k}" class="${vlTab===k?'aan':''}">${t}</button>`).join('')}</div>
    <div class="chips" style="margin:0 16px 8px"><button class="chip ${vlBtw?'aan':''}" data-vl="btw" data-v="1">Met btw</button><button class="chip ${vlBtw?'':'aan'}" data-vl="btw" data-v="0">Zonder btw</button>${ind?`<button class="chip ${vlAlleenIndelen?'aan':''}" data-vl="indelen">Nog indelen (${ind})</button>`:''}</div>`;
