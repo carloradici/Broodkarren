@@ -18,6 +18,7 @@ function volgHash(){const h=location.hash;if(!L.sessie||!h)return;const weg=()=>
 window.addEventListener('hashchange',volgHash);setTimeout(volgHash,300);
 document.body.insertAdjacentHTML('beforeend','<div id="cijferblok2" class="cijferblok2" role="dialog" aria-label="Cijfers invoeren"></div>');
 setTimeout(()=>{if(L.sessie&&mag('vinken'))ocrVoorbereiden()},15000);
+setTimeout(()=>{if(L.sessie&&betalenMag())vlReLees()},20000);
 db=maakDb();
 if(L.modus==='lokaal')syncStatus='lokaal';
 else if(L.gekoppeld)syncStatus=db?'start':'offline';

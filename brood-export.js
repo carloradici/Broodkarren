@@ -11,7 +11,7 @@ export function start(createClient, SLEUTEL) {
     try {
       const sb = createClient(Deno.env.get("SUPABASE_URL"), Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"));
       const nu = vandaag(), van = plus(nu, -63), wq = new URL(req.url).searchParams.get("winkel");
-      const a = await sb.from("app_data").select("sleutel,waarde,winkel").in("sleutel", ["instellingen", "voorraad", "bestelboeken"]);
+      const a = await sb.from("app_data").select("sleutel,waarde,winkel").in("sleutel", ["instellingen", "voorraad", "bestelboeken", "prive:vaste"]);
       const b = await sb.from("app_data").select("sleutel,waarde,winkel").gte("sleutel", "dag:" + van).lte("sleutel", "dag:9");
       if (a.error || b.error) throw a.error || b.error;
       const per = {};
@@ -32,7 +32,12 @@ export function start(createClient, SLEUTEL) {
       for (const [id, v] of Object.entries(get("voorraad"))) if (ids.has(id) && v && v.basis != null) voorraad[id] = { n: uit.reduce((n, [i, t, a]) => i === id && t > v.t ? n - a : n, +v.basis), geteld: v.t };
       const bb = get("bestelboeken"), boeken = Object.values(bb.boeken || {}).map((b) => ({ naam: b.naam || "Boek", arts: Object.keys(b.arts || {}) }));
       const eigen = Object.values(bb.eigen || {}).filter((e) => e && e.art).map((e) => ({ art: e.art, naam: e.naam || "", eh: e.eh || "", groep: e.groep || "" }));
-      return js({ ok: true, nu, winkel: wk || null, soorten, dagen, voorraad, boeken, eigen });
+      const bonnen = {}; let dragers = null;
+      for (const [ws, w] of Object.entries(get("prive:vaste").wk || {}).sort((x, y) => x[0].localeCompare(y[0]))) {
+        for (const [ref, x] of Object.entries(w?.re || {})) bonnen[ref.replace(/\D/g, "")] = { d: x.d, fnr: x.fnr || "", ws, regels: (x.regels || []).map(([art, n, oms, c]) => ({ art, n, oms, eur: c / 100 })), eur: (x.tot || 0) / 100 };
+        if (w?.gd) dragers = { d: w.gd.d, ws, items: w.gd.items || {} };
+      }
+      return js({ ok: true, nu, winkel: wk || null, soorten, dagen, voorraad, boeken, eigen, retour: { bonnen, dragers } });
     } catch (e) { return js({ ok: false, fout: String(e?.message || e) }, 500); }
   });
 }
