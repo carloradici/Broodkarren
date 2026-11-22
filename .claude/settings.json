@@ -1,0 +1,6 @@
+{
+  "extraKnownMarketplaces": {
+    "coop-mods": { "source": { "source": "github", "repo": "carloradici/Coop-Besteladvies" } }
+  },
+  "enabledPlugins": { "voortgang-balk@coop-mods": true }
+}

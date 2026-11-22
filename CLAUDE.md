@@ -7,7 +7,7 @@ Web-app (PWA) van Coop Vogelenzang voor broodkarren klaarzetten, derving, bestel
 - **Lees alleen de bestanden die je nodig hebt.** Zoek een functie met `grep -n "function naam\|naam=" app-*.js` en lees dan alleen dat stuk.
 - Pas gericht aan (Edit), herschrijf geen hele bestanden. Houd code compact.
 - Nieuw scherm = meteen een eigen hulptekst.
-- Stuur tijdens langer werk korte voortgangsberichten met percentage ("⏳ 40% · nu testen").
+- Voortgang tijdens langer werk: via de stille tool `mcp__voortgang-balk__voortgang` (pct + 2-4 woorden; balk boven het tekstveld, mod in `claude-mods/` van Coop-Besteladvies). Geen aparte "⏳ 40%"-berichten. Werkt de tool niet, dan wel korte voortgangsberichten met percentage.
 - **Bouw altijd verder op de bestanden in deze repo** (eerst ophalen van GitHub), nooit op een eigen kopie of één samengevoegd index.html. Werk niet in twee chats tegelijk aan deze app: dan overschrijft de ene upload de andere.
 
 ## Opbouw
