@@ -79,6 +79,7 @@ function maakDb(){
     async anoniem(){return chk(await c.auth.signInAnonymously()).session},
     async registreer(e,p){return chk(await c.auth.signUp({email:e,password:p,options:{emailRedirectTo:appUrl()}})).session},
     async logout(){await c.auth.signOut()},
+    async retourUp(p,b){chk(await c.storage.from('retour').upload(p,b,{upsert:true,contentType:'image/jpeg'}))},
     async rpc(f,a){return chk(await c.rpc(f,a||{}))},
     async isBeheerder(uid){return !!chk(await c.from('beheerders').select('user_id').eq('user_id',uid).maybeSingle())},
     /* opstarten: alleen wat sinds de vorige keer veranderd is; leesfout-foto's alleen naar de beheerder */

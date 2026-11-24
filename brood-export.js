@@ -37,6 +37,8 @@ export function start(createClient, SLEUTEL) {
         for (const [ref, x] of Object.entries(w?.re || {})) bonnen[ref.replace(/\D/g, "")] = { d: x.d, fnr: x.fnr || "", ws, regels: (x.regels || []).map(([art, n, oms, c]) => ({ art, n, oms, eur: c / 100 })), eur: (x.tot || 0) / 100 };
         if (w?.gd) dragers = { d: w.gd.d, ws, items: w.gd.items || {} };
       }
+      const refs = Object.keys(bonnen);
+      if (refs.length) { const u = await sb.storage.from("retour").createSignedUrls(refs.map((r) => r + ".jpg"), 3600); for (const x of u.data || []) if (x.signedUrl && !x.error) { const r = (x.path || "").replace(/\.jpg$/, ""); if (bonnen[r]) bonnen[r].img = x.signedUrl; } }
       return js({ ok: true, nu, winkel: wk || null, soorten, dagen, voorraad, boeken, eigen, retour: { bonnen, dragers } });
     } catch (e) { return js({ ok: false, fout: String(e?.message || e) }, 500); }
   });

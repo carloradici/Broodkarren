@@ -131,7 +131,7 @@ function tbLeesFactuur(t,eind){t=String(t||'').replace(/\r/g,'');const low=t.toL
   if(tot!=null)r.tot=fCent(tot);if(!r.verval&&r.fdat)r.verval=plusDagen(r.fdat,30);return r}
 async function tbScan(file){toast('Factuur lezen… even geduld');try{const c=await tbCanvas(file);let tekst=c.tekst;
     if(tekst.replace(/\s/g,'').length<40&&c.canvas){toast('Tekst herkennen…');tekst=await tbOcr(c.canvas)}
-    if(vlWeekstaatZet(vlWeekstaat(tekst))){bewaar();toast('Weekstaat ook verwerkt in Vaste lasten')}tbScanBijl=c.canvas?tbVerklein(c.canvas):null;tbScanPdf=c.pdf||null;tbScanN=c.n||1;const v=tbLeesFactuur(tekst,c.eind),gev=['lev','nr','fdat','tot'].filter(k=>v[k]).length;
+    {const w=vlWeekstaat(tekst);if(vlWeekstaatZet(w)){bewaar();toast('Weekstaat ook verwerkt in Vaste lasten');if(Object.keys(w.re||{}).length)vlRetourImg(file).catch(console.warn)}}tbScanBijl=c.canvas?tbVerklein(c.canvas):null;tbScanPdf=c.pdf||null;tbScanN=c.n||1;const v=tbLeesFactuur(tekst,c.eind),gev=['lev','nr','fdat','tot'].filter(k=>v[k]).length;
     const pre={};for(const k of['lev','nr','fdat','verval','tot'])if(v[k]!=null&&v[k]!=='')pre[k]=v[k];tbFormulier(null,pre);toast(gev===4?'Gelezen: controleer de gegevens':`${gev} van 4 gegevens gelezen: vul de rest aan`)}
   catch(z){console.warn(z);toast('Lezen lukte niet: vul de factuur zelf in');tbScanBijl=null;tbFormulier(null)}}
 function tbToonBijl(src){if(!src)return;if(/^data:application\/pdf/.test(src)){tbToonPdf(src);return}let ov=document.getElementById('tbBijlOv');if(!ov){ov=document.createElement('div');ov.id='tbBijlOv';ov.setAttribute('role','dialog');document.body.appendChild(ov);ov.addEventListener('click',e=>{if(e.target.closest('[data-tbsluit]')||e.target===ov)ov.classList.remove('open')})}
