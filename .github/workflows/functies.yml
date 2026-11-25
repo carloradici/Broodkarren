@@ -1,0 +1,46 @@
+# Edge Functions automatisch live zetten in Supabase zodra hun code verandert (geen Deploy-knop meer). Handmatig: Actions › functies-live › Run workflow.
+# Nodig: geheim SUPABASE_ACCESS_TOKEN in GitHub en BROOD_SLEUTEL in Supabase (Edge Functions › Secrets).
+name: functies-live
+on:
+  push:
+    branches: [main]
+    paths: [stuur-push.js, factuur-in.js, bestelboek.js, brood-export.js, 'supabase/functions/**', .github/workflows/functies.yml]
+  workflow_dispatch:
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      P: dmvutkvpnoeenybznskz
+    steps:
+      - name: Controleren
+        run: '[ -n "$SUPABASE_ACCESS_TOKEN" ] || echo "::warning title=functies-live::overgeslagen, geheim SUPABASE_ACCESS_TOKEN ontbreekt in GitHub"'
+      - uses: actions/checkout@v4
+        if: env.SUPABASE_ACCESS_TOKEN != ''
+      - uses: supabase/setup-cli@v1
+        if: env.SUPABASE_ACCESS_TOKEN != ''
+        with:
+          version: 3.4.0
+      - name: Gedeelde code klaarzetten
+        if: env.SUPABASE_ACCESS_TOKEN != ''
+        run: mkdir -p supabase/functions/_shared && cp stuur-push.js factuur-in.js bestelboek.js brood-export.js supabase/functions/_shared/
+      - name: Live zetten
+        if: env.SUPABASE_ACCESS_TOKEN != ''
+        run: |
+          F=0
+          d(){ n=$1; shift; if o=$(supabase functions deploy $n --project-ref $P --yes "$@" 2>&1); then echo "::notice title=$n::live"; else echo "$o"; echo "::error title=$n::$(echo "$o" | tail -6 | tr '\n' ' ')"; F=1; fi; }
+          d stuur-push --no-verify-jwt
+          d factuur-in --no-verify-jwt
+          d bestelboek --no-verify-jwt
+          if supabase secrets list --project-ref $P 2>&1 | grep -q BROOD_SLEUTEL; then d brood-export --no-verify-jwt; else echo "::warning title=brood-export::overgeslagen, geheim BROOD_SLEUTEL ontbreekt in Supabase"; fi
+          exit $F
+      - name: Controleren of ze werken
+        if: env.SUPABASE_ACCESS_TOKEN != ''
+        run: |
+          U=https://$P.supabase.co/functions/v1; K=sb_publishable_bWdFBTPWPSK9nLo3UDZn5w_6uvDQ_eu; F=0
+          t(){ n=$1; c=$(curl -s -m 60 -o /tmp/o -w '%{http_code}' -H "apikey: $K" -H "Authorization: Bearer $K" "${@:2}"); b=$(head -c 120 /tmp/o | tr -dc '[:print:]'); if [ "$c" -ge 500 ] || [ "$c" = 000 ]; then echo "::error title=$n::antwoord $c $b"; F=1; else echo "::notice title=$n werkt::antwoord $c $b"; fi; }
+          t stuur-push -X POST -H 'Content-Type: application/json' -d '{"soort":"controle"}' $U/stuur-push
+          t factuur-in $U/factuur-in
+          t bestelboek $U/bestelboek
+          t brood-export $U/brood-export
+          exit $F

@@ -3,7 +3,7 @@
 // 10.24: per soort melding aan/uit (beheerder: prive:push.uit, medewerker: profielen[uid].pushUit).
 // 10.17: te betalen (vervaldatum, maandag-overzicht), vergeten uit te klokken, checklist niet af.
 // 10.10: berichten (chat): privé, teamchat, mededelingen, @naam, dempen, ingeplande berichten en herinnering bij open meldingen.
-// Wordt door de korte stuur-push in Supabase opgehaald van GitHub. Bijwerken = dit bestand uploaden en in Supabase op Deploy tikken.
+// Gaat automatisch live via .github/workflows/functies.yml (supabase/functions/stuur-push/index.ts). 10.57: soort update (nieuwe versie) en controle.
 export function start(webpush, createClient) {
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -22,6 +22,7 @@ Deno.serve(async (req) => {
     webpush.setVapidDetails("mailto:winkel@coopvogelenzang.nl", PUBLIEK, prive);
     let body = {};
     try { body = await req.json(); } catch (_) { /* leeg */ }
+    if (body.soort === "controle") return antwoord({ ok: true, controle: true }); // controle na live zetten: niets versturen
 
     // 10.0: elke winkel apart (alleen winkels met pushmeldingen in hun pakket)
     const PAKKET = { basis: [], plus: ["scan", "push", "rapport"], compleet: ["scan", "push", "rapport", "advies", "euro", "cadeau", "deeg"] };
@@ -67,6 +68,9 @@ Deno.serve(async (req) => {
 
       if (body.test) {
         berichten = [{ titel: "Brood Opzet", tekst: "✓ Pushmeldingen werken!", tag: "test", url: "./#materiaal", aan: "beheer" }];
+      } else if (body.soort === "update") { // 10.57: nieuwe versie (vanuit GitHub), per versie één keer, alleen naar wie Updates tonen aan heeft
+        const v = String(body.versie || "");
+        if (/^\d+\.\d+$/.test(v) && !verstuurd["upd:" + v]) { berichten = [{ titel: "📲 Nieuwe versie", tekst: `Versie ${v} staat klaar · tik om bij te werken`, tag: "update", url: "./?update=1", aan: "upd", soort: "update" }]; nieuw.push("upd:" + v); }
       } else {
         const uur = Number(new Intl.DateTimeFormat("nl-NL", { timeZone: "Europe/Amsterdam", hour: "numeric", hourCycle: "h23" }).format(new Date()));
         const stil = push.stil || { van: 21, tot: 7 };
@@ -245,7 +249,9 @@ Deno.serve(async (req) => {
       const soortVan = (tag) => { const t = String(tag || ""); return t.startsWith("her-") ? "chat-her" : t === "levering" ? "levering" : t === "week" ? "week" : t.startsWith("tb-") ? t : t.startsWith("uitb-") ? "uit-bh" : t.startsWith("uit-") ? "uitklok" : t.startsWith("cl-") ? "checklist" : ""; };
       const magNaar = (t, soort) => { if (!soort) return true; if (toestellen.includes(t)) return !uitB[soort]; return !(((profs[t.uid] || {}).pushUit) || {})[soort]; }; // aanmeldingen die niet meer bestaan (app verwijderd, nieuwe telefoon)
       for (const b of berichten) {
-        const doel = b.aan === "levering" ? [...toestellen, ...teamToestellen]
+        const wil = (uid) => !!(profs[uid] || {}).updates;
+        const doel = b.aan === "upd" ? [...(gebr.some((g) => g.rol === "admin" && wil(g.id)) ? toestellen : []), ...(team.subs || []).filter((t) => wil(t.uid))]
+          : b.aan === "levering" ? [...toestellen, ...teamToestellen]
           : String(b.aan).startsWith("uid:") ? (team.subs || []).filter((t) => t.uid === String(b.aan).slice(4))
           : toestellen;
         const gezien = new Set(), srt = b.soort || soortVan(b.tag);

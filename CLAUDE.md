@@ -38,7 +38,9 @@ Web-app (PWA) van Coop Vogelenzang voor broodkarren klaarzetten, derving, bestel
 | app-events.js | gebruiksgemak, Android, updates, alle klik-afhandeling (`case'...'`) |
 | app-start.js | opstarten |
 
-Edge Functions: `stuur-push.js`, `factuur-in.js`, `bestelboek.js` (haalt bestelboek-wk-NN.pdf bij Reto op; app: bbAuto in app-bestelboek.js), `brood-export.js` (alleen lezen: klaargezet, over, voorraad, retourbonnen + signed URL van plaatje uit privé bucket `retour` (vlRetourImg in app-vaste.js) voor Coop Besteladvies, beveiligd met koppelcode in de stub) (vaste naam, Supabase heeft alleen een stub die ze importeert). `ocr/` = leesprogramma pakbon, niet aanraken.
+Edge Functions: `stuur-push.js`, `factuur-in.js`, `bestelboek.js` (haalt bestelboek-wk-NN.pdf bij Reto op; app: bbAuto in app-bestelboek.js), `brood-export.js` (alleen lezen: klaargezet, over, voorraad, retourbonnen + signed URL van plaatje uit privé bucket `retour` (vlRetourImg in app-vaste.js) voor Coop Besteladvies, beveiligd met koppelcode in de stub) Code blijft in deze bestanden; `supabase/functions/<naam>/index.ts` is de ingang. **Automatisch live** via `.github/workflows/functies.yml` (Supabase CLI, geheim SUPABASE_ACCESS_TOKEN in GitHub) zodra zo'n bestand verandert: geen Deploy-knop meer. Koppelcode brood-export = geheim BROOD_SLEUTEL in Supabase (nooit in de openbare repo). verify_jwt: overal uit. `ocr/` = leesprogramma pakbon, niet aanraken.
+
+Updates: bij openen meteen bijwerken (updBijOpen), bijwerkscherm, na update ingelogd op hetzelfde scherm (`bo-updplek`, 2 min). Pushmelding "Nieuwe versie": `.github/workflows/update-melding.yml` wacht tot de nieuwe APP_BOUW live staat en roept stuur-push aan met `{soort:'update',versie}` (alleen naar profielen met Updates tonen).
 
 ## Nieuwe versie (nummers met één punt: 10.26, 10.27 …)
 1. `index.html`: `APP_BOUW='x.y'` en `?b=x.y` bij style.css (het laadscript gebruikt APP_BOUW zelf).
@@ -57,4 +59,4 @@ Edge Functions: `stuur-push.js`, `factuur-in.js`, `bestelboek.js` (haalt bestelb
 - Na "bouwen" en testen: **zelf committen en pushen naar main** (versienummer in de commit-boodschap). Carlo uploadt niets meer. Haal vóór elke bouw eerst de laatste versie op (hij kan zelf iets geüpload hebben).
 - Lukt pushen niet, dan als terugval een zip `brood-opzet-X.Y-github.zip` met alleen de gewijzigde bestanden (plat, geen mappen).
 - Supabase: SQL als platte tekst in de chat, compacte delen zonder commentaar (max ~5 KB per deel), altijd met link naar de juiste Supabase-pagina. Nooit "vervang één regel": altijd het hele bestand. Niets nodig? Zeg: "Voor Supabase hoef je niets te doen".
-- Na oplevering alleen: wat nieuw is, dat het op GitHub staat, of Supabase iets nodig heeft.
+- Na oplevering alleen: wat nieuw is, dat het op GitHub staat, of Supabase iets nodig heeft (alleen nog SQL; Edge Functions gaan automatisch live: controleer de run van functies-live).

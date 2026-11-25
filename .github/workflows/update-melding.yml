@@ -1,0 +1,20 @@
+# Na een nieuwe versie: wachten tot GitHub Pages hem toont, dan de pushmelding "Nieuwe versie" laten sturen (alleen naar wie Updates tonen aan heeft).
+name: update-melding
+on:
+  push:
+    branches: [main]
+    paths: [index.html]
+jobs:
+  melding:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          V=$(grep -o "APP_BOUW='[0-9.]*'" index.html | grep -o "[0-9.]*[0-9]")
+          [ -n "$V" ] || exit 0
+          for i in $(seq 1 40); do
+            curl -s "https://carloradici.github.io/${GITHUB_REPOSITORY#*/}/index.html?t=$(date +%s)" | grep -q "APP_BOUW='$V'" && { L=1; break; }; sleep 15
+          done
+          [ -n "$L" ] || { echo "::warning title=update-melding::versie $V na 10 minuten nog niet live, geen melding"; exit 0; }
+          K=sb_publishable_bWdFBTPWPSK9nLo3UDZn5w_6uvDQ_eu
+          curl -s -X POST "https://dmvutkvpnoeenybznskz.supabase.co/functions/v1/stuur-push" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d "{\"soort\":\"update\",\"versie\":\"$V\"}"
