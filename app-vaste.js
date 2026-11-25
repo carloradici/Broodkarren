@@ -212,7 +212,7 @@ function vlTbKaart(){if(!S.vaste)return'';const n=vlCtl().length;return n?`<div 
 async function vlExcel(){if(!window.XLSX){toast('Excel-onderdeel laden…');try{await laadXlsx()}catch(e){toast('Excel kon niet laden, controleer je internet');return}}
   const R=vlRek(),E=c=>c/100,rd=v=>Math.round(v*100)/100,F=(f,v)=>({t:'n',f,v}),nm=c=>VL_N[c].replace(/^\S+\s/,''),FR={week:['52/12',52/12],'4 weken':['13/12',13/12],maand:['1',1],kwartaal:['1/3',1/3],jaar:['1/12',1/12]},kc=vlV().regels['vt:Kassa en weegschaal']||'vantol';
   const a=[['Post','Soort','Bedrag incl. btw','Bedrag excl. btw','Hoe vaak','Factor','Per maand incl.','Per maand excl.','Btw %','Toelichting']],b=[['Post','Datum','Omschrijving','Incl. btw','Btw %','Excl. btw','Btw-bedrag']];
-  R.vast.forEach((x,k)=>{const r=k+2,bt=x.c==='lening'?0:(VL_BTW[x.c]||0)/100,vt=(x.vt||x.kassa)&&!x.eig,fr=x.ek?x.fr:vt&&!x.kassa?'week':x.kassa?'maand':x.fr,[ff,fv]=x.eig||x.gem?.nf?FR.maand:FR[fr]||FR.maand;
+  R.vast.forEach((x,k)=>{const r=k+2,bt=x.c==='lening'?0:(VL_BTW[x.c]||0)/100,vt=(x.vt||x.kassa)&&!x.eig,fr=x.eig?'maand (eigen bedrag)':x.gem?.nf?'maand (gemiddelde)':x.ek?x.fr:vt&&!x.kassa?'week':x.kassa?'maand':x.fr,[ff,fv]=x.eig||x.gem?.nf?FR.maand:FR[fr]||FR.maand;
     const C=x.eig?E(x.pm):x.gem?.nf?x.gem.tot/x.gem.nf/100:x.gem?.l3!=null?E(x.gem.l3):E(x.la),D=vt?E(x.ex):C/(1+bt),G=rd(C*fv),H=vt?rd(D*fv):rd(G/(1+bt));
     const t=x.eig?`eigen bedrag (berekend: ${fEuro(x.calc)})`:x.gem?.nf?`gemiddelde van ${x.gem.nf} facturen in ${x.gem.mnd} maanden`:x.gem?.l3!=null?`gemiddelde van de laatste ${x.gem.n} betalingen`:x.kassa?`termijn ${R.ks.n} van ${VL_KT}`:x.ek?'eigen kosten':vt?'bedrag laatste weekstaat':'laatste betaling';
     a.push([x.n,nm(x.c),C,vt?D:F(`C${r}/(1+I${r})`,D),fr,F(ff,fv),F(`ROUND(C${r}*F${r},2)`,G),F(vt?`ROUND(D${r}*F${r},2)`:`ROUND(G${r}/(1+I${r}),2)`,H),bt,t]);
@@ -221,7 +221,7 @@ async function vlExcel(){if(!window.XLSX){toast('Excel-onderdeel laden…');try{
   const n=a.length;a.push(['TOTAAL','','','','','',F(`SUM(G2:G${n})`,0),F(`SUM(H2:H${n})`,0),'',''],[],[`Zelfde berekening als Vaste lasten in de app (${R.vast.length} posten). Per maand = bedrag × factor; bij een week: × 52/12 (4,33 weken per maand).`]);
   a[n][6].v=rd(a.slice(1,n).reduce((s,r)=>s+r[6].v,0));a[n][7].v=rd(a.slice(1,n).reduce((s,r)=>s+r[7].v,0));for(const r of b.slice(1))r[6].v=rd((r[3].v??r[3])-(r[5].v??r[5]));
   const wb=XLSX.utils.book_new(),zet=(rows,cols,naam,pc)=>{const ws=XLSX.utils.aoa_to_sheet(rows,{cellDates:true});ws['!cols']=cols.map(w=>({wch:w}));for(const k in ws)if(k[0]!=='!'){const c=XLSX.utils.decode_cell(k).c;if(ws[k].t==='d')ws[k].z='dd-mm-yyyy';else if(ws[k].t==='n')ws[k].z=c===pc?'0%':c===5&&naam==='Vaste lasten'?'0.0000':'#,##0.00'}XLSX.utils.book_append_sheet(wb,ws,naam)};
-  zet(a,[30,20,14,14,9,8,14,14,6,40],'Vaste lasten',8);zet(b,[30,11,30,12,6,12,11],'Betalingen per post',4);
+  zet(a,[30,20,14,14,19,8,14,14,6,40],'Vaste lasten',8);zet(b,[30,11,30,12,6,12,11],'Betalingen per post',4);
   deelBestand(new File([XLSX.write(wb,{bookType:'xlsx',type:'array'})],`vaste-lasten-${iso()}.xlsx`,{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}))}
 /* ---------- klikken ---------- */
 document.addEventListener('click',e=>{const el=e.target.closest('[data-vl]');if(!el||!betalenMag())return;const c=el.dataset.vl,v=el.dataset.v||'',V=vlV(),t=vlTx().find(x=>x.id===v.split('|')[0]);
