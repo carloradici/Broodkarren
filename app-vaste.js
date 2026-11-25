@@ -214,13 +214,13 @@ async function vlExcel(){if(!window.XLSX){toast('Excel-onderdeel laden…');try{
     mn=m=>new Date(m+'-15').toLocaleDateString('nl-NL',{month:'long',year:'numeric'}),nm=c=>VL_N[c].replace(/^\S+\s/,''),alle=VL_KOST.filter(c=>som(M,c)>0),klein=alle.filter(c=>c!=='overig'&&som(M,c)<1000),
     grp=[...new Set(alle.map(c=>klein.includes(c)?'overig':c))],ld=c=>c==='overig'?['overig',...klein]:[c],S3=(ms,c,k)=>ld(c).reduce((s,x)=>s+som(ms,x,k),0),
     wat=c=>c==='personeel'?'salarissen en afdrachten':[...new Set(R.vast.filter(x=>ld(c).includes(x.c)).sort((a,b)=>b.pm-a.pm).map(x=>x.n))].concat(c==='overig'?klein.map(nm):[]).slice(0,4).join(', '),
-    rij=grp.map(c=>[c,S3(M,c,'i'),S3(M3,c,'i'),S3(M,c,'e')]).sort((a,b)=>b[1]-a[1]),ti=rij.reduce((s,x)=>s+Math.round(x[1]),0),te=rij.reduce((s,x)=>s+Math.round(x[3]),0),t3=rij.reduce((s,x)=>s+Math.round(x[2]),0),o=som(M,'opname');
-  const r=[['Vaste lasten – gemiddeld per maand (met btw)'],[`Periode: ${M.length?mn(M[0])+' t/m '+mn(M[M.length-1]):'-'} (${M.length} maanden) · gemaakt ${tbD(iso())}`],[],
-    ['Kosten','Per maand','Laatste 3 mnd','Per jaar','Deel','Wat zit erin'],...rij.map(([c,g,g3])=>[nm(c),e(g),e(g3),e(g*12),ti?g/ti:0,wat(c)]),
-    ['TOTAAL',e(ti),e(t3),e(ti*12),1,''],['Btw die je terugkrijgt',e(ti-te),'',e((ti-te)*12),'','verschil tussen met en zonder btw']];
+    k=vlBtw?'i':'e',rij=grp.map(c=>[c,S3(M,c,k),S3(M3,c,k),S3(M,c,'i'),S3(M,c,'e')]).sort((a,b)=>b[1]-a[1]),T=j=>rij.reduce((s,x)=>s+Math.round(x[j]),0),tk=T(1),t3=T(2),ti=T(3),te=T(4),o=som(M,'opname');
+  const r=[[`Vaste lasten – gemiddeld per maand (${vlBtw?'met':'zonder'} btw)`],[`Periode: ${M.length?mn(M[0])+' t/m '+mn(M[M.length-1]):'-'} (${M.length} maanden) · gemaakt ${tbD(iso())}`],[],
+    ['Kosten','Per maand','Laatste 3 mnd','Per jaar','Deel','Wat zit erin'],...rij.map(([c,g,g3])=>[nm(c),e(g),e(g3),e(g*12),tk?g/tk:0,wat(c)]),
+    ['TOTAAL',e(tk),e(t3),e(tk*12),1,''],['Btw die je terugkrijgt',e(ti-te),'',e((ti-te)*12),'','verschil tussen met en zonder btw']];
   if(o||R.ks)r.push([],['Ter info (niet in het totaal)']);if(o)r.push(['Opnames',e(o),'','','','gemiddeld per maand']);if(R.ks)r.push(['Kassa\'s nog te betalen',e(R.ks.open),'','','',R.ks.rest?`nog ${VL_KT-R.ks.n} termijnen, laatste in ${mn(R.ks.eind.slice(0,7))}`:'afbetaald']);
   const ws=XLSX.utils.aoa_to_sheet(r),wb=XLSX.utils.book_new();ws['!cols']=[{wch:26},{wch:12},{wch:13},{wch:11},{wch:6},{wch:48}];for(const k in ws)if(k[0]!=='!'&&typeof ws[k].v==='number'){const c=XLSX.utils.decode_cell(k).c;ws[k].z=c===3?'#,##0':c===4?'0%':'#,##0.00'}XLSX.utils.book_append_sheet(wb,ws,'Vaste lasten');
-  deelBestand(new File([XLSX.write(wb,{bookType:'xlsx',type:'array'})],`vaste-lasten-${iso()}.xlsx`,{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}))}
+  deelBestand(new File([XLSX.write(wb,{bookType:'xlsx',type:'array'})],`vaste-lasten-${vlBtw?'met':'zonder'}-btw-${iso()}.xlsx`,{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}))}
 /* ---------- klikken ---------- */
 document.addEventListener('click',e=>{const el=e.target.closest('[data-vl]');if(!el||!betalenMag())return;const c=el.dataset.vl,v=el.dataset.v||'',V=vlV(),t=vlTx().find(x=>x.id===v.split('|')[0]);
   switch(c){case'tab':vlTab=v;break;case'btw':vlBtw=v==='1';break;case'mnd':if(v)vlMnd=v;break;case'indelen':vlAlleenIndelen=!vlAlleenIndelen;vlTab='tx';break;case'excel':vlExcel();return;case'detail':vlDetail(v);return;case'eknieuw':vlEkForm(urenId());return;
