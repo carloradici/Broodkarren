@@ -1,0 +1,16 @@
+# Veiligheidstest: probeert als buitenstaander binnen te komen (alleen openbare gegevens). Elke maandagnacht, na elke wijziging aan functies of de test, en met de hand.
+name: veiligheidstest
+on:
+  push:
+    branches: [main]
+    paths: [.github/veiligheid/**, .github/workflows/veiligheid.yml, stuur-push.js, factuur-in.js, brood-export.js]
+  schedule:
+    - cron: '17 2 * * 1'
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sleep 90 # functies-live eerst laten afronden
+      - run: cd .github/veiligheid && npm i --no-save @supabase/supabase-js@2.117.2 >/dev/null && node test.mjs

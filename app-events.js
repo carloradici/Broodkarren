@@ -349,7 +349,7 @@ document.addEventListener('click',async e=>{
   case'bkterug':{if(!isAdmin()||!kanBeheren())return;if(!confirm(`Alle gegevens terugzetten naar de back-up van ${dagNaamLang(v)}?\n\nWat daarna is ingevuld, gaat verloren.`))return;if(!confirm('Weet je het zeker? Dit kan niet ongedaan worden gemaakt.'))return;
     try{toast('Terugzetten…');await db.herstel(v);log(`Back-up van ${datumTekst(v)} teruggezet`);try{localStorage.removeItem(OPSLAG);localStorage.removeItem(OPSLAG_BASIS);localStorage.removeItem(OPSLAG_REVS)}catch(e){}await wisIdb();alert('De back-up is teruggezet. De app start opnieuw. Sluit de app op andere telefoons en open hem opnieuw.');location.reload()}catch(e){toast('Terugzetten mislukt: '+(e?.message||e))}return}
   case'pushtest':toast('Testmelding versturen…');stuurPush({test:true}).then(r=>{let t;
-    if(r.netwerk)t='✗ Geen verbinding met Supabase';else if(r.status===401)t='✗ Supabase weigert: zet bij stuur-push "Verify JWT" uit';else if(r.status===404)t='✗ De functie stuur-push bestaat nog niet in Supabase';
+    if(r.netwerk)t='✗ Geen verbinding met Supabase';else if(r.status===401)t='✗ Supabase weigert: zet bij stuur-push "Verify JWT" uit';else if(r.status===404)t='✗ De functie stuur-push bestaat nog niet in Supabase';else if(r.status===403)t='✗ Testen kan alleen op het beheerderstoestel (log zo nodig opnieuw in)';
     else if(r.ok)t=r.verstuurd?`✓ Verstuurd naar ${r.verstuurd} ${r.verstuurd===1?'toestel':'toestellen'}`:`✗ Niet verstuurd: ${r.reden||'onbekend'}`;else t='✗ '+(r.fout||('fout '+r.status));
     toast(t)});return;
   case'stilvan':case'stiltot':{if(!isAdmin())return;S.push.stil={...(S.push.stil||{van:21,tot:7}),[a==='stilvan'?'van':'tot']:+v};bewaar();render();return}

@@ -23,6 +23,17 @@ Deno.serve(async (req) => {
     let body = {};
     try { body = await req.json(); } catch (_) { /* leeg */ }
     if (body.soort === "controle") return antwoord({ ok: true, controle: true }); // controle na live zetten: niets versturen
+    // 10.59: op slot. Testmelding alleen voor een ingelogde beheerder; "Nieuwe versie" alleen als die versie echt live staat.
+    if (body.test) {
+      const tk = String(req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+      const u = tk.split(".").length === 3 ? (await sb.auth.getUser(tk)).data?.user : null;
+      const ok = u && (await sb.from("beheerders").select("user_id").eq("user_id", u.id).maybeSingle()).data;
+      if (!ok) return antwoord({ ok: false, fout: "alleen voor de beheerder" }, 403);
+    }
+    if (body.soort === "update") {
+      const live = await fetch("https://carloradici.github.io/Broodkarren/index.html?t=" + Date.now()).then((r) => r.text()).catch(() => "");
+      if (!live.includes(`APP_BOUW='${String(body.versie || "")}'`)) return antwoord({ ok: false, fout: "deze versie staat niet live" }, 400);
+    }
 
     // 10.0: elke winkel apart (alleen winkels met pushmeldingen in hun pakket)
     const PAKKET = { basis: [], plus: ["scan", "push", "rapport"], compleet: ["scan", "push", "rapport", "advies", "euro", "cadeau", "deeg"] };

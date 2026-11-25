@@ -550,7 +550,7 @@ function toonMatLijst(){toonSheet(`<div class="pkop"><button data-a="sluit">Annu
    <button class="toevoegen" data-a="matlijsterbij">+ Materiaal toevoegen</button></div>`)}
 /* ---------- pushmeldingen ---------- */
 const VAPID_PUBLIEK='BMq2CTiL_Zpze43M7a5Ik1nZwFyB-xYRLeXAt4R6s7w_WBebpQvP_uHXS8QsH-0g1vkqTBVmEg3eaRe5NtTLj9o';
-function stuurPush(extra){try{return fetch(SUPA_URL+'/functions/v1/stuur-push',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY},body:JSON.stringify({...(extra||{}),...(WINKEL?{winkel:WINKEL.id}:{})})}).then(async r=>{let j={};try{j=await r.json()}catch(e){}return{status:r.status,...j}}).catch(()=>({netwerk:true}))}catch(e){return Promise.resolve({netwerk:true})}}
+async function stuurPush(extra){let tk=SUPA_KEY;try{tk=(await db?.sessie?.())?.access_token||SUPA_KEY}catch(e){}try{return fetch(SUPA_URL+'/functions/v1/stuur-push',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+tk},body:JSON.stringify({...(extra||{}),...(WINKEL?{winkel:WINKEL.id}:{})})}).then(async r=>{let j={};try{j=await r.json()}catch(e){}return{status:r.status,...j}}).catch(()=>({netwerk:true}))}catch(e){return Promise.resolve({netwerk:true})}}
 function pushStatus(){if(!('serviceWorker'in navigator)||!('PushManager'in window))return'niet';if(typeof Notification==='undefined')return'niet';return Notification.permission}
 async function pushAan(){
   if(pushStatus()==='niet'){toast(pushNietTekst());return}
