@@ -85,14 +85,18 @@ async function zoekUpdate(stil){if(!kanUpdaten()||!navigator.onLine)return null;
 function toonUpdateBalk(){let el=document.getElementById('updatebalk');if(!nieuweBouw||!updatesTonen()){if(el)el.remove();return}
   if(!el){el=document.createElement('button');el.id='updatebalk';el.className='updatebalk';el.dataset.a='bijwerken';document.getElementById('app')?.prepend(el)}
   el.textContent=`🔄 Nieuwe versie ${nieuweBouw} beschikbaar – tik om bij te werken`}
-async function werkBij(stil){if(updateBezig)return;updateBezig=true;if(!stil)toast('Bijwerken…');bewaarNu();
+async function werkBij(stil){if(updateBezig)return;updateBezig=true;bewaarNu();
+  if(!stil){const o=document.createElement('div');o.className='updscherm';o.innerHTML=`<div class="updrond"></div><b>📲 Bijwerken naar versie ${esc(nieuweBouw||'')}…</b><small>Een paar seconden geduld</small>`;document.body.appendChild(o)}
+  try{if(L.sessie)localStorage.setItem('bo-updplek',JSON.stringify({s:L.sessie,tab,sub,t:Date.now()}))}catch(e){}
   try{const reg=await navigator.serviceWorker.getRegistration();if(reg){await reg.update();const w=reg.installing||reg.waiting;
-      if(w&&w.state!=='activated')await new Promise(ok=>{const t=setTimeout(ok,8000);w.addEventListener('statechange',()=>{if(w.state==='activated'){clearTimeout(t);ok()}})})}}catch(e){}
-  setTimeout(()=>location.reload(),300)}
+      if(w)await new Promise(ok=>{const t=setTimeout(ok,3000),k=()=>{if(w.state==='activated'||w.state==='redundant'){clearTimeout(t);ok()}};w.addEventListener('statechange',k);k()})}}catch(e){}
+  location.reload()}
+let updT=0;function updBijOpen(){if(Date.now()-updT<5000)return;updT=Date.now();zoekUpdate(true).then(b=>{if(b&&kanUpdaten())werkBij()})}
+if('serviceWorker'in navigator)navigator.serviceWorker.addEventListener('message',e=>{if(e.data&&e.data.update){updT=0;updBijOpen()}});
 async function controleerUpdate(){if(!kanUpdaten()){toast(L.modus==='lokaal'||!location.protocol.startsWith('http')?'Bijwerken kan alleen in de geïnstalleerde app':'Bijwerken lukt nu niet');return}
   if(!navigator.onLine){toast('Geen internet – probeer het straks nog eens');return}
   toast('Controleren…');const b=await zoekUpdate();if(b){if(confirm(`Versie ${b} staat klaar. Nu bijwerken?`))werkBij()}else toast(`✓ Je hebt de nieuwste versie (${APP_BOUW})`)}
-setInterval(()=>{if(!document.hidden)zoekUpdate(true)},30*60000);setTimeout(()=>zoekUpdate(true),8000);
+setInterval(()=>{if(!document.hidden)zoekUpdate(true)},30*60000);setTimeout(updBijOpen,2000);
 
 /* ================= events ================= */
 let laatsteScroll=0,laatsteVeeg=0;document.addEventListener('touchmove',()=>{laatsteVeeg=Date.now()},{passive:true,capture:true});document.addEventListener('scroll',()=>{if(Date.now()-laatsteVeeg<2500)laatsteScroll=Date.now()},true);
@@ -649,7 +653,7 @@ document.addEventListener('change',e=>{
 document.addEventListener('keydown',e=>{if(blok){if(/^[0-9]$/.test(e.key)){blokToets(e.key);return}if(e.key==='Backspace'){blokToets('wis');return}if(e.key==='Enter'){blokToets('volgende');return}}if(document.querySelector('.cijferblok')&&!/INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||'')){if(/^[0-9]$/.test(e.key)){document.querySelector(`.cijferblok [data-v="${e.key}"]`)?.click();return}if(e.key==='Backspace'){document.querySelector('.cijferblok .wis')?.click();return}}if(e.key!=='Enter')return;
   if(e.target.id==='notitieIn'){document.querySelector('[data-a=notitie]')?.click();return}
   const b=document.querySelector('[data-a=login],[data-a=setup],[data-a=koppel],[data-a=koppelcode],[data-a=uitnodigingstart]');if(b)b.click()});
-document.addEventListener('visibilitychange',()=>{if(document.hidden){if(L.sessie){L.wegSinds=Date.now();bewaarL()}bewaarNu();if(nieuweBouw&&!updatesTonen()&&kanUpdaten())setTimeout(()=>{if(document.hidden)werkBij(true)},1500);return}const was=!!L.sessie;weerLaden();volgHash();zoekUpdate(true);if(volgVandaag)datum=standaardDatum();controleerSessie();if(was&&!L.sessie){werk=null;document.getElementById('werk').classList.remove('open');sluit();sluitBlok()}if(L.gekoppeld&&db)sync();if(WINKEL&&db?.rpc&&Date.now()-(L.winkelsT||0)>36e5){L.winkelsT=Date.now();vernieuwWinkels().then(()=>renderZacht())}render();nieuwsNaStart()});
-window.addEventListener('pagehide',()=>{if(L.sessie){L.wegSinds=Date.now();bewaarL()}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){if(L.sessie){L.wegSinds=Date.now();bewaarL()}bewaarNu();if(nieuweBouw&&!updatesTonen()&&kanUpdaten())setTimeout(()=>{if(document.hidden)werkBij(true)},1500);return}const was=!!L.sessie;weerLaden();volgHash();updBijOpen();if(volgVandaag)datum=standaardDatum();controleerSessie();if(was&&!L.sessie){werk=null;document.getElementById('werk').classList.remove('open');sluit();sluitBlok()}if(L.gekoppeld&&db)sync();if(WINKEL&&db?.rpc&&Date.now()-(L.winkelsT||0)>36e5){L.winkelsT=Date.now();vernieuwWinkels().then(()=>renderZacht())}render();nieuwsNaStart()});
+window.addEventListener('pagehide',()=>{if(L.sessie&&!L.wegSinds){L.wegSinds=Date.now();bewaarL()}});
 setInterval(()=>{const was=!!L.sessie;controleerSessie();if(was&&!L.sessie){werk=null;document.getElementById('werk').classList.remove('open');sluit();render()}},60000);
 

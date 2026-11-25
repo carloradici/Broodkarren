@@ -1,11 +1,7 @@
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const NIEUWS=[['🏪','Brood Opzet per winkel','De app werkt nu per winkel. Alles wat je al had, hoort bij je eigen winkel. Voor jou verandert er niets.'],
- ['🔑','Koppelen met een code','Een nieuwe telefoon koppel je voortaan met de koppelcode van de winkel, zonder wachtwoord. De beheerder vindt de code onder Meer.'],
- ['🌤️','Weer en bakker','De beheerder kiest bij Broodsoorten en instellingen de plaats voor het weer en de naam van de bakker.'],
- ['🥐','Nieuw icoon','Het icoon op het beginscherm is vernieuwd. Op een iPhone zie je het pas als je de app opnieuw op je beginscherm zet.'],
- ['🔄','Versie en bijwerken','Onderaan Meer zie je op welke versie de app draait. Met Controleren op update haal je meteen de nieuwste versie op.']];
+const NIEUWS=[['📲','Sneller bijwerken','Open je de app of tik je op de melding, dan werkt hij zichzelf meteen bij en blijf je ingelogd.']];
 const NIEUWS_OUD=[['🔑','Eigen pincode','Nieuwe medewerkers kiezen bij de eerste keer inloggen zelf een pincode. Je pincode wijzigen kan via Meer → App-instellingen.'],
  ['🧹','Rustiger menu','Je ziet alleen nog de onderdelen die je mag gebruiken.'],
  ['🔤','Eenvoudige modus','In App-instellingen kun je de app eenvoudiger maken: minder informatie en grotere knoppen.'],

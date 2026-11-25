@@ -4,7 +4,7 @@
  if(u||k){if(u&&!L.gekoppeld){L.uitnodiging=u.toUpperCase().replace(/[^A-Z0-9]/g,'');koppelTab='code'}if(k&&!L.gekoppeld)L.koppelcode=k.toUpperCase().replace(/[^A-Z0-9]/g,'');bewaarL();try{history.replaceState(null,'',location.pathname+location.hash)}catch(e){}}}
 if(window.ReactNativeWebView||window.__BEGINSTAAT__!==undefined)document.querySelector('.test')?.remove();
 for(const d of Object.keys(S.derving))borgHistorie(d);
-controleerSessie();
+if(!document.hidden)controleerSessie();
 weerLaden();
 function volgHash(){const h=location.hash;if(!L.sessie||!h)return;const weg=()=>history.replaceState(null,'',location.pathname+location.search);
   if(h==='#materiaal'){tab='meer';sub='materiaal';weg();render()}
@@ -23,6 +23,7 @@ db=maakDb();
 if(L.modus==='lokaal')syncStatus='lokaal';
 else if(L.gekoppeld)syncStatus=db?'start':'offline';
 if(L.sessie&&ik())tab=startTab(prof());
+try{const u=JSON.parse(localStorage.getItem('bo-updplek')||'null');localStorage.removeItem('bo-updplek');if(u&&L.sessie===u.s&&Date.now()-u.t<120000){tab=u.tab;sub=u.sub}}catch(e){}
 render();nieuwsNaStart();
 (async()=>{
   if(L.modus==='lokaal'||!db)return;
