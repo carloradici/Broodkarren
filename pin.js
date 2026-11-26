@@ -29,10 +29,16 @@ export function start(createClient) {
         return g ? (g.rol !== "admin" && p && p.pin && p.t > (g.pinT || 0) ? p.pin : g.pin) || null : null; };
       // 10.62: elke poging wordt eerst in één stap geteld in de database (pin_poging, met rijslot), pas daarna gecontroleerd. Slot: 5, 10, 20 … min, max 24 uur.
       const check = async (uid, pin) => {
-        const p = await sb.rpc("pin_poging", { w, u: uid }); if (p.error) throw p.error; const pg = p.data || {};
+        let p = await sb.rpc("pin_poging", { w, u: uid });
+        if (p.error) { // overgang: SQL-functie pin_poging bestaat nog niet → oude telling (lezen en schrijven)
+          const r0 = await rij(uid), nu = Date.now();
+          if (r0?.slot && new Date(r0.slot).getTime() > nu) p = { data: { wacht: Math.ceil((new Date(r0.slot).getTime() - nu) / 1000) } };
+          else { const f = (r0?.fout || 0) + 1; await bewaar({ uid, hash: r0?.hash ?? null, fout: f >= 5 ? 0 : f, slot: f >= 5 ? new Date(nu + 300000).toISOString() : null }); p = { data: f >= 5 ? { laatste: true, duur: 300 } : { over: 5 - f } }; }
+        }
+        const pg = p.data || {};
         if (pg.wacht) return { ok: false, wacht: pg.wacht };
         const r = await rij(uid); let h = r?.hash; if (!h) { const o = await oudeHash(uid); h = o ? "fnv:" + o : null; }
-        if (h && await klopt(h, String(pin || ""), uid)) { await bewaar({ uid, hash: h.startsWith("p2:") ? h : await maak(String(pin)), fout: 0, slot: null, blok: 0 }); return { ok: true }; }
+        if (h && await klopt(h, String(pin || ""), uid)) { await bewaar({ uid, hash: h.startsWith("p2:") ? h : await maak(String(pin)), fout: 0, slot: null }); await sb.from("pin_geheim").update({ blok: 0 }).eq("winkel", w).eq("uid", uid); return { ok: true }; }
         if (pg.laatste) { await sb.from("app_data").upsert({ winkel: w, sleutel: "prive:pinslot", waarde: { uid, t: Date.now() } }, { onConflict: "winkel,sleutel" }); return { ok: false, wacht: pg.duur || 300 }; }
         return h ? { ok: false, over: pg.over } : { ok: false, fout: "geen pincode" };
       };
