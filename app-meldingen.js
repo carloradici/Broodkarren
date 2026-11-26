@@ -221,10 +221,10 @@ function zoekFilter(){const z=zoekTerm.trim().toLowerCase(),m=document.getElemen
 
 /* ---------- foto bij notitie ---------- */
 let notFoto=null;
-const notFotoSrc=n=>(n.fotoId&&S.notfotos[n.fotoId])||n.foto||null;
+const notFotoSrc=n=>veiligSrc((n.fotoId&&S.notfotos[n.fotoId])||n.foto);
 function verkleinNaar(file,max,cb,type){const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{const sc=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement('canvas');
   c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);const x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(img,0,0,c.width,c.height);cb(c.toDataURL(type||'image/jpeg',.7))};img.src=r.result};r.readAsDataURL(file)}
-function toonFoto(src){toonSheet(`<div class="pkop"><span style="width:70px"></span><b>Foto</b><button data-a="sluit" style="font-weight:700">Sluiten</button></div><div class="pinhoud"><p class="hulp" style="text-align:center">Tik op de foto om in of uit te zoomen.</p><div class="fotozoom"><img src="${src}" alt="" data-a="fotozoom"></div></div>`)}
+function toonFoto(src){src=veiligSrc(src);if(!src)return;toonSheet(`<div class="pkop"><span style="width:70px"></span><b>Foto</b><button data-a="sluit" style="font-weight:700">Sluiten</button></div><div class="pinhoud"><p class="hulp" style="text-align:center">Tik op de foto om in of uit te zoomen.</p><div class="fotozoom"><img src="${src}" alt="" data-a="fotozoom"></div></div>`)}
 
 
 /* ---------- taken per kar ---------- */

@@ -327,6 +327,7 @@ document.addEventListener('click',async e=>{
   case'uitleg':tab='meer';sub='uitleg';uitlegOpen=v;ovenModus=false;render();setTimeout(()=>document.getElementById('u-'+v)?.scrollIntoView({block:'start'}),30);return;
   case'uitlegopen':uitlegOpen=uitlegOpen===v?null:v;render();return;
   case'undo':undoDoe();return;
+  case'pinslotgezien':L.pinSlotGezien=Date.now();bewaarL();render();return;
   case'fav':{const f=[...(prof().fav||[])],i=f.indexOf(v);if(i>=0)f.splice(i,1);else f.push(v);zetProf('fav',f);return}
   case'meergroep':{const o={...(prof().meerOpen||{})};o[v]=!o[v];zetProf('meerOpen',o);return}
   case'bel':openBel();return;

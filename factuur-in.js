@@ -16,7 +16,7 @@ export function start(createClient) {
     if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return "image/png";
     const ftyp = String.fromCharCode(...b.slice(4, 12));
     if (ftyp.startsWith("ftyphei") || ftyp.startsWith("ftypmif") || ftyp.startsWith("ftyphe")) return "image/heic";
-    if (/pdf|image\//i.test(ct || "")) return String(ct).split(";")[0].trim();
+    if (/^(application\/pdf|image\/(jpeg|png|heic|heif|webp))\b/i.test(ct || "")) return String(ct).split(";")[0].trim().toLowerCase();
     return "";
   };
   const b64 = (b) => { let s = ""; for (let i = 0; i < b.length; i += 32768) s += String.fromCharCode.apply(null, b.subarray(i, i + 32768)); return btoa(s); };
@@ -54,7 +54,7 @@ export function start(createClient) {
       if (!n) return antwoord({ ok: false, fout: "geen bestand ontvangen" }, 400);
       return antwoord({ ok: true, ontvangen: n });
     } catch (e) {
-      return antwoord({ ok: false, fout: String(e?.message || e) }, 500);
+      return antwoord({ ok: false, fout: (console.log(e), "er ging iets mis") }, 500);
     }
   });
 }

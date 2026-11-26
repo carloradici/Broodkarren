@@ -17,7 +17,8 @@ export function start(createClient, SLEUTEL) {
       const per = {};
       for (const r of [...a.data, ...b.data]) (per[r.winkel ?? ""] ??= { n: 0, rows: [] }).rows.push(r);
       for (const w of Object.values(per)) w.n = w.rows.filter((r) => r.sleutel.startsWith("dag:")).length + (w.rows.some((r) => r.sleutel === "instellingen") ? 1e6 : 0);
-      const wk = wq != null && per[wq] ? wq : Object.keys(per).sort((x, y) => per[y].n - per[x].n)[0];
+      const VAST = Deno.env.get("BROOD_WINKEL") || ""; // 10.62: staat dit geheim, dan alleen deze winkel (de koppelcode geeft dan nooit andere winkels prijs)
+      const wk = VAST ? (per[VAST] ? VAST : null) : wq != null && per[wq] ? wq : Object.keys(per).sort((x, y) => per[y].n - per[x].n)[0];
       const rows = per[wk]?.rows || [], get = (k) => rows.find((r) => r.sleutel === k)?.waarde || {};
       const soorten = (get("instellingen").soorten || []).filter((s) => s.type !== "vers" && (s.naam || "").trim()).map((s) => ({ id: s.id, naam: s.naam.trim(), plu: s.plu || "", perDoos: s.perDoos || null }));
       const ids = new Set(soorten.map((s) => s.id)), dagen = {}, uit = [];
@@ -41,6 +42,6 @@ export function start(createClient, SLEUTEL) {
       const refs = Object.keys(bonnen);
       if (refs.length) { const u = await sb.storage.from("retour").createSignedUrls(refs.map((r) => r + ".jpg"), 3600); for (const x of u.data || []) if (x.signedUrl && !x.error) { const r = (x.path || "").replace(/\.jpg$/, ""); if (bonnen[r]) bonnen[r].img = x.signedUrl; } }
       return js({ ok: true, nu, winkel: wk || null, soorten, dagen, voorraad, boeken, eigen, ...(metRetour ? { retour: { bonnen, dragers } } : {}) });
-    } catch (e) { return js({ ok: false, fout: String(e?.message || e) }, 500); }
+    } catch (e) { return js({ ok: false, fout: (console.log(e), "er ging iets mis") }, 500); }
   });
 }

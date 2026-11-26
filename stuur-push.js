@@ -35,6 +35,16 @@ Deno.serve(async (req) => {
       if (!live.includes(`APP_BOUW='${String(body.versie || "")}'`)) return antwoord({ ok: false, fout: "deze versie staat niet live" }, 400);
     }
 
+    // 10.62: de ronde alleen met de cron-sleutel (Supabase-cron) of vanaf een gekoppeld toestel (dan alleen de eigen winkel(s)).
+    const CRON = Deno.env.get("CRON_SLEUTEL") || "", isCron = !!CRON && req.headers.get("x-cron-sleutel") === CRON;
+    let mijn = null;
+    if (CRON && !isCron && body.soort !== "update") {
+      const tk = String(req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+      const u = tk.split(".").length === 3 ? (await sb.auth.getUser(tk)).data?.user : null;
+      if (!u) return antwoord({ ok: false, fout: "niet gekoppeld" }, 401);
+      mijn = new Set(((await createClient(Deno.env.get("SUPABASE_URL"), Deno.env.get("SUPABASE_ANON_KEY"), { global: { headers: { Authorization: "Bearer " + tk } } }).rpc("mijn_winkels")).data || []).map((x) => x.id));
+    }
+
     // 10.0: elke winkel apart (alleen winkels met pushmeldingen in hun pakket)
     const PAKKET = { basis: [], plus: ["scan", "push", "rapport"], compleet: ["scan", "push", "rapport", "advies", "euro", "cadeau", "deeg"] };
     const vandaagNL = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Amsterdam" }).format(new Date());
@@ -48,16 +58,16 @@ Deno.serve(async (req) => {
     if (!wr.error) {
       const perOnd = {};
       for (const w of wr.data || []) perOnd[w.ondernemer] = (perOnd[w.ondernemer] || 0) + 1;
-      winkels = (wr.data || []).filter((w) => !w.slot && functies(w).has("push")).filter((w) => !body.winkel || w.id === body.winkel)
+      winkels = (wr.data || []).filter((w) => !w.slot && functies(w).has("push")).filter((w) => !body.winkel || w.id === body.winkel).filter((w) => !mijn || mijn.has(w.id))
         .map((w) => ({ id: w.id, naam: w.naam, meer: perOnd[w.ondernemer] > 1 }));
     }
     let n = 0;
     const perWinkel = [];
     for (const winkel of winkels) {
-      try { const x = await doeWinkel(winkel); n += x; perWinkel.push({ winkel: winkel.naam, verstuurd: x }); }
-      catch (e) { console.log("winkel mislukt", winkel.naam, e); perWinkel.push({ winkel: winkel.naam, fout: String(e?.message || e) }); }
+      try { const x = await doeWinkel(winkel); n += x; perWinkel.push({ verstuurd: x }); }
+      catch (e) { console.log("winkel mislukt", winkel.naam, e); perWinkel.push({ fout: true }); }
     }
-    return antwoord({ ok: true, verstuurd: n, winkels: perWinkel, reden: n ? undefined : (winkels.length ? "geen toestellen aangemeld" : "pushmeldingen zitten niet in het pakket van deze winkel") });
+    return antwoord({ ok: true, verstuurd: n, mislukt: perWinkel.filter((x) => x.fout).length || undefined, reden: n ? undefined : (winkels.length ? "geen toestellen aangemeld" : "pushmeldingen zitten niet in het pakket van deze winkel") });
 
     async function doeWinkel(winkel) {
       const metW = (q) => winkel.id ? q.eq("winkel", winkel.id) : q;
@@ -291,7 +301,8 @@ Deno.serve(async (req) => {
       return n;
     }
   } catch (e) {
-    return antwoord({ ok: false, fout: String(e?.message || e) }, 500);
+    console.log("stuur-push fout", e);
+    return antwoord({ ok: false, fout: "er ging iets mis" }, 500);
   }
 });
 }

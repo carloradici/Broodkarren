@@ -22,6 +22,7 @@ for (const [wie, sb] of [['zonder account', createClient(U, K, { auth: { persist
   try { const r = await c.rpc('gebruik_koppelcode', { c: 'AAAAAAAA', t: 'veiligheidstest' }); ok(`${wie}: verzonnen koppelcode`, !!r.error || !r.data, r.error ? 'geweigerd' : 'antwoord zonder fout'); } catch (e) { ok(`${wie}: verzonnen koppelcode`, true, 'geweigerd'); }
   await c.auth.signOut();
 }
+{ const r = await fetch(`${U}/functions/v1/stuur-push`, { method: 'POST', headers: { apikey: K, Authorization: 'Bearer ' + K, 'Content-Type': 'application/json' }, body: '{}' }); const t = await r.text(); ok('stuur-push: ronde starten zonder sleutel', r.status === 401 || (r.status === 200 && !t.includes('"winkels"')), 'antwoord ' + r.status); }
 await fn('stuur-push: testmelding zonder beheerder', 'stuur-push', { method: 'POST', body: '{"test":true}' }, [403]);
 await fn('stuur-push: nep "Nieuwe versie"', 'stuur-push', { method: 'POST', body: '{"soort":"update","versie":"99.99"}' }, [400]);
 await fn('pin zonder gekoppeld toestel', 'pin', { method: 'POST', body: '{"doe":"check","winkel":"x","uid":"x","pin":"1234"}' }, [401]);

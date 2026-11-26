@@ -40,8 +40,8 @@ const opslagKlaar=(async()=>{if(window.ReactNativeWebView||window.__BEGINSTAAT__
   const idbHeeftBasis=Object.keys(a).some(k=>k.startsWith('b:'));if(idbHeeftBasis)basis={};
   if(L.herstel)for(const k of Object.keys(a))if(k.startsWith('b:'))delete a[k];  /* oude serverkopie niet gebruiken: alles komt opnieuw van de server */
   for(const[k,v]of Object.entries(a)){idbBekend.set(k,v);const id=k.slice(2);
-    if(k.startsWith('f:')){if(!S.fotos[id])S.fotos[id]=v}
-    else if(k.startsWith('n:')){if(S.notfotos[id]!==null&&!S.notfotos[id]&&!oudePakbonFoto(id))S.notfotos[id]=v}
+    if(k.startsWith('f:')){if(!S.fotos[id])S.fotos[id]=veiligSrc(v)}
+    else if(k.startsWith('n:')){if(S.notfotos[id]!==null&&!S.notfotos[id]&&!oudePakbonFoto(id))S.notfotos[id]=veiligSrc(v)}
     else if(k.startsWith('t:')){if(S.tbBijl[id]!==null&&!S.tbBijl[id])S.tbBijl[id]=v}
     else if(k.startsWith('i:')){if(S.tbIn[id]!==null&&!S.tbIn[id])S.tbIn[id]=v}
     else if(k.startsWith('k:')){if(S.bank[id]!==null&&!S.bank[id])S.bank[id]=v}
@@ -100,7 +100,7 @@ function maakDb(){
   };
 }
 function splitsen(){
-  const o={'beheer:gebruikers':{lijst:S.pinServer?S.gebruikers.map(({pin,...g})=>g):S.gebruikers},instellingen:{bakker:S.bakker||'',locatie:S.locatie||null,winkelLogo:S.winkelLogo||null,kassaKop:null,soorten:S.soorten,karren:S.karren,momenten:S.momenten,ovenMax:S.ovenMax,leverdagen:S.leverdagen,programmas:S.programmas,omschakel:S.omschakel??null,versDagen:S.versDagen,versUitz:S.versUitz,pakbonNegeer:S.pakbonNegeer||[],pakbonNamen:S.pakbonNamen||{},pakbonCijfers:S.pakbonCijfers||{},herinnering:S.herinnering,uitlogMin:S.uitlogMin,pinServer:S.pinServer||undefined},
+  const o={'beheer:gebruikers':{lijst:S.pinServer?S.gebruikers.map(({pin,...g})=>g):S.gebruikers,pinServer:S.pinServer||undefined},instellingen:{bakker:S.bakker||'',locatie:S.locatie||null,winkelLogo:S.winkelLogo||null,kassaKop:null,soorten:S.soorten,karren:S.karren,momenten:S.momenten,ovenMax:S.ovenMax,leverdagen:S.leverdagen,programmas:S.programmas,omschakel:S.omschakel??null,versDagen:S.versDagen,versUitz:S.versUitz,pakbonNegeer:S.pakbonNegeer||[],pakbonNamen:S.pakbonNamen||{},pakbonCijfers:S.pakbonCijfers||{},herinnering:S.herinnering,uitlogMin:S.uitlogMin},
     plan:{plan:S.plan,karOverride:S.karOverride,feestNee:S.feestNee},afwijkend:S.afwijkend,voorraad:S.voorraad,profielen:S.profielen,berichten:S.berichten,pins:S.pinServer?Object.fromEntries(Object.entries(S.pins||{}).map(([k,v])=>[k,{t:v?.t||0}])):S.pins,materiaal:S.materiaal,pakbonfouten:S.pbFouten,pushteam:S.pushTeam,...(Object.keys(S.uren||{}).length?{uren:S.uren}:{})};
   const dagen=new Set();for(const k of DAGVELDEN)for(const d of Object.keys(S[k]))dagen.add(d);
   for(const d of dagen){const x={};for(const k of DAGVELDEN)if(S[k][d]!==undefined)x[k]=S[k][d];o['dag:'+d]=x}
@@ -125,8 +125,8 @@ function splitsen(){
 }
 function pasToe(k,v){
   if(!isObj(v))return;v=zonderRev(v);
-  if(k==='beheer:gebruikers')S.gebruikers=Array.isArray(v.lijst)?v.lijst:[];
-  else if(k==='instellingen'){for(const f of['bakker','locatie','winkelLogo','soorten','karren','momenten','ovenMax','leverdagen','programmas','omschakel','versDagen','versUitz','pakbonNegeer','pakbonNamen','pakbonCijfers','herinnering','uitlogMin','pinServer'])if(v[f]!==undefined)S[f]=v[f]}
+  if(k==='beheer:gebruikers'){S.gebruikers=Array.isArray(v.lijst)?v.lijst:[];if(v.pinServer)S.pinServer=Math.max(+S.pinServer||0,+v.pinServer||0,1)}
+  else if(k==='instellingen'){for(const f of['bakker','locatie','winkelLogo','soorten','karren','momenten','ovenMax','leverdagen','programmas','omschakel','versDagen','versUitz','pakbonNegeer','pakbonNamen','pakbonCijfers','herinnering','uitlogMin'])if(v[f]!==undefined)S[f]=v[f];if(v.pinServer)S.pinServer=Math.max(+S.pinServer||0,+v.pinServer||0,1)}
   else if(k==='plan'){S.plan=v.plan||{};S.karOverride=v.karOverride||{};S.feestNee=v.feestNee||{}}
   else if(k==='afwijkend')S.afwijkend=v;
   else if(k==='voorraad')S.voorraad=v;
@@ -149,10 +149,11 @@ function pasToe(k,v){
   else if(k==='pakbonfouten')S.pbFouten=v;
   else if(k==='pushteam')S.pushTeam=v;
   else if(k==='prive:cadeau')S.cadeau=v.bonnen||{};
+  else if(k==='prive:pinslot')S.pinSlot=v;
   else if(k.startsWith('dag:')){const d=k.slice(4);for(const f of DAGVELDEN){if(v[f]!==undefined)S[f][d]=v[f];else delete S[f][d]}}
   else if(k.startsWith('log:')){const d=k.slice(4);for(const[id,l]of Object.entries(S.log))if(iso(new Date(l.t))===d&&!v[id])delete S.log[id];Object.assign(S.log,v)}
-  else if(k.startsWith('foto:')){const id=k.slice(5);if(v.data)S.fotos[id]=v.data;else delete S.fotos[id]}
-  else if(k.startsWith('notfoto:')){const id=k.slice(8);if(v.data)S.notfotos[id]=v.data;else S.notfotos[id]=null}
+  else if(k.startsWith('foto:')){const id=k.slice(5),f=veiligSrc(v.data);if(f)S.fotos[id]=f;else delete S.fotos[id]}
+  else if(k.startsWith('notfoto:')){const id=k.slice(8);S.notfotos[id]=veiligSrc(v.data)}
   vulAan(S);
 }
 function diff(a,b,pad=[],ops=[]){

@@ -27,7 +27,7 @@ let winkelKiezen=false,koppelTab='code',wkInfo=null,aanb=null,aanbFout='';
 /* ---- logo: Vogelenzang houdt het eigen logo, andere winkels krijgen Coop + hun plaatsnaam (of een eigen logo) ---- */
 let logoCache=null;
 function logoSrc(){
-  if(S.winkelLogo)return S.winkelLogo;
+  if(veiligSrc(S.winkelLogo))return S.winkelLogo;
   const plaats=(WINKEL?.plaats||'').trim();
   if(!WINKEL)return oudeVogelenzang()?LOGO_SRC:LOGO_KAAL;
   if(/^vogelenzang$/i.test(plaats))return LOGO_SRC;

@@ -20,26 +20,28 @@ export function start(createClient) {
       if (!user) return js({ ok: false, fout: "niet gekoppeld" }, 401);
       const w = String(body.winkel || ""), mijn = await createClient(URL_, Deno.env.get("SUPABASE_ANON_KEY"), { global: { headers: { Authorization: "Bearer " + tk } } }).rpc("mijn_winkels");
       if (!w || !(mijn.data || []).some((x) => x.id === w)) return js({ ok: false, fout: "geen toegang tot deze winkel" }, 403);
-      const beheer = !!(await sb.from("beheerders").select("user_id").eq("user_id", user.id).maybeSingle()).data;
+      const beheer = ((mijn.data || []).find((x) => x.id === w) || {}).rol !== "winkel"; // 10.62: beheer per winkel, zoals in de app
       const rij = async (uid) => { const r = await sb.from("pin_geheim").select("*").eq("winkel", w).eq("uid", uid).maybeSingle(); if (r.error) throw r.error; return r.data; };
       const bewaar = async (o) => { const r = await sb.from("pin_geheim").upsert({ winkel: w, t: new Date().toISOString(), ...o }); if (r.error) throw r.error; };
-      const oudeHash = async (uid) => { const a = (await sb.from("app_data").select("sleutel,waarde").eq("winkel", w).in("sleutel", ["beheer:gebruikers", "pins"])).data || [];
+      const gemigreerd = !!(await rij("__migratie")); // 10.62: na de omzetting geen terugval meer op oude pincodes uit de app-gegevens
+      const oudeHash = async (uid) => { if (gemigreerd) return null; const a = (await sb.from("app_data").select("sleutel,waarde").eq("winkel", w).in("sleutel", ["beheer:gebruikers", "pins"])).data || [];
         const get = (k) => (a.find((r) => r.sleutel === k) || {}).waarde || {}, g = (get("beheer:gebruikers").lijst || []).find((x) => x.id === uid), p = get("pins")[uid];
         return g ? (g.rol !== "admin" && p && p.pin && p.t > (g.pinT || 0) ? p.pin : g.pin) || null : null; };
+      // 10.62: elke poging wordt eerst in één stap geteld in de database (pin_poging, met rijslot), pas daarna gecontroleerd. Slot: 5, 10, 20 … min, max 24 uur.
       const check = async (uid, pin) => {
-        let r = await rij(uid); const nu = Date.now();
-        if (r?.slot && new Date(r.slot).getTime() > nu) return { ok: false, wacht: Math.ceil((new Date(r.slot).getTime() - nu) / 1000) };
-        let h = r?.hash; if (!h) { const o = await oudeHash(uid); h = o ? "fnv:" + o : null; }
-        if (!h) return { ok: false, fout: "geen pincode" };
-        if (await klopt(h, String(pin || ""), uid)) { await bewaar({ uid, hash: h.startsWith("p2:") ? h : await maak(String(pin)), fout: 0, slot: null }); return { ok: true }; }
-        const f = (r?.fout || 0) + 1; await bewaar({ uid, hash: r?.hash || h, fout: f >= 5 ? 0 : f, slot: f >= 5 ? new Date(nu + 300000).toISOString() : null });
-        return f >= 5 ? { ok: false, wacht: 300 } : { ok: false, over: 5 - f };
+        const p = await sb.rpc("pin_poging", { w, u: uid }); if (p.error) throw p.error; const pg = p.data || {};
+        if (pg.wacht) return { ok: false, wacht: pg.wacht };
+        const r = await rij(uid); let h = r?.hash; if (!h) { const o = await oudeHash(uid); h = o ? "fnv:" + o : null; }
+        if (h && await klopt(h, String(pin || ""), uid)) { await bewaar({ uid, hash: h.startsWith("p2:") ? h : await maak(String(pin)), fout: 0, slot: null, blok: 0 }); return { ok: true }; }
+        if (pg.laatste) { await sb.from("app_data").upsert({ winkel: w, sleutel: "prive:pinslot", waarde: { uid, t: Date.now() } }, { onConflict: "winkel,sleutel" }); return { ok: false, wacht: pg.duur || 300 }; }
+        return h ? { ok: false, over: pg.over } : { ok: false, fout: "geen pincode" };
       };
       if (body.doe === "check") return js(await check(String(body.uid || ""), body.pin));
       if (body.doe === "zet") {
         const uid = String(body.uid || ""), pin = String(body.pin || "");
         if (!/^\d{4}$/.test(pin)) return js({ ok: false, fout: "Pincode moet 4 cijfers zijn" });
-        if (!(beheer && body.oud == null)) { if (pin === String(body.oud)) return js({ ok: false, fout: "zelfde" }); const c = await check(uid, body.oud); if (!c.ok) return js(c); }
+        const isEigenaar = async () => { const a = (await sb.from("app_data").select("waarde").eq("winkel", w).eq("sleutel", "beheer:gebruikers").maybeSingle()).data; return ((a?.waarde?.lijst) || []).some((g) => g.id === uid && g.rol === "admin"); };
+        if (!(beheer && body.oud == null && !(await isEigenaar()))) { if (pin === String(body.oud)) return js({ ok: false, fout: "zelfde" }); const c = await check(uid, body.oud); if (!c.ok) return js(c); }
         await bewaar({ uid, hash: await maak(pin), fout: 0, slot: null }); return js({ ok: true });
       }
       if (body.doe === "migreer") {
@@ -47,9 +49,9 @@ export function start(createClient) {
         const a = (await sb.from("app_data").select("sleutel,waarde").eq("winkel", w).in("sleutel", ["beheer:gebruikers", "pins"])).data || [];
         const gs = ((a.find((r) => r.sleutel === "beheer:gebruikers") || {}).waarde || {}).lijst || [], q = await sb.from("pin_geheim").select("uid").eq("winkel", w); if (q.error) throw q.error; const al = new Set((q.data || []).map((r) => r.uid));
         let n = 0; for (const g of gs) { if (al.has(g.id)) continue; const o = await oudeHash(g.id); if (o) { await bewaar({ uid: g.id, hash: "fnv:" + o, fout: 0 }); n++; } }
-        return js({ ok: true, n });
+        await bewaar({ uid: "__migratie", hash: null }); return js({ ok: true, n });
       }
       return js({ ok: false, fout: "onbekende actie" }, 400);
-    } catch (e) { return js({ ok: false, fout: String(e?.message || e) }, 500); }
+    } catch (e) { return js({ ok: false, fout: (console.log(e), "er ging iets mis") }, 500); }
   });
 }

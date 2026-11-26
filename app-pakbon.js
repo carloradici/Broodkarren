@@ -512,6 +512,7 @@ function meerZoekFilter(z){const c=document.getElementById('meerGroepen');if(!c)
   c.querySelectorAll('.meergroep').forEach(g=>{const rs=[...g.querySelectorAll('[data-zoekmeer]')];g.style.display=!z||rs.some(r=>r.style.display!=='none')?'':'none'})}
 function belItems(){if(!isAdmin()){const o=ongelezenM();return o?[{i:'💬',t:`${o} ${o===1?'nieuw antwoord':'nieuwe antwoorden'} van de beheerder`,a:'sub',v:'berichten'}]:[]}const l=[],o=ongelezen(),mg=matGemeld().filter(x=>x.staat!=='besteld');
   if(o)l.push({i:'💬',t:`${o} ${o===1?'bericht':'berichten'} van medewerkers`,a:'sub',v:'berichten'});
+  if(S.pinSlot?.t>(L.pinSlotGezien||0)&&Date.now()-S.pinSlot.t<7*864e5)l.push({i:'🔒',t:`${S.gebruikers.find(g=>g.id===S.pinSlot.uid)?.naam||'Iemand'}: 5 keer een foute pincode, staat even op slot (${new Date(S.pinSlot.t).toLocaleString('nl-NL',{day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'})})`,a:'pinslotgezien',v:''});
   if(betalenMag()&&S.vaste?.upl&&S.vaste.upl<iso().slice(0,8)+'01')l.push({i:'🏦',t:'Nieuwe maand: upload je bankexport voor Vaste lasten',a:'sub',v:'vaste'});
   if(mg.length)l.push({i:'📦',t:`${mg.length} ${mg.length===1?'materiaal':'materialen'} ${mg.some(x=>x.staat==='op')?'op of bijna op':'bijna op'}: ${mg.map(x=>x.naam).join(', ')}`,a:'sub',v:'materiaal'});
   const f=volgendeFeest();if(f){const dg=Math.round((vanIso(f[0])-vanIso(iso()))/864e5);l.push({i:'🎉',t:`${f[1]} over ${dg} ${dg===1?'dag':'dagen'} – afwijkende dag maken?`,feest:f})}

@@ -386,8 +386,8 @@ const pinSrv=()=>L.modus!=='lokaal'&&!!S.pinServer&&!!WINKEL;
 async function pinApi(doe,o){let tk='';try{tk=(await db?.sessie?.())?.access_token||''}catch(e){}
   const r=await fetch(SUPA_URL+'/functions/v1/pin',{method:'POST',headers:{'Content-Type':'application/json',apikey:SUPA_KEY,Authorization:'Bearer '+(tk||SUPA_KEY)},body:JSON.stringify({doe,winkel:WINKEL?.id,...(o||{})})});return r.json().catch(()=>({ok:false,fout:'geen antwoord'}))}
 const pinFout=r=>r.wacht?`Te vaak fout. Probeer het over ${Math.ceil(r.wacht/60)} min. opnieuw.`:r.over!=null?`Pincode klopt niet (nog ${r.over} keer).`:'Dat lukte niet: '+(r.fout||'onbekend');
-async function pinMigreer(){if(S.pinServer||L.modus==='lokaal'||!WINKEL||!kanBeheren()||!S.gebruikers.length)return;
-  try{const r=await pinApi('migreer');if(!r.ok)return;S.pinServer=true;S.gebruikers=S.gebruikers.map(({pin,...g})=>g);for(const k in S.pins)S.pins[k]={t:S.pins[k]?.t||0};log('Pincodes naar de server');bewaar()}catch(e){}}
+async function pinMigreer(){if((+S.pinServer||0)>=2||L.modus==='lokaal'||!WINKEL||!kanBeheren()||!S.gebruikers.length)return;
+  try{const r=await pinApi('migreer');if(!r.ok)return;S.pinServer=2;S.gebruikers=S.gebruikers.map(({pin,...g})=>g);for(const k in S.pins)S.pins[k]={t:S.pins[k]?.t||0};log('Pincodes naar de server');bewaar()}catch(e){}}
 function pinVan(g){const p=S.pins[g.id];return g.rol!=='admin'&&p&&p.t>(g.pinT||0)?p.pin:g.pin}
 function pinTijdelijk(g){if(!g||g.rol==='admin'||!g.pinTijdelijk)return false;const p=S.pins[g.id];return!(p&&p.t>(g.pinT||0))}
 function pinTeMakkelijk(p){if(/^(\d)\1{3}$/.test(p))return true;const d=[...p].map(Number);const op=d.every((x,i)=>!i||x===d[i-1]+1),af=d.every((x,i)=>!i||x===d[i-1]-1);return op||af}
