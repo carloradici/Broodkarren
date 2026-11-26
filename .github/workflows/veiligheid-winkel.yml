@@ -1,0 +1,17 @@
+# Veiligheidstest als winkeltoestel. Start met de hand (GitHub-app: Actions › veiligheidstest-winkel › Run workflow) met een NIEUWE koppelcode
+# (Meer › Winkel en toestellen). Verwijder daarna het toestel "veiligheidstest" in de app.
+name: veiligheidstest-winkel
+on:
+  workflow_dispatch:
+    inputs:
+      koppelcode:
+        description: 'Nieuwe koppelcode (werkt één keer)'
+        required: true
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "::add-mask::$KOPPELCODE" && cd .github/veiligheid && npm i --no-save @supabase/supabase-js@2.117.2 >/dev/null && node winkel.mjs
+        env:
+          KOPPELCODE: ${{ inputs.koppelcode }}
