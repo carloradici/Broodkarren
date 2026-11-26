@@ -20,6 +20,7 @@ document.body.insertAdjacentHTML('beforeend','<div id="cijferblok2" class="cijfe
 setTimeout(()=>{if(L.sessie&&mag('vinken'))ocrVoorbereiden()},15000);
 setTimeout(()=>{if(L.sessie&&betalenMag())vlReLees()},20000);
 setTimeout(pinMigreer,8000);
+if(S.kassaKop){delete S.kassaKop;setTimeout(bewaar,3000)} // 10.61: koppelcode kassaverkoop weg van het toestel en uit de database
 db=maakDb();
 if(L.modus==='lokaal')syncStatus='lokaal';
 else if(L.gekoppeld)syncStatus=db?'start':'offline';
