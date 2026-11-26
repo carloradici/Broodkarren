@@ -65,6 +65,30 @@ export function start(createClient) {
         let n = 0; for (const g of gs) { if (al.has(g.id)) continue; const o = await oudeHash(g.id); if (o) { await bewaar({ uid: g.id, hash: "fnv:" + o, fout: 0 }); n++; } }
         await bewaar({ uid: "__migratie", hash: null }); return js({ ok: true, n });
       }
+      if (/^uren/.test(body.doe)) { // 10.64: eigen uren (prive:uren), alleen met een geldig persoonsbewijs; tijden moeten 'nu' zijn (±10 min)
+        const u = await leesBewijs(body.bewijs, w); if (!u) return js({ ok: false, fout: "log opnieuw in" }, 401);
+        const lk = async (k) => { const r = await sb.from("app_data").select("waarde").eq("winkel", w).eq("sleutel", k).maybeSingle(); if (r.error) throw r.error; return r.data?.waarde || null; };
+        const zonder = (o) => { const { _rev, ...x } = o || {}; return x; };
+        if (body.doe === "uren") { const pv = zonder(await lk("prive:uren")), src = pv.d ? pv : zonder(await lk("uren")); return js({ ok: true, d: (src.d || {})[u] || {} }); }
+        if (body.doe === "urenZet") {
+          const c = body.d && typeof body.d === "object" ? body.d : {}, gl = (zonder(await lk("beheer:gebruikers")).lijst || []), naam = (gl.find((g) => g.id === u) || {}).naam || "?";
+          for (let i = 0; i < 6; i++) {
+            const oud = await lk("prive:uren"), rev = oud?._rev ?? null, alle = zonder(oud);
+            if (!alle.d) { const leg = zonder(await lk("uren")); alle.d = leg.d || {}; alle.corr = leg.corr || {}; alle.goed = leg.goed || {}; }
+            const ds = alle.d[u] = alle.d[u] && typeof alle.d[u] === "object" ? alle.d[u] : {}, nu = Date.now(), ok = (t) => typeof t === "number" && Math.abs(t - nu) < 600000;
+            for (const [id, x] of Object.entries(c)) { if (!x || typeof x !== "object" || !/^[\w-]{1,40}$/.test(id)) continue; const o = ds[id];
+              if (!o) { if (ok(x.in) && !Object.values(ds).some((y) => y && y.in && !y.uit)) ds[id] = { id, in: x.in, p: {}, wie: naam }; continue; }
+              if (!o.uit) { for (const [pid, q] of Object.entries(x.p && typeof x.p === "object" ? x.p : {})) { if (!q || !/^[\w-]{1,40}$/.test(pid)) continue; o.p = o.p && typeof o.p === "object" ? o.p : {}; const op = o.p[pid];
+                  if (!op) { if (ok(q.van)) o.p[pid] = { van: q.van, ...(q.tot && ok(q.tot) && q.tot > q.van ? { tot: q.tot } : {}) }; } else if (!op.tot && q.tot && ok(q.tot) && q.tot > op.van) op.tot = q.tot; }
+                if (x.uit && ok(x.uit) && x.uit > o.in) o.uit = x.uit; } }
+            const nw = { ...alle, _rev: (rev || 0) + 1 }, nt = new Date().toISOString();
+            if (!oud) { const r = await sb.from("app_data").insert({ winkel: w, sleutel: "prive:uren", waarde: nw, bijgewerkt: nt }); if (!r.error) return js({ ok: true, d: ds }); if (r.error.code !== "23505") throw r.error; continue; }
+            let q = sb.from("app_data").update({ waarde: nw, bijgewerkt: nt }).eq("winkel", w).eq("sleutel", "prive:uren"); q = rev == null ? q.is("waarde->>_rev", null) : q.eq("waarde->>_rev", String(rev));
+            const r = await q.select("sleutel"); if (r.error) throw r.error; if (r.data?.length) return js({ ok: true, d: ds });
+          }
+          return js({ ok: false, fout: "bezet, probeer opnieuw" }, 409);
+        }
+      }
       if (/^chat/.test(body.doe)) { // 10.63: eigen privégesprek (prive:chat), alleen met een geldig persoonsbewijs
         const u = await leesBewijs(body.bewijs, w); if (!u) return js({ ok: false, fout: "log opnieuw in" }, 401);
         const id = "p_" + u, lk = async (k) => { const r = await sb.from("app_data").select("waarde").eq("winkel", w).eq("sleutel", k).maybeSingle(); if (r.error) throw r.error; return r.data?.waarde || null; };

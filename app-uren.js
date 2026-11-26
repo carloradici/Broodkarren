@@ -12,7 +12,7 @@ function urenNaam(uid){if(uid.startsWith('n_'))return urenNamen()[uid.slice(2)]?
 const urenExtern=uid=>uid.startsWith('n_');
 function urenMensen(alles){const l=S.gebruikers.filter(g=>g.actief!==false||(alles&&urenDiensten(g.id).length)).map(g=>({uid:g.id,naam:g.naam,extern:false}));
   for(const n of Object.values(urenNamen()))if(isObj(n)&&n.naam&&(!n.weg||(alles&&urenDiensten('n_'+n.id).length)))l.push({uid:'n_'+n.id,naam:n.naam,extern:true,weg:!!n.weg});
-  return l.sort((a,c)=>a.naam.localeCompare(c.naam,'nl'))}
+  return(urenEigen()?l.filter(p=>p.uid===L.sessie):l).sort((a,c)=>a.naam.localeCompare(c.naam,'nl'))}
 const urenDiensten=uid=>Object.values(urenVan(uid)).filter(x=>isObj(x)&&x.in);
 const urenLopend=uid=>urenDiensten(uid).find(x=>!x.uit);
 function urenPauze(x,tot){const eind=x.uit||tot||Date.now();if(x.pm!=null)return{ms:x.pm*60000,open:null};let ms=0,open=null;
@@ -26,7 +26,7 @@ const urenGoed=(uid,d)=>isObj(S.uren?.goed)?S.uren.goed[urenGoedKey(uid,d)]:null
 const urenId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const urenNu=()=>urenMensen(true).filter(p=>urenLopend(p.uid));
 /* ---------- klokken ---------- */
-function urenKlok(actie,uid){const u=ik();if(!u||!urenMag()||urenBusy||!uid)return;urenBusy=true;setTimeout(()=>urenBusy=false,800);const nu=Date.now(),ds=urenSchrijf(uid),x=urenLopend(uid),naam=urenNaam(uid);
+function urenKlok(actie,uid){const u=ik();if(!u||!urenMag()||urenBusy||!uid)return;if(urenEigen()){if(uid!==L.sessie)return;if(!urenSrv()){toast('Log opnieuw in om te klokken');return}if(navigator.onLine===false){toast('Geen internet: klokken kan nu niet');return}}urenBusy=true;setTimeout(()=>urenBusy=false,800);const nu=Date.now(),ds=urenSchrijf(uid),x=urenLopend(uid),naam=urenNaam(uid);
   if(actie==='in'){if(x)return;const id=urenId();ds[id]={id,in:nu,p:{},wie:u.naam};log(`${naam} ingeklokt`);bewaar();render();bevestig(`✓ ${naam} ingeklokt om ${urenTijd(nu)}`);return}
   if(!x)return;
   if(actie==='pauze'){const p=urenPauze(x).open;if(p){p.tot=nu;log(`${naam}: pauze klaar`);bevestig(`✓ ${naam} weer aan het werk`)}else{if(!isObj(x.p))x.p={};x.p[urenId()]={van:nu};log(`${naam}: pauze`);bevestig(`☕ Pauze ${naam}`)}bewaar();render();return}
@@ -61,6 +61,7 @@ function urenPaginaHtml(){if(urenView==='rooster'&&isAdmin())return roosterHtml(
   const mensen=urenMensen(false),nu=mensen.filter(p=>urenLopend(p.uid)).length,i=urenInst();
   return`<div class="kop"><div class="koprij"><div><h1>Uren</h1><p>${nu?`Nu aan het werk: <b>${nu}</b>`:'Niemand ingeklokt'}${isAdmin()&&!i.iedereen?' · testfase: alleen jij klokt':''}</p></div>${isAdmin()?`<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><button class="knop wit klein" data-u="view" data-v="rooster">Rooster</button><button class="knop wit klein" data-u="view" data-v="overzicht">Overzicht</button></div>`:''}</div></div>
    ${mensen.map(urenKlokRij).join('')}
+   ${urenEigen()?`<p class="hulp" style="margin:6px 18px">Je ziet alleen je eigen uren. Klokken gaat via de server, daarvoor heb je internet nodig.${urenSrv()?'':' <b>Log opnieuw in om te kunnen klokken.</b>'}</p>`:''}
    ${isAdmin()?`<div class="knoppen" style="justify-content:flex-start"><button class="knop rand" data-u="andere">+ Andere naam</button></div><p class="hulp" style="margin:6px 18px">Voor iemand die niet in de app staat: vul een naam in en de klok start. De naam blijft daarna in de lijst staan.</p>`:''}`}
 /* ---------- overzicht (dag / week / maand) ---------- */
 function urenBeheerHtml(){if(!isAdmin())return'';const i=urenInst(),b=urenBereik();
@@ -186,3 +187,20 @@ function plekBewaar(){const m=document.getElementById('scherm');if(m)schermPlek[
 function plekTerug(nul){const m=document.getElementById('scherm');if(!m)return;m.scrollTop=nul?0:(schermPlek[schermSleutel()]||0)}
 
 
+
+/* ---------- 10.64: uren via de server ----------
+   Beheerdertoestel: diensten, correcties en goedkeuringen in prive:uren (rooster, namen en instelling blijven in 'uren').
+   Overige toestellen: een medewerker ziet en klokt alleen zichzelf, via de Edge Function pin (persoonsbewijs); zonder internet kan klokken niet. */
+function urenEigen(){return pinSrv()&&!L.beheerder&&!isAdmin()}
+function urenSrv(){return urenEigen()&&!!L.bewijs&&L.bewijs.u===L.sessie}
+function urenGedeeld(){const{d,corr,goed,...o}=S.uren||{};
+  if(!L.beheerder||basis['prive:uren']===undefined){let oud={};try{oud=JSON.parse(basis['uren']||'{}')}catch(e){}for(const k of['d','corr','goed'])if(oud[k]!==undefined)o[k]=oud[k]}  /* oude gegevens laten staan tot het beheerdertoestel ze heeft overgezet */
+  return o}
+var urenSrvLaatst='';
+async function urenHaal(){if(!urenSrv())return;try{const r=await pinApi('uren',{bewijs:L.bewijs.t});if(r.ok===false&&/opnieuw/.test(r.fout||'')){delete L.bewijs;bewaarL();return}
+  if(r.ok&&isObj(r.d)){urenSrvCache={u:L.sessie,d:r.d};urenSchrijf(L.sessie);S.uren.d[L.sessie]=r.d;urenSrvLaatst=stabiel(r.d);if(tab==='uren'||sub==='uren')render()}}catch(e){}}
+async function urenPush(){if(!urenSrv()||!isObj(S.uren?.d?.[L.sessie]))return;const d=S.uren.d[L.sessie],j=stabiel(d);if(j===urenSrvLaatst)return;
+  try{const r=await pinApi('urenZet',{bewijs:L.bewijs.t,d});if(r.ok&&isObj(r.d)){urenSrvCache={u:L.sessie,d:r.d};S.uren.d[L.sessie]=r.d;urenSrvLaatst=stabiel(r.d);render();return}
+    toast(r.fout==='log opnieuw in'?'Log opnieuw in om te klokken':'Uren niet opgeslagen, probeer het opnieuw')}catch(e){toast('Geen internet: uren niet opgeslagen')}
+  urenSrvLaatst='';urenHaal()}
+setInterval(()=>{if(!document.hidden)urenHaal()},60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(urenHaal,900)});setTimeout(urenHaal,4500);
