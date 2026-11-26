@@ -1,7 +1,7 @@
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const NIEUWS=[['📲','Sneller bijwerken','Open je de app of tik je op de melding, dan werkt hij zichzelf meteen bij en blijf je ingelogd.']];
+const NIEUWS=[['🔒','Veiliger inloggen','Je pincode wordt nu op de server gecontroleerd en staat niet meer op de telefoons. Daarom heb je internet nodig om in te loggen.'],['📲','Sneller bijwerken','Open je de app of tik je op de melding, dan werkt hij zichzelf meteen bij en blijf je ingelogd.']];
 const NIEUWS_OUD=[['🔑','Eigen pincode','Nieuwe medewerkers kiezen bij de eerste keer inloggen zelf een pincode. Je pincode wijzigen kan via Meer → App-instellingen.'],
  ['🧹','Rustiger menu','Je ziet alleen nog de onderdelen die je mag gebruiken.'],
  ['🔤','Eenvoudige modus','In App-instellingen kun je de app eenvoudiger maken: minder informatie en grotere knoppen.'],
@@ -100,8 +100,8 @@ function maakDb(){
   };
 }
 function splitsen(){
-  const o={'beheer:gebruikers':{lijst:S.gebruikers},instellingen:{bakker:S.bakker||'',locatie:S.locatie||null,winkelLogo:S.winkelLogo||null,kassaKop:S.kassaKop||null,soorten:S.soorten,karren:S.karren,momenten:S.momenten,ovenMax:S.ovenMax,leverdagen:S.leverdagen,programmas:S.programmas,omschakel:S.omschakel??null,versDagen:S.versDagen,versUitz:S.versUitz,pakbonNegeer:S.pakbonNegeer||[],pakbonNamen:S.pakbonNamen||{},pakbonCijfers:S.pakbonCijfers||{},herinnering:S.herinnering,uitlogMin:S.uitlogMin},
-    plan:{plan:S.plan,karOverride:S.karOverride,feestNee:S.feestNee},afwijkend:S.afwijkend,voorraad:S.voorraad,profielen:S.profielen,berichten:S.berichten,pins:S.pins,materiaal:S.materiaal,pakbonfouten:S.pbFouten,pushteam:S.pushTeam,...(Object.keys(S.uren||{}).length?{uren:S.uren}:{})};
+  const o={'beheer:gebruikers':{lijst:S.pinServer?S.gebruikers.map(({pin,...g})=>g):S.gebruikers},instellingen:{bakker:S.bakker||'',locatie:S.locatie||null,winkelLogo:S.winkelLogo||null,kassaKop:S.kassaKop||null,soorten:S.soorten,karren:S.karren,momenten:S.momenten,ovenMax:S.ovenMax,leverdagen:S.leverdagen,programmas:S.programmas,omschakel:S.omschakel??null,versDagen:S.versDagen,versUitz:S.versUitz,pakbonNegeer:S.pakbonNegeer||[],pakbonNamen:S.pakbonNamen||{},pakbonCijfers:S.pakbonCijfers||{},herinnering:S.herinnering,uitlogMin:S.uitlogMin,pinServer:S.pinServer||undefined},
+    plan:{plan:S.plan,karOverride:S.karOverride,feestNee:S.feestNee},afwijkend:S.afwijkend,voorraad:S.voorraad,profielen:S.profielen,berichten:S.berichten,pins:S.pinServer?Object.fromEntries(Object.entries(S.pins||{}).map(([k,v])=>[k,{t:v?.t||0}])):S.pins,materiaal:S.materiaal,pakbonfouten:S.pbFouten,pushteam:S.pushTeam,...(Object.keys(S.uren||{}).length?{uren:S.uren}:{})};
   const dagen=new Set();for(const k of DAGVELDEN)for(const d of Object.keys(S[k]))dagen.add(d);
   for(const d of dagen){const x={};for(const k of DAGVELDEN)if(S[k][d]!==undefined)x[k]=S[k][d];o['dag:'+d]=x}
   for(const[id,l]of Object.entries(S.log)){const k='log:'+iso(new Date(l.t));(o[k]=o[k]||{})[id]=l}
@@ -126,7 +126,7 @@ function splitsen(){
 function pasToe(k,v){
   if(!isObj(v))return;v=zonderRev(v);
   if(k==='beheer:gebruikers')S.gebruikers=Array.isArray(v.lijst)?v.lijst:[];
-  else if(k==='instellingen'){for(const f of['bakker','locatie','winkelLogo','kassaKop','soorten','karren','momenten','ovenMax','leverdagen','programmas','omschakel','versDagen','versUitz','pakbonNegeer','pakbonNamen','pakbonCijfers','herinnering','uitlogMin'])if(v[f]!==undefined)S[f]=v[f]}
+  else if(k==='instellingen'){for(const f of['bakker','locatie','winkelLogo','kassaKop','soorten','karren','momenten','ovenMax','leverdagen','programmas','omschakel','versDagen','versUitz','pakbonNegeer','pakbonNamen','pakbonCijfers','herinnering','uitlogMin','pinServer'])if(v[f]!==undefined)S[f]=v[f]}
   else if(k==='plan'){S.plan=v.plan||{};S.karOverride=v.karOverride||{};S.feestNee=v.feestNee||{}}
   else if(k==='afwijkend')S.afwijkend=v;
   else if(k==='voorraad')S.voorraad=v;

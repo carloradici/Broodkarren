@@ -11,6 +11,7 @@ for (const [wie, sb] of [['zonder account', createClient(U, K, { auth: { persist
   await leeg(`${wie}: app_data lezen`, c.from('app_data').select('sleutel').limit(5));
   await leeg(`${wie}: privé-gegevens lezen`, c.from('app_data').select('sleutel').like('sleutel', 'prive:%').limit(5));
   await leeg(`${wie}: beheerders lezen`, c.from('beheerders').select('user_id').limit(5));
+  await leeg(`${wie}: pincodes lezen`, c.from('pin_geheim').select('uid').limit(5));
   await leeg(`${wie}: winkels lezen`, c.from('winkels').select('id').limit(5));
   const w = await c.from('app_data').insert({ sleutel: 'veiligheidstest', waarde: {} }); ok(`${wie}: app_data schrijven`, !!w.error, w.error ? 'geweigerd' : 'GELUKT');
   if (!w.error) await c.from('app_data').delete().eq('sleutel', 'veiligheidstest');
@@ -23,6 +24,7 @@ for (const [wie, sb] of [['zonder account', createClient(U, K, { auth: { persist
 }
 await fn('stuur-push: testmelding zonder beheerder', 'stuur-push', { method: 'POST', body: '{"test":true}' }, [403]);
 await fn('stuur-push: nep "Nieuwe versie"', 'stuur-push', { method: 'POST', body: '{"soort":"update","versie":"99.99"}' }, [400]);
+await fn('pin zonder gekoppeld toestel', 'pin', { method: 'POST', body: '{"doe":"check","winkel":"x","uid":"x","pin":"1234"}' }, [401]);
 await fn('brood-export zonder koppelcode', 'brood-export', {}, [401]);
 await fn('brood-export met verzonnen koppelcode', 'brood-export', { headers: { 'x-sleutel': 'verzonnen' } }, [401]);
 await fn('factuur-in met verzonnen code', 'factuur-in', { method: 'POST', headers: { 'x-code': 'verzonnen-code-1234567890', 'x-test': '1' } }, [401]);

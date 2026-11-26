@@ -3,7 +3,7 @@ name: veiligheidstest
 on:
   push:
     branches: [main]
-    paths: [.github/veiligheid/**, .github/workflows/veiligheid.yml, stuur-push.js, factuur-in.js, brood-export.js]
+    paths: [.github/veiligheid/**, .github/workflows/veiligheid.yml, stuur-push.js, factuur-in.js, brood-export.js, pin.js]
   schedule:
     - cron: '17 2 * * 1'
   workflow_dispatch:

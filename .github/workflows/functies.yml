@@ -4,7 +4,7 @@ name: functies-live
 on:
   push:
     branches: [main]
-    paths: [stuur-push.js, factuur-in.js, bestelboek.js, brood-export.js, 'supabase/functions/**', .github/workflows/functies.yml]
+    paths: [stuur-push.js, factuur-in.js, bestelboek.js, brood-export.js, pin.js, 'supabase/functions/**', .github/workflows/functies.yml]
   workflow_dispatch:
 jobs:
   live:
@@ -23,7 +23,7 @@ jobs:
           version: 3.4.0
       - name: Gedeelde code klaarzetten
         if: env.SUPABASE_ACCESS_TOKEN != ''
-        run: mkdir -p supabase/functions/_shared && cp stuur-push.js factuur-in.js bestelboek.js brood-export.js supabase/functions/_shared/
+        run: mkdir -p supabase/functions/_shared && cp stuur-push.js factuur-in.js bestelboek.js brood-export.js pin.js supabase/functions/_shared/
       - name: Live zetten
         if: env.SUPABASE_ACCESS_TOKEN != ''
         run: |
@@ -32,6 +32,7 @@ jobs:
           d stuur-push --no-verify-jwt
           d factuur-in --no-verify-jwt
           d bestelboek --no-verify-jwt
+          d pin --no-verify-jwt
           if supabase secrets list --project-ref $P 2>&1 | grep -q BROOD_SLEUTEL; then d brood-export --no-verify-jwt; else echo "::warning title=brood-export::overgeslagen, geheim BROOD_SLEUTEL ontbreekt in Supabase"; fi
           exit $F
       - name: Controleren of ze werken
@@ -42,5 +43,6 @@ jobs:
           t stuur-push -X POST -H 'Content-Type: application/json' -d '{"soort":"controle"}' $U/stuur-push
           t factuur-in $U/factuur-in
           t bestelboek $U/bestelboek
+          t pin -X POST -H 'Content-Type: application/json' -d '{"doe":"controle"}' $U/pin
           t brood-export $U/brood-export
           exit $F

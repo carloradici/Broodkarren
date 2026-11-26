@@ -380,7 +380,14 @@ function setupHtml(){
   <label>Herhaal pincode</label><input class="veld pinveld" id="sPin2" inputmode="numeric" type="password" maxlength="4">
   <div class="fout" id="fout"></div><button class="merkknop" data-a="setup">Account aanmaken</button></div>`}
 
-let pinInvoer='',pinMelding='',geenVoorkeur=false;
+let pinInvoer='',pinMelding='',geenVoorkeur=false,laatstePin='';
+/* 10.60: pincodes op de server (Edge Function pin), zodra de beheerder ze heeft overgezet (S.pinServer) */
+const pinSrv=()=>L.modus!=='lokaal'&&!!S.pinServer&&!!WINKEL;
+async function pinApi(doe,o){let tk='';try{tk=(await db?.sessie?.())?.access_token||''}catch(e){}
+  const r=await fetch(SUPA_URL+'/functions/v1/pin',{method:'POST',headers:{'Content-Type':'application/json',apikey:SUPA_KEY,Authorization:'Bearer '+(tk||SUPA_KEY)},body:JSON.stringify({doe,winkel:WINKEL?.id,...(o||{})})});return r.json().catch(()=>({ok:false,fout:'geen antwoord'}))}
+const pinFout=r=>r.wacht?`Te vaak fout. Probeer het over ${Math.ceil(r.wacht/60)} min. opnieuw.`:r.over!=null?`Pincode klopt niet (nog ${r.over} keer).`:'Dat lukte niet: '+(r.fout||'onbekend');
+async function pinMigreer(){if(S.pinServer||L.modus==='lokaal'||!WINKEL||!kanBeheren()||!S.gebruikers.length)return;
+  try{const r=await pinApi('migreer');if(!r.ok)return;S.pinServer=true;S.gebruikers=S.gebruikers.map(({pin,...g})=>g);for(const k in S.pins)S.pins[k]={t:S.pins[k]?.t||0};log('Pincodes naar de server');bewaar()}catch(e){}}
 function pinVan(g){const p=S.pins[g.id];return g.rol!=='admin'&&p&&p.t>(g.pinT||0)?p.pin:g.pin}
 function pinTijdelijk(g){if(!g||g.rol==='admin'||!g.pinTijdelijk)return false;const p=S.pins[g.id];return!(p&&p.t>(g.pinT||0))}
 function pinTeMakkelijk(p){if(/^(\d)\1{3}$/.test(p))return true;const d=[...p].map(Number);const op=d.every((x,i)=>!i||x===d[i-1]+1),af=d.every((x,i)=>!i||x===d[i-1]-1);return op||af}
@@ -395,8 +402,10 @@ function cijferblokHtml(pre){return`<div class="cijferblok">${[1,2,3,4,5,6,7,8,9
 function pinKiesToets(v){const g=ik();if(!g)return;if(v==='wis'){pinKies.invoer=pinKies.invoer.slice(0,-1);pinKies.melding='';render();return}
   if(pinKies.invoer.length>=4)return;pinKies.invoer+=v;pinKies.melding='';render();if(pinKies.invoer.length<4)return;
   setTimeout(()=>{const p=pinKies.invoer;pinKies.invoer='';
-    if(pinKies.stap===1){if(hashPin(p,g.id)===pinVan(g)){pinKies.melding='Kies een andere pincode dan de tijdelijke.';render();return}if(pinTeMakkelijk(p)){pinKies.melding='Te makkelijk. Kies een andere pincode.';render();return}pinKies.eerste=p;pinKies.stap=2;render();return}
+    if(pinKies.stap===1){if(pinSrv()?p===laatstePin:hashPin(p,g.id)===pinVan(g)){pinKies.melding='Kies een andere pincode dan de tijdelijke.';render();return}if(pinTeMakkelijk(p)){pinKies.melding='Te makkelijk. Kies een andere pincode.';render();return}pinKies.eerste=p;pinKies.stap=2;render();return}
     if(p!==pinKies.eerste){pinKies={stap:1,eerste:'',invoer:'',melding:'De pincodes waren niet gelijk. Begin opnieuw.'};render();return}
+    if(pinSrv()){pinKies.melding='Opslaan…';render();pinApi('zet',{uid:g.id,pin:p,oud:laatstePin}).then(r=>{if(!r.ok){pinKies={stap:1,eerste:'',invoer:'',melding:r.fout==='zelfde'?'Kies een andere pincode dan de tijdelijke.':pinFout(r)};render();return}
+      laatstePin=p;S.pins[g.id]={t:Date.now()};pinKies={stap:1,eerste:'',invoer:'',melding:''};log('Eigen pincode gekozen');bewaar();render();bevestig('✓ Je eigen pincode is opgeslagen');naLogin()}).catch(()=>{pinKies={stap:1,eerste:'',invoer:'',melding:'Geen internet. Probeer het zo opnieuw.'};render()});return}
     S.pins[g.id]={pin:hashPin(p,g.id),t:Date.now()};pinKies={stap:1,eerste:'',invoer:'',melding:''};log('Eigen pincode gekozen');bewaar();render();bevestig('✓ Je eigen pincode is opgeslagen');naLogin()},150)}
 let pinWijzig=null;
 function openPinWijzig(){pinWijzig={stap:0,huidig:'',nieuw:'',invoer:'',melding:''};toonPinWijzig()}
@@ -407,9 +416,11 @@ function toonPinWijzig(){const t=['Vul je huidige pincode in','Kies je nieuwe pi
 function pinWijzigToets(v){const g=ik(),w=pinWijzig;if(!g||!w)return;if(v==='wis'){w.invoer=w.invoer.slice(0,-1);w.melding='';toonPinWijzig();return}
   if(w.invoer.length>=4)return;w.invoer+=v;w.melding='';toonPinWijzig();if(w.invoer.length<4)return;
   setTimeout(()=>{const p=w.invoer;w.invoer='';
+    if(w.stap===0&&pinSrv()){w.melding='Controleren…';toonPinWijzig();pinApi('check',{uid:g.id,pin:p}).then(r=>{if(!r.ok){w.melding=pinFout(r);toonPinWijzig();return}w.melding='';w.huidig=p;w.stap=1;toonPinWijzig()}).catch(()=>{w.melding='Geen internet.';toonPinWijzig()});return}
     if(w.stap===0){if(hashPin(p,g.id)!==pinVan(g)){w.melding='Huidige pincode klopt niet.';toonPinWijzig();return}w.huidig=p;w.stap=1;toonPinWijzig();return}
     if(w.stap===1){if(p===w.huidig){w.melding='Kies een andere pincode dan je huidige.';toonPinWijzig();return}if(pinTeMakkelijk(p)){w.melding='Te makkelijk. Kies een andere pincode.';toonPinWijzig();return}w.nieuw=p;w.stap=2;toonPinWijzig();return}
     if(p!==w.nieuw){w.stap=1;w.nieuw='';w.melding='Niet gelijk. Kies je nieuwe pincode opnieuw.';toonPinWijzig();return}
+    if(pinSrv()){w.melding='Opslaan…';toonPinWijzig();pinApi('zet',{uid:g.id,pin:p,oud:w.huidig}).then(r=>{if(!r.ok){w.stap=0;w.melding=pinFout(r);toonPinWijzig();return}if(g.rol!=='admin')S.pins[g.id]={t:Date.now()};laatstePin=p;log('Pincode gewijzigd');bewaar();sluit();pinWijzig=null;bevestig('✓ Nieuwe pincode opgeslagen')}).catch(()=>{w.melding='Geen internet.';toonPinWijzig()});return}
     if(g.rol==='admin'){const i=S.gebruikers.findIndex(x=>x.id===g.id);S.gebruikers[i]={...S.gebruikers[i],pin:hashPin(p,g.id)}}else S.pins[g.id]={pin:hashPin(p,g.id),t:Date.now()};
     log('Pincode gewijzigd');bewaar();sluit();pinWijzig=null;bevestig('✓ Nieuwe pincode opgeslagen')},150)}
 function loginHtml(){
@@ -443,6 +454,7 @@ async function faceLogin(){const g=S.gebruikers.find(x=>x.id===loginKeuze);if(!f
 function probeerLogin(){
   const g=S.gebruikers.find(x=>x.id===loginKeuze),p=pinInvoer;pinInvoer='';
   if(Date.now()<geblokkeerdTot){pinMelding=`Te vaak fout. Probeer het over ${Math.ceil((geblokkeerdTot-Date.now())/1000)} seconden opnieuw.`;render();return}
+  if(g&&pinSrv()){pinMelding='Controleren…';render();pinApi('check',{uid:g.id,pin:p}).then(r=>{if(r.ok){laatstePin=p;loginAls(g);return}pinMelding=pinFout(r);render()}).catch(()=>{pinMelding='Geen internet. Inloggen kan nu niet.';render()});return}
   if(g&&pinVan(g)===hashPin(p,g.id)){loginAls(g);return}
   fouteLogins++;if(fouteLogins>=5){geblokkeerdTot=Date.now()+30000;fouteLogins=0;pinMelding='5 keer fout. Wacht 30 seconden.'}else pinMelding=`Pincode klopt niet (${fouteLogins} van 5).`;render();
 }
@@ -468,6 +480,9 @@ function gebruikerOpslaan(){
   if(pin&&bewerk.rol!=='admin'&&pinTeMakkelijk(pin)&&!confirm(`Pincode ${pin} is erg makkelijk. Toch gebruiken als tijdelijke pincode?`))return;
   const oud=S.gebruikers.find(x=>x.id===bewerk.id)||{},u={...oud,id:bewerk.id,naam,rol:bewerk.rol,pin:pin?hashPin(pin,bewerk.id):bewerk.pin};
   if(pin&&bewerk.rol!=='admin'){u.pinTijdelijk=true;u.pinT=Date.now()}
+  if(pinSrv()){delete u.pin;if(pin){fout('Pincode opslaan…');pinApi('zet',{uid:u.id,pin}).then(r=>r.ok?gebruikerOpslaan2(u,pin,naam):fout('Pincode opslaan lukte niet: '+(r.fout||'onbekend'))).catch(()=>fout('Geen internet: pincode niet opgeslagen.'));return}}
+  gebruikerOpslaan2(u,pin,naam)}
+function gebruikerOpslaan2(u,pin,naam){
   delete u.nieuw;delete u.soort;
   if(isAdmin()&&bewerk.rol!=='admin'){u.rechten={};for(const[k]of RECHTEN)u.rechten[k]=document.getElementById('r-'+k).checked;u.actief=document.getElementById('gActief').checked;const ev=document.getElementById('gEenvoudig').checked;if(!!prof(u.id).eenvoudig!==ev)S.profielen[u.id]={...(S.profielen[u.id]||{}),eenvoudig:ev}}
   const i=S.gebruikers.findIndex(x=>x.id===u.id);if(i>=0)S.gebruikers[i]=u;else S.gebruikers.push(u);
