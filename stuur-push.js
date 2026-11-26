@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
     async function doeWinkel(winkel) {
       const metW = (q) => winkel.id ? q.eq("winkel", winkel.id) : q;
       const { data: rijen, error } = await metW(sb.from("app_data").select("sleutel,waarde"))
-        .in("sleutel", ["prive:push", "materiaal", "prive:pushlog", "pushteam", "instellingen", "beheer:gebruikers", "berichten", "prive:betalen", "uren", "checklists", "profielen"]);
+        .in("sleutel", ["prive:push", "materiaal", "prive:pushlog", "pushteam", "instellingen", "beheer:gebruikers", "berichten", "prive:chat", "prive:betalen", "uren", "checklists", "profielen"]);
       if (error) throw error;
       const haal = (k) => (rijen.find((r) => r.sleutel === k) || {}).waarde || {};
       const push = haal("prive:push"), mat = haal("materiaal"), plog = haal("prive:pushlog");
@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
           for (const x of open) nieuw.push(`${x.id}:${x.staat}:${x.t}`);
         }
         // ---- 10.10 berichten (chat): privé, teamchat, mededelingen, @naam, dempen, ingepland, herinnering ----
-        const ber = haal("berichten"), nuMs = Date.now(), cinst = (ber && ber._inst) || {};
+        const { _rev: _pr, ...pchat } = haal("prive:chat"), ber = { ...(haal("berichten") || {}), ...pchat }, nuMs = Date.now(), cinst = (ber && ber._inst) || {};
         const zoekUid = (naam) => (gebr.find((g) => g.naam === naam) || {}).id || "";
         const adminIds = new Set(gebr.filter((g) => g.rol === "admin").map((g) => g.id));
         const medewerkers = gebr.filter((g) => g.rol !== "admin" && g.actief !== false).map((g) => g.id);

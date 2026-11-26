@@ -454,7 +454,7 @@ async function faceLogin(){const g=S.gebruikers.find(x=>x.id===loginKeuze);if(!f
 function probeerLogin(){
   const g=S.gebruikers.find(x=>x.id===loginKeuze),p=pinInvoer;pinInvoer='';
   if(Date.now()<geblokkeerdTot){pinMelding=`Te vaak fout. Probeer het over ${Math.ceil((geblokkeerdTot-Date.now())/1000)} seconden opnieuw.`;render();return}
-  if(g&&pinSrv()){pinMelding='Controleren…';render();pinApi('check',{uid:g.id,pin:p}).then(r=>{if(r.ok){laatstePin=p;loginAls(g);return}pinMelding=pinFout(r);render()}).catch(()=>{pinMelding='Geen internet. Inloggen kan nu niet.';render()});return}
+  if(g&&pinSrv()){pinMelding='Controleren…';render();pinApi('check',{uid:g.id,pin:p}).then(r=>{if(r.ok){laatstePin=p;if(r.bewijs){L.bewijs={u:g.id,t:r.bewijs};bewaarL()}loginAls(g);setTimeout(chatHaal,500);return}pinMelding=pinFout(r);render()}).catch(()=>{pinMelding='Geen internet. Inloggen kan nu niet.';render()});return}
   if(g&&pinVan(g)===hashPin(p,g.id)){loginAls(g);return}
   fouteLogins++;if(fouteLogins>=5){geblokkeerdTot=Date.now()+30000;fouteLogins=0;pinMelding='5 keer fout. Wacht 30 seconden.'}else pinMelding=`Pincode klopt niet (${fouteLogins} van 5).`;render();
 }

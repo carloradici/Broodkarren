@@ -346,3 +346,25 @@ function chatPlanPush(){const nu=Date.now();if(nu-(L.chatPlanPush||0)<10*60000)r
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')try{chatPlanPush()}catch(e){}});
 setTimeout(()=>{try{chatPlanPush()}catch(e){}},5000);
 
+
+/* ---------- 10.63: privégesprekken alleen nog op de server ----------
+   Beheerdertoestel: privégesprekken (p_…) in prive:chat, foto/spraak daarvan in prive:notfoto:…; niet meer in de gedeelde sleutel 'berichten'.
+   Overige toestellen: alleen het eigen gesprek, via de Edge Function pin (persoonsbewijs na een goede pincode, 12 uur). */
+function chatIsPrive(k){return k.startsWith('p_')}
+function chatPriveAlle(){return Object.fromEntries(Object.entries(S.berichten||{}).filter(([k])=>chatIsPrive(k)))}
+function chatPriveMedia(){const s=new Set();for(const b of Object.values(chatPriveAlle()))for(const m of Object.values(isObj(b?.r)?b.r:{}))if(isObj(m)){if(m.foto)s.add(m.foto);if(m.audio)s.add(m.audio)}return s}
+function chatGedeeld(){const o={};for(const[k,b]of Object.entries(S.berichten||{}))if(!chatIsPrive(k))o[k]=b;
+  if(!L.beheerder||basis['prive:chat']===undefined){let oud={};try{oud=JSON.parse(basis['berichten']||'{}')}catch(e){}for(const[k,b]of Object.entries(oud))if(chatIsPrive(k))o[k]=b}  /* oude privégesprekken laten staan tot het beheerdertoestel ze heeft overgezet */
+  return o}
+function chatSrv(){return pinSrv()&&!L.beheerder&&!!L.bewijs&&L.bewijs.u===L.sessie&&!!ik()&&!isAdmin()}
+var chatSrvLaatst='',chatSrvBezig=false,chatSrvUp=new Set();
+async function chatHaal(){if(!chatSrv()||chatSrvBezig)return;chatSrvBezig=true;
+  try{const r=await pinApi('chat',{bewijs:L.bewijs.t});if(r.ok===false&&/opnieuw/.test(r.fout||'')){delete L.bewijs;bewaarL();return}
+    if(r.ok&&r.b&&isObj(r.b)){S.berichten[r.b.id]=r.b;chatSrvLaatst=stabiel(r.b);
+      for(const m of Object.values(isObj(r.b.r)?r.b.r:{}))for(const f of[m?.foto,m?.audio])if(f&&!S.notfotos[f]){const x=await pinApi('chatFoto',{bewijs:L.bewijs.t,id:f}).catch(()=>null);if(x?.data)S.notfotos[f]=veiligSrc(x.data)}
+      if(chatId===r.b.id)chatVernieuw();else render()}}catch(e){}finally{chatSrvBezig=false}}
+async function chatPush(){if(!chatSrv())return;const b=S.berichten['p_'+L.sessie];if(!isObj(b))return;
+  for(const m of Object.values(isObj(b.r)?b.r:{}))for(const f of[m?.foto,m?.audio])if(f&&S.notfotos[f]&&!chatSrvUp.has(f)){chatSrvUp.add(f);pinApi('chatFotoZet',{bewijs:L.bewijs.t,id:f,data:S.notfotos[f]}).then(r=>{if(!r.ok)chatSrvUp.delete(f)}).catch(()=>chatSrvUp.delete(f))}
+  const j=stabiel(b);if(j===chatSrvLaatst)return;
+  try{const r=await pinApi('chatZet',{bewijs:L.bewijs.t,b});if(r.ok&&r.b){chatSrvLaatst=j;S.berichten[r.b.id]={...r.b,lees:{...(r.b.lees||{}),...(b.lees||{})}}}}catch(e){}}
+setInterval(()=>{if(!document.hidden)chatHaal()},60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(chatHaal,800)});setTimeout(chatHaal,4000);

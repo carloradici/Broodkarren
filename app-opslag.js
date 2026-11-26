@@ -1,7 +1,7 @@
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const NIEUWS=[['🔒','Kassaverkoop via de server','De koppelcode voor de kassaverkoop staat niet meer op de telefoons, alleen nog veilig in Supabase.'],['🔒','Veiliger inloggen','Je pincode wordt nu op de server gecontroleerd en staat niet meer op de telefoons. Daarom heb je internet nodig om in te loggen.'],['📲','Sneller bijwerken','Open je de app of tik je op de melding, dan werkt hij zichzelf meteen bij en blijf je ingelogd.']];
+const NIEUWS=[['🔒','Privéberichten beter afgeschermd','Je gesprek met de beheerder staat alleen nog op de server. Andere telefoons kunnen het niet lezen. Daarvoor heb je wel internet nodig.'],['🔒','Kassaverkoop via de server','De koppelcode voor de kassaverkoop staat niet meer op de telefoons, alleen nog veilig in Supabase.'],['🔒','Veiliger inloggen','Je pincode wordt nu op de server gecontroleerd en staat niet meer op de telefoons. Daarom heb je internet nodig om in te loggen.'],['📲','Sneller bijwerken','Open je de app of tik je op de melding, dan werkt hij zichzelf meteen bij en blijf je ingelogd.']];
 const NIEUWS_OUD=[['🔑','Eigen pincode','Nieuwe medewerkers kiezen bij de eerste keer inloggen zelf een pincode. Je pincode wijzigen kan via Meer → App-instellingen.'],
  ['🧹','Rustiger menu','Je ziet alleen nog de onderdelen die je mag gebruiken.'],
  ['🔤','Eenvoudige modus','In App-instellingen kun je de app eenvoudiger maken: minder informatie en grotere knoppen.'],
@@ -57,7 +57,7 @@ function bewaarNu(){clearTimeout(bewaarTimer);bewaarTimer=null;if(OEFEN)return;s
   if(ok!==!opslagFout)opslagFoutZet(!ok);
   planSync();}
 function bewaarSync(){try{if(idbOk)idbGroep('b:',basis);else localStorage.setItem(OPSLAG_BASIS,JSON.stringify(basis));localStorage.setItem(OPSLAG_REVS,JSON.stringify(revs))}catch(e){}}
-function bewaar(){L.laatsteActie=Date.now();if(!bewaarTimer)bewaarTimer=setTimeout(bewaarNu,250)}
+function bewaar(){L.laatsteActie=Date.now();if(!bewaarTimer)bewaarTimer=setTimeout(bewaarNu,250);clearTimeout(window.__cpT);window.__cpT=setTimeout(()=>chatPush(),600)}
 window.addEventListener('pagehide',()=>{bewaarNu()});
 
 /* ================= online opslag ================= */
@@ -101,12 +101,13 @@ function maakDb(){
 }
 function splitsen(){
   const o={'beheer:gebruikers':{lijst:S.pinServer?S.gebruikers.map(({pin,...g})=>g):S.gebruikers,pinServer:S.pinServer||undefined},instellingen:{bakker:S.bakker||'',locatie:S.locatie||null,winkelLogo:S.winkelLogo||null,kassaKop:null,soorten:S.soorten,karren:S.karren,momenten:S.momenten,ovenMax:S.ovenMax,leverdagen:S.leverdagen,programmas:S.programmas,omschakel:S.omschakel??null,versDagen:S.versDagen,versUitz:S.versUitz,pakbonNegeer:S.pakbonNegeer||[],pakbonNamen:S.pakbonNamen||{},pakbonCijfers:S.pakbonCijfers||{},herinnering:S.herinnering,uitlogMin:S.uitlogMin},
-    plan:{plan:S.plan,karOverride:S.karOverride,feestNee:S.feestNee},afwijkend:S.afwijkend,voorraad:S.voorraad,profielen:S.profielen,berichten:S.berichten,pins:S.pinServer?Object.fromEntries(Object.entries(S.pins||{}).map(([k,v])=>[k,{t:v?.t||0}])):S.pins,materiaal:S.materiaal,pakbonfouten:S.pbFouten,pushteam:S.pushTeam,...(Object.keys(S.uren||{}).length?{uren:S.uren}:{})};
+    plan:{plan:S.plan,karOverride:S.karOverride,feestNee:S.feestNee},afwijkend:S.afwijkend,voorraad:S.voorraad,profielen:S.profielen,berichten:chatGedeeld(),pins:S.pinServer?Object.fromEntries(Object.entries(S.pins||{}).map(([k,v])=>[k,{t:v?.t||0}])):S.pins,materiaal:S.materiaal,pakbonfouten:S.pbFouten,pushteam:S.pushTeam,...(Object.keys(S.uren||{}).length?{uren:S.uren}:{})};
   const dagen=new Set();for(const k of DAGVELDEN)for(const d of Object.keys(S[k]))dagen.add(d);
   for(const d of dagen){const x={};for(const k of DAGVELDEN)if(S[k][d]!==undefined)x[k]=S[k][d];o['dag:'+d]=x}
   for(const[id,l]of Object.entries(S.log)){const k='log:'+iso(new Date(l.t));(o[k]=o[k]||{})[id]=l}
   for(const[id,f]of Object.entries(S.fotos))o['foto:'+id]={data:f||null};
-  for(const[id,f]of Object.entries(S.notfotos))o['notfoto:'+id]={data:f||null};
+  const pm=chatPriveMedia();for(const[id,f]of Object.entries(S.notfotos)){if(!pm.has(id))o['notfoto:'+id]={data:f||null};else{if(L.beheerder)o['prive:notfoto:'+id]={data:f||null};if(L.beheerder&&basis['prive:notfoto:'+id]!==undefined&&basis['notfoto:'+id]!==undefined)o['notfoto:'+id]={data:null}}}
+  if(L.beheerder&&(L.modus==='lokaal'||basis['berichten']!==undefined)){const pv=chatPriveAlle();if(Object.keys(pv).length)o['prive:chat']=pv}
   if(kanBeheren()&&heeft('cadeau')&&Object.keys(S.cadeau).length)o['prive:cadeau']={bonnen:S.cadeau};
   if(kanBeheren()&&heeft('push')&&(S.push.subs?.length||S.push.stil||S.push.uit))o['prive:push']=S.push;
   if(kanBeheren()&&heeft('euro')&&Object.keys(S.prijzen).length)o['prive:prijzen']=S.prijzen;
@@ -131,7 +132,9 @@ function pasToe(k,v){
   else if(k==='afwijkend')S.afwijkend=v;
   else if(k==='voorraad')S.voorraad=v;
   else if(k==='profielen')S.profielen=v;
-  else if(k==='berichten')S.berichten=v;
+  else if(k==='berichten'){const p=Object.fromEntries(Object.entries(S.berichten||{}).filter(([x])=>x.startsWith('p_')));S.berichten={...p,...v}}
+  else if(k==='prive:chat'){for(const x of Object.keys(S.berichten||{}))if(x.startsWith('p_')&&chatPrBekend.has(x)&&!v[x])delete S.berichten[x];for(const[x,b]of Object.entries(v))if(x.startsWith('p_')){S.berichten[x]=b;chatPrBekend.add(x)}}
+  else if(k.startsWith('prive:notfoto:'))S.notfotos[k.slice(14)]=veiligSrc(v.data);
   else if(k==='uren')S.uren=v;
   else if(k==='pins')S.pins=v;
   else if(k==='materiaal')S.materiaal=vulMateriaal(v);

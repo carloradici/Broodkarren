@@ -9,6 +9,14 @@ export function start(createClient) {
   const kdf = async (pin, zout) => crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: zout, iterations: 100000 }, await crypto.subtle.importKey("raw", new TextEncoder().encode(pin), "PBKDF2", false, ["deriveBits"]), 256);
   const maak = async (pin) => { const z = crypto.getRandomValues(new Uint8Array(16)); return "p2:" + B(z) + ":" + B(await kdf(pin, z)); };
   const klopt = async (h, pin, uid) => { if (!h) return false; if (h.startsWith("fnv:")) return h.slice(4) === fnv(pin, uid); const [, z, x] = h.split(":"); return B(await kdf(pin, UB(z))) === x; };
+  // 10.63: persoonsbewijs (12 uur) na een goede pincode; daarmee haalt een medewerker zijn eigen privégesprek op en schrijft erin.
+  const enc = new TextEncoder(), b64u = (b) => B(b).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""), ub64u = (t) => UB(t.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - t.length % 4) % 4));
+  let HK; const hk = async () => HK ??= await crypto.subtle.importKey("raw", enc.encode((Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "") + ":persoonsbewijs"), { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]);
+  const maakBewijs = async (w, u) => { const p = b64u(enc.encode(JSON.stringify({ w, u, exp: Date.now() + 12 * 3600e3 }))); return p + "." + b64u(await crypto.subtle.sign("HMAC", await hk(), enc.encode(p))); };
+  const leesBewijs = async (t, w) => { try { const [p, s] = String(t || "").split("."); if (!p || !s || !(await crypto.subtle.verify("HMAC", await hk(), ub64u(s), enc.encode(p)))) return null; const o = JSON.parse(new TextDecoder().decode(ub64u(p))); return o.w === w && o.exp > Date.now() ? String(o.u) : null; } catch (_) { return null; } };
+  const VELD = ["van", "uid", "t", "tekst", "foto", "audio", "antw", "gew", "weg", "link", "noem"], MEDIA = /^c[ma][a-z0-9]{2,40}$/i;
+  const VEILIG = /^data:(image\/(jpeg|png|webp|gif)|audio\/[\w.+-]+)(;[\w=.+-]+)*;base64,[A-Za-z0-9+/=\s]*$/;
+  const schoon = (m) => { const o = {}; for (const k of VELD) if (m[k] != null) o[k] = typeof m[k] === "string" ? m[k].slice(0, 4000) : typeof m[k] === "number" || typeof m[k] === "boolean" ? m[k] : Array.isArray(m[k]) ? m[k].slice(0, 20).map(String) : undefined; if (o.foto && !MEDIA.test(o.foto)) delete o.foto; if (o.audio && !MEDIA.test(o.audio)) delete o.audio; return o; };
   Deno.serve(async (req) => {
     if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
     if (req.method !== "POST") return js({ ok: false, fout: "alleen POST" }, 405);
@@ -38,7 +46,7 @@ export function start(createClient) {
         const pg = p.data || {};
         if (pg.wacht) return { ok: false, wacht: pg.wacht };
         const r = await rij(uid); let h = r?.hash; if (!h) { const o = await oudeHash(uid); h = o ? "fnv:" + o : null; }
-        if (h && await klopt(h, String(pin || ""), uid)) { await bewaar({ uid, hash: h.startsWith("p2:") ? h : await maak(String(pin)), fout: 0, slot: null }); await sb.from("pin_geheim").update({ blok: 0 }).eq("winkel", w).eq("uid", uid); return { ok: true }; }
+        if (h && await klopt(h, String(pin || ""), uid)) { await bewaar({ uid, hash: h.startsWith("p2:") ? h : await maak(String(pin)), fout: 0, slot: null }); await sb.from("pin_geheim").update({ blok: 0 }).eq("winkel", w).eq("uid", uid); return { ok: true, bewijs: await maakBewijs(w, uid) }; }
         if (pg.laatste) { await sb.from("app_data").upsert({ winkel: w, sleutel: "prive:pinslot", waarde: { uid, t: Date.now() } }, { onConflict: "winkel,sleutel" }); return { ok: false, wacht: pg.duur || 300 }; }
         return h ? { ok: false, over: pg.over } : { ok: false, fout: "geen pincode" };
       };
@@ -56,6 +64,32 @@ export function start(createClient) {
         const gs = ((a.find((r) => r.sleutel === "beheer:gebruikers") || {}).waarde || {}).lijst || [], q = await sb.from("pin_geheim").select("uid").eq("winkel", w); if (q.error) throw q.error; const al = new Set((q.data || []).map((r) => r.uid));
         let n = 0; for (const g of gs) { if (al.has(g.id)) continue; const o = await oudeHash(g.id); if (o) { await bewaar({ uid: g.id, hash: "fnv:" + o, fout: 0 }); n++; } }
         await bewaar({ uid: "__migratie", hash: null }); return js({ ok: true, n });
+      }
+      if (/^chat/.test(body.doe)) { // 10.63: eigen privégesprek (prive:chat), alleen met een geldig persoonsbewijs
+        const u = await leesBewijs(body.bewijs, w); if (!u) return js({ ok: false, fout: "log opnieuw in" }, 401);
+        const id = "p_" + u, lk = async (k) => { const r = await sb.from("app_data").select("waarde").eq("winkel", w).eq("sleutel", k).maybeSingle(); if (r.error) throw r.error; return r.data?.waarde || null; };
+        const zonder = (o) => { const { _rev, ...x } = o || {}; return x; }, gesprek = async () => zonder(await lk("prive:chat"))[id] || (zonder(await lk("berichten")))[id] || null;
+        if (body.doe === "chat") return js({ ok: true, b: await gesprek() });
+        if (body.doe === "chatFoto") { const b = await gesprek(), mid = String(body.id || ""); if (!b || !Object.values(b.r || {}).some((m) => m && (m.foto === mid || m.audio === mid))) return js({ ok: false }, 403);
+          const f = (await lk("prive:notfoto:" + mid)) || (await lk("notfoto:" + mid)); return js({ ok: true, data: f?.data || null }); }
+        if (body.doe === "chatFotoZet") { const mid = String(body.id || ""), d = String(body.data || ""); if (!MEDIA.test(mid) || !VEILIG.test(d) || d.length > 1400000) return js({ ok: false }, 400);
+          if (await lk("prive:notfoto:" + mid)) return js({ ok: true }); const r = await sb.from("app_data").insert({ winkel: w, sleutel: "prive:notfoto:" + mid, waarde: { data: d }, bijgewerkt: new Date().toISOString() }); if (r.error && r.error.code !== "23505") throw r.error; return js({ ok: true }); }
+        if (body.doe === "chatZet") {
+          const c = body.b; if (!c || c.id !== id) return js({ ok: false }, 400);
+          for (let i = 0; i < 6; i++) {
+            const oud = await lk("prive:chat"), rev = oud?._rev ?? null, alle = zonder(oud), leg = alle[id] ? null : (zonder(await lk("berichten")))[id];
+            const s = JSON.parse(JSON.stringify(alle[id] || leg || { id, van: String(c.van || ""), uid: u, t: Date.now(), r: {}, lees: {} })); s.r = s.r && typeof s.r === "object" ? s.r : {}; let nieuw = false;
+            for (const [mid, m] of Object.entries(c.r || {})) { if (!m || typeof m !== "object" || !/^[\w-]{1,40}$/.test(mid)) continue; const o = s.r[mid];
+              if (!o) { if (m.uid === u && !m.beheer) { s.r[mid] = { ...schoon(m), uid: u }; nieuw = true; } } else if (o.uid === u && !o.beheer) s.r[mid] = { ...o, ...schoon(m), uid: u, t: o.t }; }
+            s.lees = { ...(s.lees || {}), [u]: Number(c.lees?.[u]) || s.lees?.[u] || 0 }; if (c.demp && typeof c.demp === "object") s.demp = { ...(s.demp || {}), [u]: !!c.demp[u] };
+            if (nieuw) { s.gelezen = false; s.nieuwM = false; delete s.arch; } s.uid = u; alle[id] = s;
+            const nw = { ...alle, _rev: (rev || 0) + 1 }, nu = new Date().toISOString();
+            if (!oud) { const r = await sb.from("app_data").insert({ winkel: w, sleutel: "prive:chat", waarde: nw, bijgewerkt: nu }); if (!r.error) return js({ ok: true, b: s }); if (r.error.code !== "23505") throw r.error; continue; }
+            let q = sb.from("app_data").update({ waarde: nw, bijgewerkt: nu }).eq("winkel", w).eq("sleutel", "prive:chat"); q = rev == null ? q.is("waarde->>_rev", null) : q.eq("waarde->>_rev", String(rev));
+            const r = await q.select("sleutel"); if (r.error) throw r.error; if (r.data?.length) return js({ ok: true, b: s });
+          }
+          return js({ ok: false, fout: "bezet, probeer opnieuw" }, 409);
+        }
       }
       return js({ ok: false, fout: "onbekende actie" }, 400);
     } catch (e) { return js({ ok: false, fout: (console.log(e), "er ging iets mis") }, 500); }
