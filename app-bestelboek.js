@@ -1,5 +1,5 @@
 /* ================= 10.7 bestelboeken (uit het bestelboek van de leverancier) ================= */
-const PDF_LIB='https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js';
+const PDF_LIB='lib/pdf-lib.min.js';
 function vulBestelboeken(b){b=isObj(b)?b:{};if(!isObj(b.boeken))b.boeken={};for(const[id,x]of Object.entries(b.boeken)){if(!isObj(x)){delete b.boeken[id];continue}if(!isObj(x.arts))x.arts={};if(!x.id)x.id=id;if(!x.naam)x.naam='Boek'}if(!isObj(b.eigen))b.eigen={};for(const[k,e]of Object.entries(b.eigen)){if(!isObj(e)||!/^\d{5,7}$/.test(k)){delete b.eigen[k];continue}e.art=k;if(typeof e.naam!=='string')e.naam=''}if(!isObj(b.bekend))b.bekend={};if(!isObj(b.nieuw))b.nieuw={};if(!isObj(b.san))b.san={};for(const[k,x]of Object.entries(b.san))if(!isObj(x))delete b.san[k];if(!isObj(b.terug))b.terug={};if(!isObj(b.editie))b.editie={};return b}
 let BB=null,bbZoek='',bbFilter='alle',bbOpen={},bbBoek=null,bbBezig='';
 const bbMag=()=>mag('bestelboek');

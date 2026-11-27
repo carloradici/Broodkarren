@@ -82,7 +82,7 @@ function afsluitHtml(){
 /* ---------- printen ---------- */
 function laadPdf(){if(window.jspdf&&window.jspdf.jsPDF&&window.jspdf.jsPDF.API.autoTable)return Promise.resolve();
   const laad=src=>new Promise((ok,nee)=>{const x=document.createElement('script');x.src=src;x.onload=ok;x.onerror=nee;document.head.appendChild(x)});
-  return laad('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js').then(()=>laad('https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js'))}
+  return laad('lib/jspdf.umd.min.js').then(()=>laad('lib/jspdf.plugin.autotable.min.js'))}
 /* 10.13 kiezen welke karren op de PDF komen (per persoon onthouden) */
 function printKeuze(){const p=prof().printKeuze;return{uit:Array.isArray(p?.uit)?p.uit.map(Number):[],vers:!!p?.vers}}
 function printKarren(d){const m=new Map();let vers=false;for(const mo of S.momenten){for(const s of maakLijst(d,mo.id))if(!m.has(s.nr))m.set(s.nr,s.naam);if(versRegels(d,mo.id).length)vers=true}return{karren:[...m].map(([nr,naam])=>({nr,naam})).sort((a,b)=>a.nr-b.nr),vers}}
@@ -183,7 +183,7 @@ function exportHtml(){laadXlsx().catch(()=>{});const v=window._export;
 function periodeDagen(){const t=iso();let van,tot=t;
   if(exportPeriode==='week')van=maandag(t);else if(exportPeriode==='vorige'){van=plusDagen(maandag(t),-7);tot=plusDagen(van,6)}else if(exportPeriode==='4w')van=plusDagen(t,-27);else van=t.slice(0,8)+'01';
   const r=[];for(let d=van;d<=tot;d=plusDagen(d,1))r.push(d);return r}
-function laadXlsx(){return window.XLSX?Promise.resolve():new Promise((ok,nee)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';s.onload=ok;s.onerror=nee;document.head.appendChild(s)})}
+function laadXlsx(){return window.XLSX?Promise.resolve():new Promise((ok,nee)=>{const s=document.createElement('script');s.src='lib/xlsx.full.min.js';s.onload=ok;s.onerror=nee;document.head.appendChild(s)})}
 function maakExport(){
   const dagen=periodeDagen();let rij,naam,blad;
   if(exportSoort==='planning'){rij=[['Soort','Kar',...DAGEN.map(d=>d[2])]];for(const s of S.soorten)rij.push([s.naam,karNaam(effKar(s)),...DAGEN.map(([k])=>dagTotaal(k,s))]);naam='planning';blad='Planning'}

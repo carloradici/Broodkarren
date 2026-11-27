@@ -222,7 +222,7 @@ const tbVal=id=>(document.getElementById(id)?.value||'').trim();
 const tbFout=t=>{const e=document.getElementById('fout');if(e)e.textContent=t;return null};
 function tbBoekVol(x,d){const rest=tbRest(x);if(rest>0)x.bet[urenId()]={b:rest,d,vol:true};x.betaald=d}
 /* ---------- export ---------- */
-const JSZIP_URL='https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
+const JSZIP_URL='lib/jszip.min.js';
 const tbXmlEsc=t=>String(t??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'');
 const tbSerie=d=>{if(!d)return null;const[y,m,dd]=d.split('-').map(Number);return(Date.UTC(y,m-1,dd)-Date.UTC(1899,11,30))/864e5};
 function tbNotitieExcel(x){const inc=tbInc(x),p=[];if(inc)p.push(`incl. ${fEuro(+inc.kosten||0)} incassokosten${inc.bureau?' ('+inc.bureau+')':''}`);if(tbIsBetaald(x))p.push('betaald '+tbD(x.betaald));

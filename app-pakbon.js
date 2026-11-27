@@ -1,7 +1,7 @@
 /* ================= pakbon scannen (foto / PDF) ================= */
-const TESS_JS='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
-const PDF_JS='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
-const PDF_WORKER='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+const TESS_JS='ocr/tesseract.min.js';
+const PDF_JS='ocr/pdf.min.js';
+const PDF_WORKER=new URL('ocr/pdf.worker.min.js',location.href).href;
 const MAANDEN=['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
 function laadScript(src,klaar){return klaar()?Promise.resolve():new Promise((ok,nee)=>{const x=document.createElement('script');x.src=src;x.onload=ok;x.onerror=()=>nee(new Error('laden mislukt'));document.head.appendChild(x)})}
 const normArt=t=>String(t||'').trim().replace(/,/g,'.').replace(/[^0-9.]/g,'').replace(/^\.+|\.+$/g,'');
@@ -559,7 +559,7 @@ async function pushAan(){
     S.push.subs=(S.push.subs||[]).filter(x=>x.endpoint!==j.endpoint);S.push.subs.push({endpoint:j.endpoint,keys:j.keys,toestel:navigator.userAgent.slice(0,60),t:Date.now()});
     bewaar();render();toast('Pushmeldingen staan aan');setTimeout(()=>stuurPush({test:true}),1500)}catch(e){toast('Aanzetten lukte niet: '+(e.message||e))}}
 function appUrl(){return location.href.split('#')[0].split('?')[0].replace(/index\.html$/,'')}
-function laadQr(){return window.qrcode?Promise.resolve():new Promise((ok,nee)=>{const x=document.createElement('script');x.src='https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js';x.onload=ok;x.onerror=nee;document.head.appendChild(x)})}
+function laadQr(){return window.qrcode?Promise.resolve():new Promise((ok,nee)=>{const x=document.createElement('script');x.src='lib/qrcode.js';x.onload=ok;x.onerror=nee;document.head.appendChild(x)})}
 function qrSvg(tekst,cel=5){const q=qrcode(0,'M');q.addData(tekst);q.make();return q.createSvgTag({cellSize:cel,margin:2,scalable:true})}
 function qrInPdf(doc,tekst,x,y,maat){const q=qrcode(0,'M');q.addData(tekst);q.make();const n=q.getModuleCount(),c=maat/n;doc.setFillColor(0,0,0);for(let r=0;r<n;r++)for(let k=0;k<n;k++)if(q.isDark(r,k))doc.rect(x+k*c,y+r*c,c+0.01,c+0.01,'F')}
 const INSTALLATIE_TEKST=()=>`iPhone:\n${INSTALL_IPHONE.map((x,i)=>`${i+1}. ${x}`).join('\n')}\n\nAndroid:\n${INSTALL_ANDROID.map((x,i)=>`${i+1}. ${x}`).join('\n')}\n\nDaarna: ${INSTALL_SLOT}`;

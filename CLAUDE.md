@@ -11,8 +11,9 @@ Web-app (PWA) van Coop Vogelenzang voor broodkarren klaarzetten, derving, bestel
 - **Bouw altijd verder op de bestanden in deze repo** (eerst ophalen van GitHub), nooit op een eigen kopie of één samengevoegd index.html. Werk niet in twee chats tegelijk aan deze app: dan overschrijft de ene upload de andere.
 
 ## Opbouw
-- `index.html`: alleen HTML-geraamte + laadscript. Daarin staat `const APP_BOUW='x.y'` (de updatecheck leest dit uit index.html) en `LADEN` = de lijst met app-bestanden.
-- De `app-*.js`-bestanden zijn stukken van één groot script: het laadscript haalt ze op en voert ze **samen als één script** uit, in de volgorde van `LADEN`. Functies mogen dus naar elkaar verwijzen over bestanden heen. Nieuw bestand? Zet het in `LADEN` (index.html) én in `APP` (sw.js).
+- `index.html` (10.66): HTML-geraamte + CSP-meta + `<script src="lib/supabase.js">` + `<script src="laden.js?b=x.y">`. Versie staat in `<meta name="bouw" content="APP_VERSIE='x.y',APP_BOUW='x.y'">` (updatecheck, update-melding.yml en stuur-push lezen `APP_BOUW='x.y'` uit index.html).
+- `laden.js`: frame-check, `LADEN` = de lijst met app-bestanden; voert ze uit via een blob-URL, zodat de CSP géén 'unsafe-inline'/'unsafe-eval' nodig heeft. Nooit inline scripts of `onclick="…"` gebruiken. Bibliotheken lokaal in `lib/` (supabase, jszip, pdf-lib, jspdf + autotable, qrcode, xlsx + xlsx-werker); pdf.js en Tesseract uit `ocr/`. Nieuw extern adres = in de CSP (index.html) zetten.
+- De `app-*.js`-bestanden zijn stukken van één groot script: het laadscript haalt ze op en voert ze **samen als één script** uit, in de volgorde van `LADEN`. Functies mogen dus naar elkaar verwijzen over bestanden heen. Nieuw bestand? Zet het in `LADEN` (laden.js) én in `APP` (sw.js).
 - `style.css`: alle opmaak. Coop-oranje #f17d04, grote knoppen, simpele Nederlandse teksten.
 
 | Bestand | Inhoud |
@@ -43,7 +44,7 @@ Edge Functions: `stuur-push.js`, `factuur-in.js`, `bestelboek.js` (haalt bestelb
 Updates: bij openen meteen bijwerken (updBijOpen), bijwerkscherm, na update ingelogd op hetzelfde scherm (`bo-updplek`, 2 min). Pushmelding "Nieuwe versie": `.github/workflows/update-melding.yml` wacht tot de nieuwe APP_BOUW live staat en roept stuur-push aan met `{soort:'update',versie}` (alleen naar profielen met Updates tonen).
 
 ## Nieuwe versie (nummers met één punt: 10.26, 10.27 …)
-1. `index.html`: `APP_BOUW='x.y'` en `?b=x.y` bij style.css (het laadscript gebruikt APP_BOUW zelf).
+1. `index.html`: meta bouw (`APP_BOUW='x.y'`, en `APP_VERSIE` alleen bij grote versies), `?b=x.y` bij style.css en laden.js.
 2. `sw.js`: `VERSIE='broodopzet-x.y'`.
 3. Nieuws voor de gebruiker: `APP_VERSIE` + tekst in app-opslag.js (alleen bij grote versies).
 
@@ -51,7 +52,8 @@ Updates: bij openen meteen bijwerken (updBijOpen), bijwerkscherm, na update inge
 - Grote versie: volledige Playwright-test, ook een ronde als medewerker; testversie in Claude bijwerken.
 - Kleine fix: snelle controle (app laadt zonder fouten, het aangepaste scherm werkt).
 - Altijd eerst: `cat app-*.js > /tmp/alles.js && node --check /tmp/alles.js` (een losse apostrof in een hulptekst breekt de hele app).
-- Testversie in Claude (artifact "Brood Opzet") is één los HTML-bestand: neem index.html, zet style.css in een `<style>` en vervang het laadscript door één `<script>` met `APP_BOUW` + alle bestanden uit `LADEN` achter elkaar.
+- Testversie in Claude (artifact "Brood Opzet") is één los HTML-bestand: neem index.html zonder CSP-meta, zet style.css in een `<style>`, supabase via het CDN, en vervang laden.js door één `<script>` met `APP_VERSIE`/`APP_BOUW` + alle bestanden uit `LADEN` achter elkaar.
+- Test met CSP aan: geen meldingen "Content Security Policy" in de console (alle schermen, pdf, Excel, QR, scannen).
 - Testen lokaal: `python3 -m http.server`, dan `http://localhost:8000/` (laadt niet via file://). "Zonder koppeling gebruiken" geeft een lokale testwinkel.
 - Rapporteer alleen de uitkomst.
 
