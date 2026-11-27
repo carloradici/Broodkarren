@@ -15,7 +15,7 @@ function bbLijnen(ops){const O=pdfjsLib.OPS,ys=[];let m=[1,0,0,1,0,0];const st=[
       else if(o===O.moveTo){cur=tp(co[k],co[k+1]);k+=2}else if(o===O.lineTo){const q=tp(co[k],co[k+1]);k+=2;if(cur&&Math.abs(q[0]-cur[0])>300&&Math.abs(q[1]-cur[1])<1)ys.push((q[1]+cur[1])/2);cur=q}
       else if(o===O.curveTo)k+=6;else if(o===O.curveTo2||o===O.curveTo3)k+=4;else if(o===O.closePath){}}}}
   const u=[];for(const y of ys.sort((a,b)=>b-a))if(!u.length||u[u.length-1]-y>2)u.push(Math.round(y*100)/100);return u}
-async function bbLees(file,meld){await laadPdfjs();const buf=await file.arrayBuffer(),pdf=await pdfjsLib.getDocument({data:new Uint8Array(buf.slice(0))}).promise,rijen=[];let kop=null,groep='';
+async function bbLees(file,meld){await laadPdfjs();const buf=await file.arrayBuffer(),pdf=await pdfjsLib.getDocument({isEvalSupported:false,data:new Uint8Array(buf.slice(0))}).promise,rijen=[];let kop=null,groep='';
   for(let p=1;p<=pdf.numPages;p++){meld(`Bestelboek lezen: pagina ${p} van ${pdf.numPages}`);const pg=await pdf.getPage(p),[tc,ops]=await Promise.all([pg.getTextContent(),pg.getOperatorList()]);
     const it=tc.items.filter(i=>i.str&&i.str.trim()).map(i=>({s:i.str.trim(),x:i.transform[4],y:i.transform[5],h:Math.abs(i.transform[0])})),ys=bbLijnen(ops);
     for(let i=0;i<ys.length-1;i++){const top=ys[i],bot=ys[i+1];if(top-bot<8)continue;const b=it.filter(t=>t.y<top&&t.y>bot);if(!b.length)continue;
@@ -198,7 +198,7 @@ async function bbVoorbeeld(b){let ov=document.getElementById('factVb');if(!ov){o
   ov.innerHTML=`<div class="vbkop"><b>${esc(b.naam)}</b><span id="bbVbTel" style="font-size:14px;opacity:.8"></span><button data-a="factvbsluit">Sluiten</button></div><div class="vbinhoud"><p class="vbmelding">Voorbeeld maken…</p></div><p class="vbhulp">Tik op een pagina om in of uit te zoomen</p>`;ov.classList.add('open');
   let pdf=null,io=null,dicht=false;const urls={},bron=new Map(),sc=1.5;
   const opruim=()=>{dicht=true;if(io)io.disconnect();for(const u of Object.values(urls))URL.revokeObjectURL(u);for(const c of bron.values()){c.width=c.height=0}bron.clear();if(pdf){pdf.destroy();pdf=null}bbVbOpruim=null};bbVbOpruim=opruim;
-  try{await laadPdfjs();pdf=await pdfjsLib.getDocument({data:new Uint8Array(BB.pdf.slice(0))}).promise;if(dicht)return;
+  try{await laadPdfjs();pdf=await pdfjsLib.getDocument({isEvalSupported:false,data:new Uint8Array(BB.pdf.slice(0))}).promise;if(dicht)return;
     const p1=await pdf.getPage(1),[,,W,H]=p1.view,ind=bbIndeling(b,H),N=ind.length,el=ov.querySelector('.vbinhoud'),tel=document.getElementById('bbVbTel'),uit=document.createElement('canvas'),ux=uit.getContext('2d');
     el.innerHTML=ind.map((_,n)=>`<div class="bbvbp" data-n="${n}" data-a="factvbzoom" style="aspect-ratio:${W}/${H}"><span>Pagina ${n+1}</span></div>`).join('');
     const pagina=async i=>{if(bron.has(i)){const c=bron.get(i);bron.delete(i);bron.set(i,c);return c}
@@ -234,7 +234,7 @@ async function bbPdf(id){const b=S.bestelboeken.boeken[id];if(!b||!BB)return;too
   catch(e){console.warn(e);const el=document.getElementById('bbPdfStatus');if(el)el.textContent='PDF maken lukte niet. Controleer je internetverbinding.'}}
 async function pdfVoorbeeldBestand(file,titel){let ov=document.getElementById('factVb');if(!ov){ov=document.createElement('div');ov.id='factVb';ov.setAttribute('role','dialog');document.body.appendChild(ov)}
   ov.innerHTML=`<div class="vbkop"><b>${esc(titel)}</b><button data-a="factvbsluit">Sluiten</button></div><div class="vbinhoud"><p class="vbmelding">Voorbeeld maken…</p></div><p class="vbhulp">Tik op een pagina om in of uit te zoomen</p>`;ov.classList.add('open');
-  try{await laadPdfjs();const pdf=await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise,el=ov.querySelector('.vbinhoud');el.innerHTML='';
+  try{await laadPdfjs();const pdf=await pdfjsLib.getDocument({isEvalSupported:false,data:new Uint8Array(await file.arrayBuffer())}).promise,el=ov.querySelector('.vbinhoud');el.innerHTML='';
     for(let i=1;i<=pdf.numPages&&ov.classList.contains('open');i++){const pg=await pdf.getPage(i),vp=pg.getViewport({scale:1.6}),c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
       el.insertAdjacentHTML('beforeend',`<img src="${c.toDataURL('image/jpeg',.85)}" alt="Pagina ${i}" data-a="factvbzoom" style="margin-bottom:10px">`)}}
   catch(e){const el=ov.querySelector('.vbinhoud');if(el)el.innerHTML='<p class="vbmelding">Bekijken lukt nu niet.</p>'}}

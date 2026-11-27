@@ -131,7 +131,7 @@ async function factVoorbeeld(f,concept){
   try{if(!(window.jspdf&&window.jspdf.jsPDF&&window.jspdf.jsPDF.API.autoTable))await laadPdf();await factLogo().catch(()=>{});
     const file=factPdf(f,{concept}),lok=await ocrLokaal();
     await laadScript(lok?'ocr/pdf.min.js':PDF_JS,()=>window.pdfjsLib);pdfjsLib.GlobalWorkerOptions.workerSrc=window.__PDF_WORKER__||(lok?new URL('ocr/pdf.worker.min.js',location.href).href:PDF_WORKER);
-    const pdf=await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise,pg=await pdf.getPage(1),vp=pg.getViewport({scale:2.2}),c=document.createElement('canvas');
+    const pdf=await pdfjsLib.getDocument({isEvalSupported:false,data:new Uint8Array(await file.arrayBuffer())}).promise,pg=await pdf.getPage(1),vp=pg.getViewport({scale:2.2}),c=document.createElement('canvas');
     c.width=vp.width;c.height=vp.height;await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
     if(!ov.classList.contains('open'))return;ov.querySelector('.vbinhoud').innerHTML=`<img src="${c.toDataURL('image/jpeg',.9)}" alt="Voorbeeld van de factuur" data-a="factvbzoom">`}
   catch(e){console.warn(e);const el=ov.querySelector('.vbinhoud');if(el)el.innerHTML='<p class="vbmelding">Het voorbeeld lukt nu niet. Controleer je internetverbinding.</p>'}}

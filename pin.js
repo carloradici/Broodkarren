@@ -15,7 +15,7 @@ export function start(createClient) {
   const maakBewijs = async (w, u) => { const p = b64u(enc.encode(JSON.stringify({ w, u, exp: Date.now() + 12 * 3600e3 }))); return p + "." + b64u(await crypto.subtle.sign("HMAC", await hk(), enc.encode(p))); };
   const leesBewijs = async (t, w) => { try { const [p, s] = String(t || "").split("."); if (!p || !s || !(await crypto.subtle.verify("HMAC", await hk(), ub64u(s), enc.encode(p)))) return null; const o = JSON.parse(new TextDecoder().decode(ub64u(p))); return o.w === w && o.exp > Date.now() ? String(o.u) : null; } catch (_) { return null; } };
   const VELD = ["van", "uid", "t", "tekst", "foto", "audio", "antw", "gew", "weg", "link", "noem"], MEDIA = /^c[ma][a-z0-9]{2,40}$/i;
-  const VEILIG = /^data:(image\/(jpeg|png|webp|gif)|audio\/[\w.+-]+)(;[\w=.+-]+)*;base64,[A-Za-z0-9+/=\s]*$/;
+  const VEILIG = /^data:(image\/(jpeg|png|webp)|audio\/[\w.+-]+)(;[\w=.+-]+)*;base64,[A-Za-z0-9+/=\s]*$/;
   const schoon = (m) => { const o = {}; for (const k of VELD) if (m[k] != null) o[k] = typeof m[k] === "string" ? m[k].slice(0, 4000) : typeof m[k] === "number" || typeof m[k] === "boolean" ? m[k] : Array.isArray(m[k]) ? m[k].slice(0, 20).map(String) : undefined; if (o.foto && !MEDIA.test(o.foto)) delete o.foto; if (o.audio && !MEDIA.test(o.audio)) delete o.audio; return o; };
   Deno.serve(async (req) => {
     if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -37,6 +37,8 @@ export function start(createClient) {
         return g ? (g.rol !== "admin" && p && p.pin && p.t > (g.pinT || 0) ? p.pin : g.pin) || null : null; };
       // 10.62: elke poging wordt eerst in één stap geteld in de database (pin_poging, met rijslot), pas daarna gecontroleerd. Slot: 5, 10, 20 … min, max 24 uur.
       const check = async (uid, pin) => {
+        const dt = await sb.rpc("pin_toestel_poging", { d: user.id }); // 10.65: ook per toestel (max 10 fout per uur, over alle namen heen)
+        if (!dt.error && dt.data > 0) return { ok: false, wacht: dt.data, toestel: true };
         let p = await sb.rpc("pin_poging", { w, u: uid });
         if (p.error) { // overgang: SQL-functie pin_poging bestaat nog niet → oude telling (lezen en schrijven)
           const r0 = await rij(uid), nu = Date.now();
@@ -46,7 +48,7 @@ export function start(createClient) {
         const pg = p.data || {};
         if (pg.wacht) return { ok: false, wacht: pg.wacht };
         const r = await rij(uid); let h = r?.hash; if (!h) { const o = await oudeHash(uid); h = o ? "fnv:" + o : null; }
-        if (h && await klopt(h, String(pin || ""), uid)) { await bewaar({ uid, hash: h.startsWith("p2:") ? h : await maak(String(pin)), fout: 0, slot: null }); await sb.from("pin_geheim").update({ blok: 0 }).eq("winkel", w).eq("uid", uid); return { ok: true, bewijs: await maakBewijs(w, uid) }; }
+        if (h && await klopt(h, String(pin || ""), uid)) { await bewaar({ uid, hash: h.startsWith("p2:") ? h : await maak(String(pin)), fout: 0, slot: null }); await sb.from("pin_geheim").update({ blok: 0 }).eq("winkel", w).eq("uid", uid); await sb.rpc("pin_toestel_goed", { d: user.id }); return { ok: true, bewijs: await maakBewijs(w, uid) }; }
         if (pg.laatste) { await sb.from("app_data").upsert({ winkel: w, sleutel: "prive:pinslot", waarde: { uid, t: Date.now() } }, { onConflict: "winkel,sleutel" }); return { ok: false, wacht: pg.duur || 300 }; }
         return h ? { ok: false, over: pg.over } : { ok: false, fout: "geen pincode" };
       };
@@ -54,6 +56,7 @@ export function start(createClient) {
       if (body.doe === "zet") {
         const uid = String(body.uid || ""), pin = String(body.pin || "");
         if (!/^\d{4}$/.test(pin)) return js({ ok: false, fout: "Pincode moet 4 cijfers zijn" });
+        if (!(beheer && body.oud == null) && (/^(\d)\1{3}$/.test(pin) || /^(\d\d)\1$/.test(pin) || "0123456789".includes(pin) || "9876543210".includes(pin) || ["1122", "2580", "0852", "1357", "2468", "1004", "2000", "1990"].includes(pin))) return js({ ok: false, fout: "zwak" }); // 10.65: geen makkelijke pincodes
         const isEigenaar = async () => { const a = (await sb.from("app_data").select("waarde").eq("winkel", w).eq("sleutel", "beheer:gebruikers").maybeSingle()).data; return ((a?.waarde?.lijst) || []).some((g) => g.id === uid && g.rol === "admin"); };
         if (!(beheer && body.oud == null && !(await isEigenaar()))) { if (pin === String(body.oud)) return js({ ok: false, fout: "zelfde" }); const c = await check(uid, body.oud); if (!c.ok) return js(c); }
         await bewaar({ uid, hash: await maak(pin), fout: 0, slot: null }); return js({ ok: true });

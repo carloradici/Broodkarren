@@ -111,13 +111,13 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-cl]');if(
 /* ================= 10.17 derving in euro's ================= */
 /* ================= 10.27 kassaverkoop uit Coop Besteladvies ================= */
 function kaalPlu(p){return String(p??'').trim().replace(/^0+(?=\d)/,'')}
-var KV=(()=>{try{return JSON.parse(localStorage.getItem('bo-kassa')||'null')}catch(e){return null}})();
+var KV=(()=>{try{const o=localStorage.getItem('bo-kassa');if(o){localStorage.setItem('broodkarren-kassa',o);localStorage.removeItem('bo-kassa')}return JSON.parse(localStorage.getItem('broodkarren-kassa')||'null')}catch(e){return null}})();
 function kassaVan(d,s){const p=kaalPlu(s.plu);if(!p||!KV||!KV.dagen||!KV.dagen[d])return null;return KV.dagen[d][p]??0}
 async function kassaHaal(forceer){if(!S||OEFEN||L.modus==='lokaal'||!WINKEL)return;if(!forceer&&KV&&Date.now()-KV.t<3*36e5)return;
   const plus=[...new Set(S.soorten.map(s=>kaalPlu(s.plu)).filter(Boolean))];if(!plus.length){if(forceer)throw new Error('Vul eerst de PLU in bij de soorten');return}
   try{let tk='';try{tk=(await db?.sessie?.())?.access_token||''}catch(e){}if(!tk)throw new Error('Toestel is niet gekoppeld');
     const r=await fetch(SUPA_URL+'/functions/v1/verkoop?winkel='+encodeURIComponent(WINKEL.id)+'&plu='+plus.join(','),{headers:{apikey:SUPA_KEY,Authorization:'Bearer '+tk}});const d=await r.json().catch(()=>({fout:'Geen antwoord ('+r.status+')'}));if(r.status===503)throw new Error('Nog niet ingesteld in Supabase (VERKOOP_URL en VERKOOP_SLEUTEL)');if(!d.ok)throw new Error(d.fout||r.status);
-    KV={t:Date.now(),dagen:d.dagen||{}};try{localStorage.setItem('bo-kassa',JSON.stringify(KV))}catch(e){}if(!forceer&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName||''))render();return KV}catch(e){if(forceer)throw e}}
+    KV={t:Date.now(),dagen:d.dagen||{}};try{localStorage.setItem('broodkarren-kassa',JSON.stringify(KV))}catch(e){}if(!forceer&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName||''))render();return KV}catch(e){if(forceer)throw e}}
 setTimeout(()=>kassaHaal(),5000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)kassaHaal()});
 function kassaHtml(){const zonder=S.soorten.filter(s=>s.type!=='vers'&&s.naam.trim()&&!kaalPlu(s.plu));
   return`<div class="kop"><div class="koprij"><h1>Kassaverkoop</h1>${info('kassa')}</div><p>Haalt de kassaverkoop per PLU uit Coop Besteladvies. Het advies voor klaarzetten rekent daarmee.</p></div>

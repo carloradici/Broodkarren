@@ -74,7 +74,7 @@ async function toestelWissen(melding){
   try{await db?.logout()}catch(e){}
   await wisIdb();
   for(const w of WK.lijst||[])try{indexedDB.deleteDatabase('broodopzet'+nsVan(w.id))}catch(e){}
-  try{for(const k of Object.keys(localStorage))if(/^broodkarren-(v2|basis|lokaal|revs)/.test(k))localStorage.removeItem(k)}catch(e){}
+  try{for(const k of Object.keys(localStorage))if(/^(broodkarren-|broodopzet-|bo-kassa|bo-updplek)/.test(k))localStorage.removeItem(k)}catch(e){}  /* 10.65: alleen eigen sleutels (Coop Besteladvies draait op hetzelfde adres) */
   WK={};bewaarWK();WINKEL=null;
   const ns=NS;S=leegS();basis={};revs={};L={modus:'online',melding:melding||''};bewaarL();
   if(ns){try{localStorage.setItem('broodkarren-lokaal',JSON.stringify(L))}catch(e){}location.reload();return}

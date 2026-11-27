@@ -1,7 +1,7 @@
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const NIEUWS=[['⏱','Uren via de server','Je ziet en klokt alleen nog je eigen uren. Dat gaat via de server, dus je hebt internet nodig om in of uit te klokken.'],['🔒','Privéberichten beter afgeschermd','Je gesprek met de beheerder staat alleen nog op de server. Andere telefoons kunnen het niet lezen. Daarvoor heb je wel internet nodig.'],['🔒','Kassaverkoop via de server','De koppelcode voor de kassaverkoop staat niet meer op de telefoons, alleen nog veilig in Supabase.'],['🔒','Veiliger inloggen','Je pincode wordt nu op de server gecontroleerd en staat niet meer op de telefoons. Daarom heb je internet nodig om in te loggen.'],['📲','Sneller bijwerken','Open je de app of tik je op de melding, dan werkt hij zichzelf meteen bij en blijf je ingelogd.']];
+const NIEUWS=[['🔒','Pincodes nog beter beschermd','Makkelijke pincodes zoals 1212 of 2580 kun je niet meer kiezen. Na 10 foute pincodes op één telefoon moet je een uur wachten.'],['🛡','Veiliger opslaan','Foto\'s, Excel- en pdf-bestanden worden strenger gecontroleerd. Uitloggen wist alleen de gegevens van Brood Opzet.'],['⏱','Uren via de server','Je ziet en klokt alleen nog je eigen uren. Dat gaat via de server, dus je hebt internet nodig om in of uit te klokken.'],['🔒','Privéberichten beter afgeschermd','Je gesprek met de beheerder staat alleen nog op de server. Andere telefoons kunnen het niet lezen. Daarvoor heb je wel internet nodig.'],['🔒','Kassaverkoop via de server','De koppelcode voor de kassaverkoop staat niet meer op de telefoons, alleen nog veilig in Supabase.'],['🔒','Veiliger inloggen','Je pincode wordt nu op de server gecontroleerd en staat niet meer op de telefoons. Daarom heb je internet nodig om in te loggen.'],['📲','Sneller bijwerken','Open je de app of tik je op de melding, dan werkt hij zichzelf meteen bij en blijf je ingelogd.']];
 const NIEUWS_OUD=[['🔑','Eigen pincode','Nieuwe medewerkers kiezen bij de eerste keer inloggen zelf een pincode. Je pincode wijzigen kan via Meer → App-instellingen.'],
  ['🧹','Rustiger menu','Je ziet alleen nog de onderdelen die je mag gebruiken.'],
  ['🔤','Eenvoudige modus','In App-instellingen kun je de app eenvoudiger maken: minder informatie en grotere knoppen.'],
@@ -74,7 +74,7 @@ function maakDb(){
     async login(e,p){return chk(await c.auth.signInWithPassword({email:e,password:p})).session},
     async anoniem(){return chk(await c.auth.signInAnonymously()).session},
     async registreer(e,p){return chk(await c.auth.signUp({email:e,password:p,options:{emailRedirectTo:appUrl()}})).session},
-    async logout(){await c.auth.signOut()},
+    async logout(){await c.auth.signOut({scope:'local'})},
     async retourUp(p,b){chk(await c.storage.from('retour').upload(p,b,{upsert:true,contentType:'image/jpeg'}))},
     async rpc(f,a){return chk(await c.rpc(f,a||{}))},
     async isBeheerder(uid){return !!chk(await c.from('beheerders').select('user_id').eq('user_id',uid).maybeSingle())},

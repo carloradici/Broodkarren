@@ -26,7 +26,7 @@ function leesPakbonTekst(tekst){const regels=[];for(const r of tekst.split(/\n/)
 /* PDF: tekstlaag → regels; geen tekst (scan) → afbeelding per pagina */
 async function pdfNaarTekst(file){
   const lok=await ocrLokaal();await laadScript(lok?'ocr/pdf.min.js':PDF_JS,()=>window.pdfjsLib);pdfjsLib.GlobalWorkerOptions.workerSrc=window.__PDF_WORKER__||(lok?new URL('ocr/pdf.worker.min.js',location.href).href:PDF_WORKER);
-  const pdf=await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;let alle='';const n=Math.min(pdf.numPages,4),paginas=[];
+  const pdf=await pdfjsLib.getDocument({isEvalSupported:false,data:new Uint8Array(await file.arrayBuffer())}).promise;let alle='';const n=Math.min(pdf.numPages,4),paginas=[];
   for(let p=1;p<=n;p++){const pg=await pdf.getPage(p),tc=await pg.getTextContent(),rij={};
     for(const it of tc.items){if(!it.str.trim())continue;const y=Math.round(it.transform[5]/3)*3;(rij[y]=rij[y]||[]).push(it)}
     alle+=Object.keys(rij).map(Number).sort((a,b)=>b-a).map(y=>rij[y].sort((a,b)=>a.transform[4]-b.transform[4]).map(i=>i.str).join(' ')).join('\n')+'\n';paginas.push(pg)}
@@ -594,7 +594,7 @@ function verschilTekst(d,lv){return`Levering ${winkelNaam()} – ${dagNaamLang(d
 function toonVerschil(d){const lv=S.levering[d],l=levVerschil(lv);if(!l.length)return;
   toonSheet(`<div class="pkop"><span style="width:70px"></span><b>Verschil met pakbon</b><button data-a="sluit" style="font-weight:700">Sluiten</button></div><div class="pinhoud">
    <p class="hulp">✓ Levering opgeslagen. De telling wijkt af van de pakbon:</p>
-   <div class="sectie" style="margin:0">${l.map(x=>`<div class="rij inv"><div class="groei"><div class="naam">${esc(S.soorten.find(s=>s.id===x.id)?.naam||'?')}</div><div class="sub">pakbon ${x.pb} · ontvangen ${x.n}</div></div><b class="${x.n<x.pb?'hoog':'goed'}" style="font-size:18px">${x.n<x.pb?'−':'+'}${Math.abs(x.n-x.pb)}</b></div>`).join('')}</div>
+   <div class="sectie" style="margin:0">${l.map(x=>`<div class="rij inv"><div class="groei"><div class="naam">${esc(S.soorten.find(s=>s.id===x.id)?.naam||'?')}</div><div class="sub">pakbon ${esc(x.pb)} · ontvangen ${x.n}</div></div><b class="${x.n<x.pb?'hoog':'goed'}" style="font-size:18px">${x.n<x.pb?'−':'+'}${Math.abs(x.n-x.pb)}</b></div>`).join('')}</div>
    <div class="knoppen"><button class="knop" data-a="verschildeel" data-v="${d}">Delen met de bakker</button></div>
    <p class="hulp" style="text-align:center">Kies daarna WhatsApp, mail of sms en de ontvanger.</p></div>`)}
 async function deelTekst(t,titel){try{if(navigator.share){await navigator.share({text:t,title:titel});return}}catch(e){if(e&&e.name==='AbortError')return;if(e&&e.name==='NotAllowedError'){toast('Tik nog een keer');return}}

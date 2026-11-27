@@ -26,6 +26,6 @@ const nieuwId=()=>'s'+Date.now().toString(36)+Math.random().toString(36).slice(2
 const esc=t=>String(t??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
 const getal=t=>{const m=String(t??'').match(/\d+/);if(!m)return null;return Math.min(9999,parseInt(m[0],10))};
 /* 10.62: alleen echte foto's en geluid als bron (tegen ingesmokkelde code) */
-const veiligSrc=f=>typeof f==='string'&&(/^data:(image\/(jpeg|png|webp|gif)|audio\/[\w.+-]+)(;[\w=.+-]+)*;base64,[A-Za-z0-9+/=\s]*$/.test(f)||/^https:\/\/[^"'<>\s]+$/.test(f))?f:null;
+const veiligSrc=f=>typeof f==='string'&&/^data:(image\/(jpeg|png|webp)|audio\/[\w.+-]+)(;[\w=.+-]+)*;base64,[A-Za-z0-9+/=\s]*$/.test(f)?f:null; /* 10.65: alleen foto's (jpeg/png/webp) en spraak als data-URL */
 const chatPrBekend=new Set(); /* 10.63: privégesprekken die uit prive:chat kwamen */
 var urenSrvCache=null; /* 10.64: eigen uren zoals de server ze kent {u,d} */

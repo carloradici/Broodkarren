@@ -84,7 +84,7 @@ function tbPlanHtml(){const o=tbOpen(),vd=iso(),w1=plusDagen(maandag(vd),7),w2=p
 function tbKiesBestand(cb){const i=document.createElement('input');i.type='file';i.accept='image/*,application/pdf,.pdf';i.onchange=()=>{if(i.files[0])cb(i.files[0])};i.click()}
 const tbIsPdf=f=>/pdf/i.test(f.type)||/\.pdf$/i.test(f.name||'');
 const tbDataUrl=f=>new Promise((ok,nee)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=nee;r.readAsDataURL(f)});
-async function tbPdfLees(file,kaal){await laadPdfjs();const pdf=await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise,n=pdf.numPages,pag=[];
+async function tbPdfLees(file,kaal){await laadPdfjs();const pdf=await pdfjsLib.getDocument({isEvalSupported:false,data:new Uint8Array(await file.arrayBuffer())}).promise,n=pdf.numPages,pag=[];
   for(let p=1;p<=n;p++){const pg=await pdf.getPage(p),tc=await pg.getTextContent(),rij={};for(const it of tc.items){if(!it.str.trim())continue;const y=Math.round(it.transform[5]/3)*3;(rij[y]=rij[y]||[]).push(it)}
     pag.push(Object.keys(rij).map(Number).sort((a,b)=>b-a).map(y=>rij[y].sort((a,b)=>a.transform[4]-b.transform[4]).map(i=>i.str).join(' ')).join('\n'))}
   if(kaal){pdf.destroy?.();return{tekst:pag.join('\n')}}
@@ -179,7 +179,7 @@ function tbDubToon(d,sv){const v=document.getElementById('tbDubVak');if(v)v.inne
 async function tbToonPdf(src){let ov=document.getElementById('tbBijlOv');if(!ov){ov=document.createElement('div');ov.id='tbBijlOv';ov.setAttribute('role','dialog');document.body.appendChild(ov);ov.addEventListener('click',e=>{if(e.target.closest('[data-tbsluit]')||e.target===ov)ov.classList.remove('open')})}
   ov.innerHTML=`<div class="tbbijlbalk"><b>Factuur</b><span class="tbbijlhulp" id="tbPag">laden…</span><button data-tbsluit="1" class="knop wit klein">Sluiten</button></div><div class="tbbijlvak" id="tbPdfVak"></div>`;ov.classList.add('open');
   try{await laadPdfjs();const bin=atob(src.split(',')[1]),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
-    const pdf=await pdfjsLib.getDocument({data:u}).promise,n=pdf.numPages,vak=document.getElementById('tbPdfVak'),lab=document.getElementById('tbPag');if(!vak)return;
+    const pdf=await pdfjsLib.getDocument({isEvalSupported:false,data:u}).promise,n=pdf.numPages,vak=document.getElementById('tbPdfVak'),lab=document.getElementById('tbPag');if(!vak)return;
     const tel=()=>{const kids=[...vak.children],mid=vak.scrollTop+vak.clientHeight/3;let p=1;for(const k of kids)if(k.offsetTop<=mid)p=+k.dataset.p;if(vak.scrollTop+vak.clientHeight>=vak.scrollHeight-4)p=n;if(lab)lab.textContent=`pagina ${p} van ${n} · tik om in te zoomen`};
     for(let p=1;p<=n;p++){const d=document.createElement('div');d.className='tbpag';d.dataset.p=p;d.style.aspectRatio='1/1.414';vak.appendChild(d)}
     const teken=async d=>{if(d.dataset.klaar)return;d.dataset.klaar=1;const pg=await pdf.getPage(+d.dataset.p),v1=pg.getViewport({scale:1}),vp=pg.getViewport({scale:Math.min(3,1500/v1.width)}),c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;
@@ -282,13 +282,15 @@ function tbXlsDatum(v){if(v==null||v==='')return null;if(typeof v==='number'){co
   const t=String(v).trim();let m=t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);if(m)return`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
   m=t.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$/);if(m){const j=m[3].length===2?'20'+m[3]:m[3];return`${j}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`}return null}
 const tbXlsGetal=v=>typeof v==='number'?v:leesBedrag(v);
-async function tbLeesExcel(file){if(!window.XLSX){toast('Excel-onderdeel laden…');try{await laadXlsx()}catch(e){toast('Excel kon niet laden, controleer je internet');return}}
-  let wb;try{wb=XLSX.read(await file.arrayBuffer(),{type:'array'})}catch(e){toast('Dit bestand kan ik niet lezen');return}
-  const naam=wb.SheetNames.find(n=>/openstaande posten/i.test(n))||wb.SheetNames.find(n=>{const r=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:true,defval:null}).slice(0,15);return r.some(x=>x.includes('Factuurnummer'))});
+/* 10.65: Excel van buiten lezen in een aparte worker (lib/xlsx-werker.js) met time-out */
+function xlsxBladen(buf){return new Promise((ok,nee)=>{const w=new Worker('lib/xlsx-werker.js'),t=setTimeout(()=>{w.terminate();nee(new Error('Excel lezen duurde te lang'))},20000),k=f=>x=>{clearTimeout(t);w.terminate();f(x)};
+  w.onmessage=k(e=>e.data.fout?nee(new Error(e.data.fout)):ok(e.data.b||{}));w.onerror=k(()=>nee(new Error('Excel kon niet gelezen worden')));w.postMessage({buf})})}
+async function tbLeesExcel(file){let bl;try{bl=await xlsxBladen(await file.arrayBuffer())}catch(e){toast('Dit bestand kan ik niet lezen');return}
+  const namen=Object.keys(bl),naam=namen.find(n=>/openstaande posten/i.test(n))||namen.find(n=>(bl[n]||[]).slice(0,15).some(x=>x.includes('Factuurnummer')));
   if(!naam){toast('Geen tabblad met facturen gevonden');return}
   if(/openstaande posten/i.test(naam)){try{const buf=new Uint8Array(await file.arrayBuffer());let b='';for(let i=0;i<buf.length;i+=32768)b+=String.fromCharCode.apply(null,buf.subarray(i,i+32768));
     if(buf.length<3e6){tbSchrijf();S.betalen.sjab={naam:file.name,data:btoa(b),t:Date.now()};bewaar()}}catch(e){console.warn(e)}}
-  const rijen=XLSX.utils.sheet_to_json(wb.Sheets[naam],{header:1,raw:true,defval:null}),ki=rijen.findIndex(r=>r.some(c=>String(c||'').trim()==='Factuurnummer'));if(ki<0){toast('Kolom Factuurnummer niet gevonden');return}
+  const rijen=bl[naam]||[],ki=rijen.findIndex(r=>r.some(c=>String(c||'').trim()==='Factuurnummer'));if(ki<0){toast('Kolom Factuurnummer niet gevonden');return}
   const kop=rijen[ki].map(c=>String(c||'').trim().toLowerCase()),col=(...n)=>{for(const x of n){const i=kop.indexOf(x);if(i>=0)return i}return -1};
   const cL=col('bedrijf','leverancier'),cN=col('factuurnummer'),cF=col('factuurdatum'),cV=col('vervaldatum'),cT=col('te betalen','bedrag incl btw','totaal'),cB=col('betaald bedrag','betaald'),cS=col('status'),cO=col('notities','notitie','opmerking');
   if(cL<0||cN<0||cT<0){toast('Kolommen Bedrijf, Factuurnummer of Te betalen niet gevonden');return}

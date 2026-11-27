@@ -87,7 +87,7 @@ function toonUpdateBalk(){let el=document.getElementById('updatebalk');if(!nieuw
   el.textContent=`🔄 Nieuwe versie ${nieuweBouw} beschikbaar – tik om bij te werken`}
 async function werkBij(stil){if(updateBezig)return;updateBezig=true;bewaarNu();
   if(!stil){const o=document.createElement('div');o.className='updscherm';o.innerHTML=`<div class="updrond"></div><b>📲 Bijwerken naar versie ${esc(nieuweBouw||'')}…</b><small>Een paar seconden geduld</small>`;document.body.appendChild(o)}
-  try{if(L.sessie)localStorage.setItem('bo-updplek',JSON.stringify({s:L.sessie,tab,sub,t:Date.now()}))}catch(e){}
+  try{if(L.sessie)localStorage.setItem('broodkarren-updplek',JSON.stringify({s:L.sessie,tab,sub,t:Date.now()}))}catch(e){}
   try{const reg=await navigator.serviceWorker.getRegistration();if(reg){await reg.update();const w=reg.installing||reg.waiting;
       if(w)await new Promise(ok=>{const t=setTimeout(ok,3000),k=()=>{if(w.state==='activated'||w.state==='redundant'){clearTimeout(t);ok()}};w.addEventListener('statechange',k);k()})}}catch(e){}
   location.reload()}
