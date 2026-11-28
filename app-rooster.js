@@ -66,7 +66,7 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-rs]');if(
 let clKeuze=null,clDatum=null;
 const CL_STANDAARD={open:{id:'open',naam:'Openen',tijd:'',volg:1,taken:[{id:'o1',t:'Alarm uit'},{id:'o2',t:'Verlichting aan'},{id:'o3',t:"Kassa's opstarten"},{id:'o4',t:'Wisselgeld klaarleggen'},{id:'o5',t:'Deuren open'}]},
   sluit:{id:'sluit',naam:'Sluiten',tijd:'',volg:2,taken:[{id:'s1',t:"Kassa's afsluiten"},{id:'s2',t:'Afval weg'},{id:'s3',t:'Verlichting uit'},{id:'s4',t:'Deuren op slot'},{id:'s5',t:'Alarm aan'}]}};
-function clLijsten(){const l=isObj(S.checklists?.lijsten)&&Object.keys(S.checklists.lijsten).length?S.checklists.lijsten:CL_STANDAARD;return Object.values(l).filter(x=>isObj(x)&&!x.weg).sort((a,c)=>(a.volg||0)-(c.volg||0)||String(a.naam).localeCompare(String(c.naam)))}
+function clLijsten(alle){const l=isObj(S.checklists?.lijsten)&&Object.keys(S.checklists.lijsten).length?S.checklists.lijsten:CL_STANDAARD;return Object.values(l).filter(x=>isObj(x)&&!x.weg&&(alle||(x.deel||'brood')===(deel||'brood'))).sort((a,c)=>(a.volg||0)-(c.volg||0)||String(a.naam).localeCompare(String(c.naam)))}
 const clAf=(d,lid)=>isObj(S.checklists?.dag?.[d]?.[lid])?S.checklists.dag[d][lid]:{};
 function clStand(d,l){const af=clAf(d,l.id),t=(l.taken||[]).filter(x=>x&&x.id);return{n:t.filter(x=>af[x.id]).length,tot:t.length}}
 function clHomeStatus(){const l=clLijsten();if(!l.length)return['Geen lijsten',false];const nu=new Date(),hm=String(nu.getHours()).padStart(2,'0')+':'+String(nu.getMinutes()).padStart(2,'0');let let_=false;
@@ -82,12 +82,13 @@ function checkHtml(){const l=clLijsten();if(!l.length)return`<div class="kop"><h
     h+=`<div class="sectie"><div class="karkop"><b>Afgelopen 14 dagen</b></div>${dagen.map(x=>{const st=l.map(y=>({y,...clStand(x,y)}));const mis=st.some(z=>z.n<z.tot);
       return`<button class="rij inv" data-cl="dag" data-v="${x}" style="width:100%;text-align:left"><div class="groei"><div class="naam" style="font-size:15px">${esc(dagNaamLang(x))}</div><div class="sub">${st.map(z=>`${esc(z.y.naam)} <b class="${z.n<z.tot?'oranjetekst':'groentekst'}">${z.n}/${z.tot}</b>`).join(' · ')}</div></div><span>${mis?'⚠️':'✓'}</span></button>`}).join('')}</div>`}
   return h}
-function clBeheerSheet(){const l=clLijsten().map(x=>kloon(x));
+function clBeheerSheet(){const l=clLijsten(true).map(x=>kloon(x));
   toonSheet(`<div class="pkop"><button data-a="sluit">Annuleren</button><b>Checklists aanpassen</b><button data-cl="bewaar" style="font-weight:700">Bewaren</button></div><div class="pinhoud" id="clBeheer">
    ${l.map(clBlok).join('')}<div class="knoppen" id="clBij" style="justify-content:flex-start"><button class="knop rand" data-cl="lijstbij">+ Nieuwe lijst</button></div>
    <p class="hulp">Eén taak per regel. Met “Klaar om” krijg je een pushmelding als de lijst om die tijd nog niet af is (leeg = geen melding).</p></div>`)}
 const clBlok=x=>`<div class="kaartje clblok" data-id="${esc(x.id||'')}" style="margin:0 0 12px"><h3 class="clkop">${esc(x.naam||'Nieuwe lijst')}</h3><label>Naam</label><input class="veld clnaam" maxlength="40" value="${esc(x.naam||'')}">
   <label>Klaar om</label><input class="veld cltijd" type="time" value="${esc(x.tijd||'')}" style="width:140px">
+  ${delen().length>1?`<label>Deel</label><select class="veld cldeel">${Object.entries(DELEN).filter(([k])=>delen().includes(k)).map(([k,[,n]])=>`<option value="${k}" ${(x.id?x.deel||'brood':deel||'brood')===k?'selected':''}>${n}</option>`).join('')}</select>`:''}
   <label>Taken</label><textarea class="veld cltaken" rows="6">${esc((x.taken||[]).map(t=>t.t).join('\n'))}</textarea>
   <div class="knoppen" style="justify-content:flex-start;padding:6px 0 0"><button class="knop rand rood klein" data-cl="lijstweg">Lijst verwijderen</button></div></div>`;
 document.addEventListener('click',e=>{const el=e.target.closest('[data-cl]');if(!el||el.tagName==='INPUT')return;const u=ik();if(!u)return;L.laatsteActie=Date.now();const c=el.dataset.cl,v=el.dataset.v||'';
@@ -101,10 +102,10 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-cl]');if(
   case'beheer':if(isAdmin())clBeheerSheet();return;
   case'lijstbij':{const k=document.getElementById('clBij');if(!k)return;k.insertAdjacentHTML('beforebegin',clBlok({naam:'',taken:[]}));const n=k.previousElementSibling;n?.scrollIntoView({block:'start',behavior:'smooth'});setTimeout(()=>n?.querySelector('.clnaam')?.focus(),350);return}
   case'lijstweg':{const b=el.closest('.clblok');if(!b)return;if(el.dataset.z!=='1'){el.dataset.z='1';el.textContent='Zeker? Tik nogmaals';return}b.remove();return}
-  case'bewaar':{if(!isAdmin())return;const oud=clLijsten(),nieuw={};let i=0;
+  case'bewaar':{if(!isAdmin())return;const oud=clLijsten(true),nieuw={};let i=0;
     for(const b of document.querySelectorAll('#clBeheer .clblok')){const naam=b.querySelector('.clnaam').value.trim();if(!naam)continue;const id=b.dataset.id||'l'+urenId(),o=oud.find(x=>x.id===id),tk=[];
       for(const t of b.querySelector('.cltaken').value.split('\n').map(x=>x.trim()).filter(Boolean).slice(0,40)){const bestaand=(o?.taken||[]).find(x=>x.t===t&&!tk.some(y=>y.id===x.id));tk.push({id:bestaand?.id||'t'+urenId(),t:t.slice(0,80)})}
-      nieuw[id]={id,naam:naam.slice(0,40),tijd:b.querySelector('.cltijd').value||'',volg:++i,taken:tk}}
+      nieuw[id]={id,naam:naam.slice(0,40),tijd:b.querySelector('.cltijd').value||'',volg:++i,taken:tk,deel:b.querySelector('.cldeel')?.value||o?.deel||deel||'brood'}}
     for(const o of oud)if(!nieuw[o.id])nieuw[o.id]={...o,weg:true};
     if(!isObj(S.checklists))S.checklists={};S.checklists.lijsten=nieuw;if(!Object.values(nieuw).some(x=>!x.weg))clKeuze=null;bewaar();sluit();render();toast('Opgeslagen');return}
   }}catch(z){meldFout(z,'Checklists')}});

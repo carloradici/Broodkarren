@@ -189,6 +189,8 @@ function meerHtml(){
   if(sub==='hometeam'&&isAdmin())return terug+homeTeamHtml();
   if(sub==='dervingeuro'&&isAdmin())return terug+dervEuroHtml();
   if(sub==='uren'&&isAdmin())return terug+urenBeheerHtml();
+  if(sub==='dragers'&&delen().includes('bestellen'))return`<button class="terug" data-a="tab" data-v="home">‹ Bestellen</button>`+drHtml();
+  if(sub==='vtretour'&&betalenMag()&&delen().includes('bestellen'))return`<button class="terug" data-a="tab" data-v="home">‹ Bestellen</button>`+vtRetourHtml();
   if(sub==='bestelboeken'&&bbMag())return terug+bestelboekenHtml();
   if(sub==='bbkies'&&bbMag())return`<button class="terug" data-a="sub" data-v="bestelboeken">‹ Bestelboeken</button>`+bbKiesHtml();
   if(sub==='bbsan'&&bbMag())return`<button class="terug" data-a="sub" data-v="bestelboeken">‹ Bestelboeken</button>`+bbSanHtml();

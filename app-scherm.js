@@ -30,7 +30,7 @@ function _render(){
   const g=ik();if(!g||(g.rol!=='admin'&&g.actief===false)){if(L.sessie){L.sessie=null;bewaarL()}m.innerHTML=loginHtml();nav.innerHTML='';return}
   if(!deelKies()){m.innerHTML=kiesHtml();nav.innerHTML='';return}
   const t=TABS.find(x=>x[0]===tab);if(tab==='uren'?!urenMag():tab==='check'?false:(!t||(t[2]&&!mag(t[2]))))tab='home';
-  if(deel!=='brood'&&!['home','meer','uren'].includes(tab))tab='home';
+  if(deel!=='brood'&&!deelTabs().some(x=>x[0]===tab)&&tab!=='meer')tab='home';
   m.innerHTML=veiligScherm();
   if(tab==='lijst'||tab==='home'){const bk=chatBalkKlaarzetten();if(bk){const k=m.querySelector('.kop');if(k)k.insertAdjacentHTML('afterend',bk);else m.insertAdjacentHTML('afterbegin',bk)}}
   if(['lijst','plan','derving','check'].includes(tab)&&!deelTabs().some(x=>x[0]===tab)||(tab==='uren'&&urenView==='klok'&&deel!=='kantoor'))m.insertAdjacentHTML('afterbegin','<button class="terug" data-a="tab" data-v="home">‹ Home</button>');

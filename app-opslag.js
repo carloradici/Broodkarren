@@ -1,7 +1,7 @@
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const NIEUWS=[['🏪','Coop Winkelapp','Brood Opzet heet nu Coop Winkelapp. Na het inloggen kies je Bestellen, Brood of (beheerder) Kantoor, elk met een eigen Home en eigen tabs onderin.'],['⇄','Wisselen tussen delen','Met de knop bovenin wissel je van deel. Vink Onthoud mijn keuze aan om meteen in jouw deel te starten.'],['🌙','Donkere modus','Snel aan- en uitzetten onderaan Meer en op de keuzepagina.']];
+const NIEUWS=[['🛒','Karren tellen','In Bestellen tel je karren en planken; de beheerder ziet het saldo van Van Tol ernaast.'],['🧾','Retourbonnen Van Tol','In Bestellen staan de retourbonnen uit de weekstaten, met regels en scan (alleen beheerder).'],['✅','Checklists per deel','Bestellen heeft een eigen tab Checklists. Bij Aanpassen kies je per lijst het deel.'],['🏪','Coop Winkelapp','Brood Opzet heet nu Coop Winkelapp. Na het inloggen kies je Bestellen, Brood of (beheerder) Kantoor, elk met een eigen Home en eigen tabs onderin.'],['⇄','Wisselen tussen delen','Met de knop bovenin wissel je van deel. Vink Onthoud mijn keuze aan om meteen in jouw deel te starten.'],['🌙','Donkere modus','Snel aan- en uitzetten onderaan Meer en op de keuzepagina.']];
 const NIEUWS_OUD=[['🔑','Eigen pincode','Nieuwe medewerkers kiezen bij de eerste keer inloggen zelf een pincode. Je pincode wijzigen kan via Meer → App-instellingen.'],
  ['🧹','Rustiger menu','Je ziet alleen nog de onderdelen die je mag gebruiken.'],
  ['🔤','Eenvoudige modus','In App-instellingen kun je de app eenvoudiger maken: minder informatie en grotere knoppen.'],
@@ -75,6 +75,7 @@ function maakDb(){
     async anoniem(){return chk(await c.auth.signInAnonymously()).session},
     async registreer(e,p){return chk(await c.auth.signUp({email:e,password:p,options:{emailRedirectTo:appUrl()}})).session},
     async logout(){await c.auth.signOut({scope:'local'})},
+    async retourUrl(p){const r=await c.storage.from('retour').createSignedUrl(p,600);return r.data?.signedUrl||null},
     async retourUp(p,b){chk(await c.storage.from('retour').upload(p,b,{upsert:true,contentType:'image/jpeg'}))},
     async rpc(f,a){return chk(await c.rpc(f,a||{}))},
     async isBeheerder(uid){return !!chk(await c.from('beheerders').select('user_id').eq('user_id',uid).maybeSingle())},
@@ -118,6 +119,7 @@ function splitsen(){
   if(betalenMag())for(const[id,f]of Object.entries(S.tbIn))o['prive:tbin:'+id]={data:f||null};
   if(betalenMag()){for(const[m,f]of Object.entries(S.bank))o['prive:bank:'+m]={data:f||null};if(Object.keys(S.vaste).length)o['prive:vaste']=S.vaste}
   if(Object.keys(S.checklists).length)o.checklists=S.checklists;
+  if(isObj(S.dragers)&&S.dragers.tel?.length)o.dragers=S.dragers;
   if(Object.keys(S.homeTeam).length)o.hometeam=S.homeTeam;
   if(Object.keys(S.bestelboeken.boeken).length||S.bestelboeken.editie.naam||Object.keys(S.bestelboeken.eigen).length)o.bestelboeken=S.bestelboeken;
   /* 10.0: wat niet in het pakket zit, gaat niet naar de server */
@@ -151,6 +153,7 @@ function pasToe(k,v){
   else if(k.startsWith('prive:bank:')){S.bank[k.slice(11)]=v.data||null}
   else if(k==='prive:vaste')S.vaste=v;
   else if(k==='checklists')S.checklists=v;
+  else if(k==='dragers')S.dragers=v;
   else if(k==='hometeam')S.homeTeam=v;
   else if(k==='bestelboeken')S.bestelboeken=vulBestelboeken(v);
   else if(k==='pakbonfouten')S.pbFouten=v;
