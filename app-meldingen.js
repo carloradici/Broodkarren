@@ -15,7 +15,7 @@ function herinneringHtml(){const h=S.herinnering;const opties=[];for(let u=6;u<=
    <div class="kaartje"><h3>Weekoverzicht</h3><div class="sub">Elke maandag om 9:00 krijg je een melding dat het weekoverzicht klaarstaat.</div></div>`}
 /* ---- euro's ---- */
 const prijs=id=>+S.prijzen[id]||0;
-const euro2=n=>'€ '+(Math.round(n*100)/100).toFixed(2).replace('.',',');
+const euro2=n=>'€ '+bedragPunt(n);
 function dervEuro(van,tot){let t=0;for(const d of Object.keys(S.derving))if(d>=van&&d<=tot)for(const[id,n]of Object.entries(S.derving[d]||{}))t+=(+n||0)*prijs(id);return t}
 function prijzenHtml(){const l=S.soorten.filter(s=>s.naam.trim()),m0=iso().slice(0,7)+'-01',vm=(()=>{const x=vanIso(m0);x.setMonth(x.getMonth()-1);return iso(x)})(),vmEind=plusDagen(m0,-1);
   return`<div class="kop"><div class="koprij"><h1>Inkoopprijzen</h1></div><p>Inkoopprijs per stuk (per brood bij vers brood). Alleen voor jou zichtbaar. Hiermee zie je de derving in euro's.</p></div>
@@ -77,7 +77,7 @@ function klaarHtml(){
   return`<div class="kop"><div class="koprij"><h1>Klaar voor gebruik?</h1></div><p>Wat nog ontbreekt en het werk lastiger maakt.</p></div>${h||'<div class="kaartje"><h3>✓ Alles is klaar</h3><div class="sub">Alle broodsoorten hebben een foto, PLU en programma, en iedereen heeft een eigen pincode.</div></div>'}`}
 /* ---------- cadeaubonnen (alleen beheerder) ---------- */
 let cbTab='uit',cbZoek='',cbSelect=false,cbSel=new Set();
-const euro=c=>'€ '+((c||0)/100).toFixed(2).replace('.',',');
+const euro=c=>'€ '+bedragPunt((c||0)/100);
 const centen=t=>{const m=String(t||'').replace(/[^0-9,\.]/g,'').replace(',','.');const x=parseFloat(m);return isNaN(x)?null:Math.round(x*100)};
 function cadeauTellers(){const l=Object.values(S.cadeau);return{voorraadWaarde:l.filter(b=>b.status==='voorraad').reduce((t,b)=>t+(b.bedrag||0),0),voorraad:l.filter(b=>b.status==='voorraad').length,uit:l.filter(b=>b.status==='uit').length,gebruikt:l.filter(b=>b.status==='gebruikt').length,
   open:l.filter(b=>b.status==='uit').reduce((t,b)=>t+(b.bedrag||0),0),ingewisseld:l.filter(b=>b.status==='gebruikt').reduce((t,b)=>t+(b.bedrag||0),0)}}

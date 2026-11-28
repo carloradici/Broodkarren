@@ -269,14 +269,14 @@ document.addEventListener('click',async e=>{
   case'kiesnaam':loginKeuze=v;pinInvoer='';pinMelding='';render();return;
   case'pin':if(pinInvoer.length>=4)return;pinInvoer+=v;pinMelding='';if(pinInvoer.length===4){render();setTimeout(probeerLogin,120)}else render();return;
   case'pinwis':pinInvoer=pinInvoer.slice(0,-1);pinMelding='';render();return;
-  case'uitloggen':if(!chatOverdrachtKlaar&&L.sessie&&ik()){chatOverdrachtVraag('uitloggen');return}chatOverdrachtKlaar=false;log('Uitgelogd');L.sessie=null;ovenModus=false;bewaar();render();return;
+  case'uitloggen':if(prof().overdracht&&!chatOverdrachtKlaar&&L.sessie&&ik()){chatOverdrachtVraag('uitloggen');return}chatOverdrachtKlaar=false;log('Uitgelogd');L.sessie=null;ovenModus=false;bewaar();render();return;
   case'gebruiker':openGebruiker(S.gebruikers.find(x=>x.id===v));return;
   case'nieuwegebruiker':openGebruiker({id:nieuwId(),naam:'',rol:'medewerker',rechten:{...STANDAARD_RECHTEN},actief:true,nieuw:true});return;
   case'gopslaan':gebruikerOpslaan();return;
   case'gweg':if(!kanBeheren())return;if(!verwStap){verwStap=true;b.textContent='Tik nogmaals om te verwijderen';return}
     log(`Medewerker ${bewerk.naam} verwijderd`);S.gebruikers=S.gebruikers.filter(x=>x.id!==bewerk.id);bewaar();sluit();render();return;
-  case'tab':{if(v==='plan'&&tab!=='plan')planKeuze=planKeyVoor(iso());const zelfde=tab===v&&!(v==='meer'&&sub)&&!(v==='uren'&&urenView!=='klok');plekBewaar();tab=v;if(v==='meer')sub=null;if(v==='uren')urenView='klok';ovenModus=false;render();plekTerug(zelfde);return}
-  case'sub':if(deel!=='brood'&&tab==='home'&&v)tab='meer';if(deel==='kantoor'&&v==='kantoor'){tab='home';sub=null;render();return}if(v==='backup')bkLijst=null;if(v==='aanbieder')aanb=null;if(v==='winkels'||v==='winkel')wkInfo=null;plekBewaar();sub=v||null;render();plekTerug(!!sub);return;
+  case'tab':{if(v==='plan'&&tab!=='plan')planKeuze=planKeyVoor(iso());const zelfde=tab===v&&!(v==='meer'&&sub)&&!(v==='uren'&&urenView!=='klok');terugL=[];plekBewaar();tab=v;if(v==='meer')sub=null;if(v==='uren')urenView='klok';ovenModus=false;render();plekTerug(zelfde);return}
+  case'sub':if(v&&v!==sub)terugL.push({tab,sub});else if(!v)terugL=[];if(deel!=='brood'&&tab==='home'&&v)tab='meer';if(deel==='kantoor'&&v==='kantoor'){tab='home';sub=null;terugL=[];render();return}if(v==='backup')bkLijst=null;if(v==='aanbieder')aanb=null;if(v==='winkels'||v==='winkel')wkInfo=null;plekBewaar();sub=v||null;render();plekTerug(!!sub);return;
   case'sub2':plekBewaar();tab='meer';sub=v;render();plekTerug(true);return;
   case'moment':moment=v;ovenKeuze={};render();return;
   case'datum':datum=plusDagen(datum,+v);volgVandaag=datum===standaardDatum();ovenKeuze={};ovenModus=ovenModus&&datum<=iso();render();return;
@@ -359,7 +359,7 @@ document.addEventListener('click',async e=>{
   case'oefenstop':location.reload();return;
   case'nieuwsklaar':S.profielen[L.sessie]={...(S.profielen[L.sessie]||{}),versieGezien:APP_VERSIE};bewaar();sluit();toonOverdracht();return;
   case'karkleur':{const k=S.karren.find(x=>x.nr===+v);if(k)k.kleur=b.dataset.k;else S.karren.push({nr:+v,naam:'',kleur:b.dataset.k});bewaar();render();return}
-  case'wissel':if(!chatOverdrachtKlaar&&L.sessie&&ik()){chatOverdrachtVraag('wissel');return}chatOverdrachtKlaar=false;log('Gewisseld van persoon');L.sessie=null;loginKeuze=null;geenVoorkeur=true;ovenModus=false;sub=null;bewaar();render();return;
+  case'wissel':if(prof().overdracht&&!chatOverdrachtKlaar&&L.sessie&&ik()){chatOverdrachtVraag('wissel');return}chatOverdrachtKlaar=false;log('Gewisseld van persoon');L.sessie=null;loginKeuze=null;geenVoorkeur=true;ovenModus=false;sub=null;bewaar();render();return;
   case'welkomdeel':welkomDeel();return;
   case'welkompdf':maakQrPdf('welkom');return;
   case'qrwinkel':if(!isAdmin())return;toonSheet(`<div class="pkop"><span style="width:70px"></span><b>QR-code voor de winkel</b><button data-a="sluit" style="font-weight:700">Klaar</button></div><div class="pinhoud"><p class="hulp">Hang deze A4 op bij de broodafdeling. Collega's scannen hem met de camera en zetten de app op hun beginscherm, op iPhone én Android.</p><div id="winkelQr" class="welkomqr groot"></div><div class="knoppen"><button class="knop" data-a="qrwinkelpdf">PDF maken / printen</button></div><p class="hulp" style="text-align:center">${esc(appUrl())}</p></div>`);laadQr().then(()=>{const el=document.getElementById('winkelQr');if(el)el.innerHTML=qrSvg(appUrl(),6)}).catch(()=>{});return;

@@ -11,7 +11,7 @@ const bedragTekst=n=>(Math.round(n*100)/100).toFixed(2).replace('.',',');
 function factTotalen(f){const per={0:{btw:0,tot:0},9:{btw:0,tot:0},21:{btw:0,tot:0}};let tot=0;
   for(const r of f.regels||[]){const t=fCent((+r.aantal||0)*(+r.prijs||0)),p=[0,9,21].includes(+r.btw)?+r.btw:21,b=Math.round(t*p/(100+p));per[p].tot+=t;per[p].btw+=b;tot+=t}
   const btw=per[0].btw+per[9].btw+per[21].btw;return{per,tot,btw,ex:tot-btw}}
-const fEuro=c=>'€ '+bedragTekst(c/100);
+const fEuro=c=>'€ '+bedragPunt(c/100),bedragPunt=n=>(Math.round(n*100)/100).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2});
 function factStatus(f){if(f.status==='verstuurd'&&f.verval&&f.verval<iso())return['Vervallen','rood'];return FSTATUS[f.status]||['?','grijs']}
 function factLijst(){return Object.values(S.facturen.lijst).sort((a,b)=>(b.nummer||9e9)-(a.nummer||9e9)||b.t-a.t)}
 function volgendNummer(d){const j=+String(d||iso()).slice(0,4);let m=0;for(const f of Object.values(S.facturen.lijst))if(f.nummer&&Math.floor(f.nummer/10000)===j)m=Math.max(m,f.nummer%10000);return j*10000+m+1}

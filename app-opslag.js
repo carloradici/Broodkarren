@@ -1,7 +1,7 @@
 /* ================= lokaal opslaan ================= */
 let bewaarTimer=null,opslagFout=false;
 let OEFEN=false;
-const NIEUWS=[['🛒','Karren tellen','In Bestellen tel je karren en planken; de beheerder ziet het saldo van Van Tol ernaast.'],['🧾','Retourbonnen Van Tol','In Bestellen staan de retourbonnen uit de weekstaten, met regels en scan (alleen beheerder).'],['✅','Checklists per deel','Bestellen heeft een eigen tab Checklists. Bij Aanpassen kies je per lijst het deel.'],['🏪','Coop Winkelapp','Brood Opzet heet nu Coop Winkelapp. Na het inloggen kies je Bestellen, Brood of (beheerder) Kantoor, elk met een eigen Home en eigen tabs onderin.'],['⇄','Wisselen tussen delen','Met de knop bovenin wissel je van deel. Vink Onthoud mijn keuze aan om meteen in jouw deel te starten.'],['🌙','Donkere modus','Snel aan- en uitzetten onderaan Meer en op de keuzepagina.']];
+const NIEUWS=[['🛒','Nieuw icoon','De app heeft een winkelwagentje als icoon. Zet de app opnieuw op je beginscherm om het te zien.'],['‹','Terug naar waar je was','De knop linksboven gaat terug naar de pagina waar je vandaan kwam.'],['★','Favorieten overal','Sterretjes en het blok Favorieten staan nu in elk deel, ook in Kantoor.'],['🔄','Meteen wisselen','Bij wisselen of uitloggen komt geen overdracht-venster meer; aanzetten kan bij App-instellingen.'],['🛒','Karren tellen','In Bestellen tel je karren en planken; de beheerder ziet het saldo van Van Tol ernaast.'],['🧾','Retourbonnen Van Tol','In Bestellen staan de retourbonnen uit de weekstaten, met regels en scan (alleen beheerder).'],['✅','Checklists per deel','Bestellen heeft een eigen tab Checklists. Bij Aanpassen kies je per lijst het deel.'],['🏪','Coop Winkelapp','Brood Opzet heet nu Coop Winkelapp. Na het inloggen kies je Bestellen, Brood of (beheerder) Kantoor, elk met een eigen Home en eigen tabs onderin.'],['⇄','Wisselen tussen delen','Met de knop bovenin wissel je van deel. Vink Onthoud mijn keuze aan om meteen in jouw deel te starten.'],['🌙','Donkere modus','Licht, donker of automatisch kies je bij Meer → App-instellingen → Weergave.']];
 const NIEUWS_OUD=[['🔑','Eigen pincode','Nieuwe medewerkers kiezen bij de eerste keer inloggen zelf een pincode. Je pincode wijzigen kan via Meer → App-instellingen.'],
  ['🧹','Rustiger menu','Je ziet alleen nog de onderdelen die je mag gebruiken.'],
  ['🔤','Eenvoudige modus','In App-instellingen kun je de app eenvoudiger maken: minder informatie en grotere knoppen.'],
@@ -75,6 +75,7 @@ function maakDb(){
     async anoniem(){return chk(await c.auth.signInAnonymously()).session},
     async registreer(e,p){return chk(await c.auth.signUp({email:e,password:p,options:{emailRedirectTo:appUrl()}})).session},
     async logout(){await c.auth.signOut({scope:'local'})},
+    async retourLijst(){const n=[];for(let o=0;o<20000;o+=1000){const r=await c.storage.from('retour').list('',{limit:1000,offset:o});if(r.error)throw r.error;n.push(...r.data.map(x=>x.name));if(r.data.length<1000)break}return n},
     async retourUrl(p){const r=await c.storage.from('retour').createSignedUrl(p,600);return r.data?.signedUrl||null},
     async retourUp(p,b){chk(await c.storage.from('retour').upload(p,b,{upsert:true,contentType:'image/jpeg'}))},
     async rpc(f,a){return chk(await c.rpc(f,a||{}))},

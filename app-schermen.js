@@ -177,7 +177,7 @@ function dervSub(d,id,g){const x=dervDetail(d,id),v=x?BESTEMMING.filter(([k])=>x
 
 /* ---------- Meer ---------- */
 function meerHtml(){
-  const terug=KANTOOR.has(sub)&&isAdmin()?`<button class="terug" data-a="sub" data-v="kantoor">‹ Kantoor</button>`:`<button class="terug" data-a="sub" data-v="">‹ Meer</button>`;
+  const terug=terugKnop();
   if(sub==='vraag'){sub=null;setTimeout(openVraag,0)}
   if(MEER_FUNCTIE[sub]&&!heeft(MEER_FUNCTIE[sub]))sub=null;
   if(sub==='winkels'&&isEigenaar()&&isAdmin())return terug+winkelsHtml();
@@ -189,8 +189,8 @@ function meerHtml(){
   if(sub==='hometeam'&&isAdmin())return terug+homeTeamHtml();
   if(sub==='dervingeuro'&&isAdmin())return terug+dervEuroHtml();
   if(sub==='uren'&&isAdmin())return terug+urenBeheerHtml();
-  if(sub==='dragers'&&delen().includes('bestellen'))return`<button class="terug" data-a="tab" data-v="home">‹ Bestellen</button>`+drHtml();
-  if(sub==='vtretour'&&betalenMag()&&delen().includes('bestellen'))return`<button class="terug" data-a="tab" data-v="home">‹ Bestellen</button>`+vtRetourHtml();
+  if(sub==='dragers'&&delen().includes('bestellen'))return terug+drHtml();
+  if(sub==='vtretour'&&betalenMag()&&delen().includes('bestellen'))return terug+vtRetourHtml();
   if(sub==='bestelboeken'&&bbMag())return terug+bestelboekenHtml();
   if(sub==='bbkies'&&bbMag())return`<button class="terug" data-a="sub" data-v="bestelboeken">‹ Bestelboeken</button>`+bbKiesHtml();
   if(sub==='bbsan'&&bbMag())return`<button class="terug" data-a="sub" data-v="bestelboeken">‹ Bestelboeken</button>`+bbSanHtml();
@@ -232,9 +232,9 @@ function meerHtml(){
     ['soorten','Broodsoorten en instellingen','Soorten, karren, bakmomenten, oven',()=>mag('soorten')],['programmas',"Bakprogramma's","Programma's koppelen aan producten",()=>mag('soorten')],['team','Medewerkers en rechten','Accounts beheren',()=>isAdmin()&&kanBeheren(),isAdmin()?'Alleen op je eigen telefoon':null],
     ['gedaan','Vandaag gedaan','Per persoon wat er is gedaan',()=>isAdmin()],['log','Logboek','Wie deed wat en wanneer',()=>isAdmin()],
     ['bestelboeken','📘 Bestelboeken','Eigen bestelboeken uit het bestelboek van de leverancier',()=>bbMag()],['nieuw','Nieuwe producten','Verkoop van nieuwe producten volgen',()=>mag('rapport')],['export','Exporteren naar Excel','Planning, derving of weekrapport',()=>mag('rapport')],['plu','PLU-lijst','PLU-nummers opzoeken',()=>true],['instellingen','App-instellingen','Weergave en persoonlijke keuzes',()=>true],['uitleg','Uitleg','Hoe werkt de app?',()=>true]];
-  if(kt)return`<button class="terug" data-a="sub" data-v="">‹ Meer</button><div class="kop"><div class="koprij"><h1>🗂 Kantoor</h1>${info('kantoor')}</div><p>Alleen voor jou. Medewerkers zien dit niet.</p></div>${meerLijstHtml(items,true)}`;
+  if(kt)return`${terug}<div class="kop"><div class="koprij"><h1>🗂 Kantoor</h1>${info('kantoor')}</div><p>Alleen voor jou. Medewerkers zien dit niet.</p></div>${meerLijstHtml(items,true)}`;
   return`<div class="kop"><div class="koprij"><h1>Meer</h1>${info('meer')}</div><p>Ingelogd als <b>${esc(g.naam)}</b> (${g.rol==='admin'?'beheerder':'medewerker'})</p></div>
-    ${meerLijstHtml(items)}${donkerRij()}
+    ${meerLijstHtml(items)}
     ${kanBeheren()?`<div class="rij"><button class="regel" data-a="gebruiker" data-v="${g.id}"><div class="groei"><div class="naam">Mijn pincode wijzigen</div></div><span class="pijl">›</span></button></div>`:''}</div>
 
     <div class="kaartje"><h3>Dit toestel</h3>${statusHtml()}${L.laatsteFout&&Date.now()-L.laatsteFout.t<7*864e5?`<div class="sub" style="margin-top:6px">Laatste fout (${esc(datumTekst(iso(new Date(L.laatsteFout.t))))} ${esc(tijdTekst(L.laatsteFout.t))}${L.laatsteFout.waar?', '+esc(L.laatsteFout.waar):''}): <span class="oranjetekst">${esc(L.laatsteFout.tekst)}</span></div>`:''}<div class="sub" style="margin-top:6px"><b>Versie ${APP_BOUW}</b>${nieuweBouw?` · <span class="oranjetekst">versie ${esc(nieuweBouw)} staat klaar</span>`:''}</div><div class="sub">${L.modus==='lokaal'?'Gegevens staan alleen op dit toestel.':WINKEL?`Gekoppeld met <b>${esc(WINKEL.naam)}</b> als ${{eigenaar:'eigenaar',bedrijfsleider:'bedrijfsleider',winkel:'winkeltoestel'}[WINKEL.rol]||WINKEL.rol}.`:`Gekoppeld met de ${L.beheerder?'beheerders':'winkel'}-login.`}</div>

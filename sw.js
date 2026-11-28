@@ -1,12 +1,12 @@
 // Brood Opzet: werkt ook zonder internet. Verhoog VERSIE bij elke nieuwe versie.
-const VERSIE='broodopzet-10.68';
+const VERSIE='broodopzet-10.69';
 const OCR_CACHE = 'broodopzet-ocr-1'; // leesprogramma voor pakbon scannen (blijft bewaard tussen versies)
 const SUPA_JS = 'lib/supabase.js';
 const APP = ['style.css', 'app-basis.js', 'app-logo.js', 'app-basis2.js', 'app-facturen.js', 'app-bestelboek.js', 'app-winkels.js', 'app-planning.js', 'app-opslag.js', 'app-scherm.js', 'app-pakbon.js', 'app-meldingen.js', 'app-uren.js', 'app-betalen.js', 'app-vaste.js', 'app-rooster.js', 'app-chat.js', 'app-overdracht-print.js', 'app-schermen.js', 'app-events.js', 'app-delen.js', 'app-start.js'].map(f => f + '?b=' + VERSIE.split('-')[1]);
 const BESTANDEN = ['./', 'index.html', 'manifest.webmanifest', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', SUPA_JS, 'laden.js?b=' + VERSIE.split('-')[1], ...APP];
 self.addEventListener('install', e => {
   // 10.57: bestanden die nooit veranderen (icoontjes, manifest, Supabase-bibliotheek) overnemen uit de vorige versie
-  e.waitUntil(caches.open(VERSIE).then(c => Promise.all(BESTANDEN.map(async u => { if (/icon|manifest|lib\//.test(u)) { const r = await caches.match(u, { ignoreSearch: true }); if (r) return c.put(u, r); } return c.add(u); }))).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(VERSIE).then(c => Promise.all(BESTANDEN.map(async u => { if (/lib\//.test(u)) { const r = await caches.match(u, { ignoreSearch: true }); if (r) return c.put(u, r); } return c.add(u); }))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
   // 10.65: alleen eigen caches opruimen (zelfde adres als Coop Besteladvies: nooit die van een andere app, zoals 'cba-')
