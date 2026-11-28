@@ -15,7 +15,7 @@ function render(){
   if(tab==='lijst'&&zoekOpen)zoekFilter();
   if(typeof terugBewaak==='function')setTimeout(terugBewaak,0);
   try{toonUpdateBalk()}catch(e){}
-  const k=m.querySelector('.kop');if(k&&!merk){k.insertAdjacentHTML('afterbegin',`<img class="koplogo" src="${logoSrc()}" alt="${esc(winkelNaam())}">${isAdmin()||ongelezenM()?(()=>{const n=belItems().length;return`<button class="belknop" data-a="bel" aria-label="Meldingen">🔔${n?`<span class="belgetal">${n}</span>`:''}</button>`})():''}${ik()&&S.gebruikers.filter(g=>g.rol==='admin'||g.actief!==false).length>1?`<button class="wisselknop ${isAdmin()||ongelezenM()?'metbel':''}" data-a="wissel">${prof().emoji||'👤'} ${esc((ik().naam||'').split(' ')[0])} ⇄</button>`:''}`);const t=m.querySelector(':scope > .terug');if(t)k.prepend(t)}
+  const k=m.querySelector('.kop');if(k&&!merk){k.insertAdjacentHTML('afterbegin',`<img class="koplogo" src="${logoSrc()}" alt="${esc(winkelNaam())}">${isAdmin()||ongelezenM()?(()=>{const n=belItems().length;return`<button class="belknop" data-a="bel" aria-label="Meldingen">🔔${n?`<span class="belgetal">${n}</span>`:''}</button>`})():''}${ik()&&S.gebruikers.filter(g=>g.rol==='admin'||g.actief!==false).length>1?`<button class="wisselknop ${isAdmin()||ongelezenM()?'metbel':''}" data-a="wissel">${prof().emoji||'👤'} ${esc((ik().naam||'').split(' ')[0])} ⇄</button>`:''}`);const t=m.querySelector(':scope > .terug');if(t)k.prepend(t);else if(deel&&delen().length>1)k.insertAdjacentHTML('beforeend',`<button class="deelknop" data-a="deelkies">⇄ ${DELEN[deel][1]}</button>`)}
 }
 function _render(){
   const m=document.getElementById('scherm'),nav=document.getElementById('nav'),st=document.getElementById('statusplek');
@@ -28,12 +28,14 @@ function _render(){
   if(syncStatus==='start'&&!S.gebruikers.length){m.innerHTML=`<div class="login"><h1>Verbinden…</h1><p>Gegevens worden opgehaald.</p></div>`;nav.innerHTML='';return}
   if(!S.gebruikers.some(g=>g.rol==='admin')){m.innerHTML=setupHtml();nav.innerHTML='';return}
   const g=ik();if(!g||(g.rol!=='admin'&&g.actief===false)){if(L.sessie){L.sessie=null;bewaarL()}m.innerHTML=loginHtml();nav.innerHTML='';return}
+  if(!deelKies()){m.innerHTML=kiesHtml();nav.innerHTML='';return}
   const t=TABS.find(x=>x[0]===tab);if(tab==='uren'?!urenMag():tab==='check'?false:(!t||(t[2]&&!mag(t[2]))))tab='home';
+  if(deel!=='brood'&&!['home','meer','uren'].includes(tab))tab='home';
   m.innerHTML=veiligScherm();
   if(tab==='lijst'||tab==='home'){const bk=chatBalkKlaarzetten();if(bk){const k=m.querySelector('.kop');if(k)k.insertAdjacentHTML('afterend',bk);else m.insertAdjacentHTML('afterbegin',bk)}}
-  if(['lijst','plan','derving','check'].includes(tab)||(tab==='uren'&&urenView==='klok'))m.insertAdjacentHTML('afterbegin','<button class="terug" data-a="tab" data-v="home">‹ Home</button>');
+  if(['lijst','plan','derving','check'].includes(tab)&&!deelTabs().some(x=>x[0]===tab)||(tab==='uren'&&urenView==='klok'&&deel!=='kantoor'))m.insertAdjacentHTML('afterbegin','<button class="terug" data-a="tab" data-v="home">‹ Home</button>');
   {const wb=winkelBalk();if(wb)m.insertAdjacentHTML('afterbegin',wb)}
-  nav.innerHTML=TABS.filter(([k,l,r])=>k==='home'||k==='meer').map(([k,l,r])=>{const ok=true;return`<button data-a="${ok?'tab':'slot'}" data-v="${k}" class="${tab===k||(k==='home'&&tab!=='meer')?'aan':''} ${ok?'':'op-slot'}">${ok?'':SLOT+' '}${l}${k==='meer'&&chatTotaal()?'<span class="tabbol"></span>':''}</button>`}).join('');
+  {const dt=deelTabs();nav.innerHTML=dt.map(([k,l])=>`<button data-a="tab" data-v="${k}" class="${tab===k||(k==='home'&&!dt.some(x=>x[0]===tab))?'aan':''}">${l}${k==='meer'&&chatTotaal()?'<span class="tabbol"></span>':''}</button>`).join('')}
   if(chatId&&document.getElementById('chatOv')?.classList.contains('open'))chatVernieuw();
   if(werk)renderWerk();
 }

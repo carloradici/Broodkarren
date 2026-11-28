@@ -232,7 +232,7 @@ function meerHtml(){
     ['bestelboeken','📘 Bestelboeken','Eigen bestelboeken uit het bestelboek van de leverancier',()=>bbMag()],['nieuw','Nieuwe producten','Verkoop van nieuwe producten volgen',()=>mag('rapport')],['export','Exporteren naar Excel','Planning, derving of weekrapport',()=>mag('rapport')],['plu','PLU-lijst','PLU-nummers opzoeken',()=>true],['instellingen','App-instellingen','Weergave en persoonlijke keuzes',()=>true],['uitleg','Uitleg','Hoe werkt de app?',()=>true]];
   if(kt)return`<button class="terug" data-a="sub" data-v="">‹ Meer</button><div class="kop"><div class="koprij"><h1>🗂 Kantoor</h1>${info('kantoor')}</div><p>Alleen voor jou. Medewerkers zien dit niet.</p></div>${meerLijstHtml(items,true)}`;
   return`<div class="kop"><div class="koprij"><h1>Meer</h1>${info('meer')}</div><p>Ingelogd als <b>${esc(g.naam)}</b> (${g.rol==='admin'?'beheerder':'medewerker'})</p></div>
-    ${meerLijstHtml(items)}
+    ${meerLijstHtml(items)}${donkerRij()}
     ${kanBeheren()?`<div class="rij"><button class="regel" data-a="gebruiker" data-v="${g.id}"><div class="groei"><div class="naam">Mijn pincode wijzigen</div></div><span class="pijl">›</span></button></div>`:''}</div>
 
     <div class="kaartje"><h3>Dit toestel</h3>${statusHtml()}${L.laatsteFout&&Date.now()-L.laatsteFout.t<7*864e5?`<div class="sub" style="margin-top:6px">Laatste fout (${esc(datumTekst(iso(new Date(L.laatsteFout.t))))} ${esc(tijdTekst(L.laatsteFout.t))}${L.laatsteFout.waar?', '+esc(L.laatsteFout.waar):''}): <span class="oranjetekst">${esc(L.laatsteFout.tekst)}</span></div>`:''}<div class="sub" style="margin-top:6px"><b>Versie ${APP_BOUW}</b>${nieuweBouw?` · <span class="oranjetekst">versie ${esc(nieuweBouw)} staat klaar</span>`:''}</div><div class="sub">${L.modus==='lokaal'?'Gegevens staan alleen op dit toestel.':WINKEL?`Gekoppeld met <b>${esc(WINKEL.naam)}</b> als ${{eigenaar:'eigenaar',bedrijfsleider:'bedrijfsleider',winkel:'winkeltoestel'}[WINKEL.rol]||WINKEL.rol}.`:`Gekoppeld met de ${L.beheerder?'beheerders':'winkel'}-login.`}</div>
@@ -373,8 +373,8 @@ function teamHtml(){
 
 /* ---------- accounts ---------- */
 function setupHtml(){
-  if(!kanBeheren())return`<div class="merkscherm">${merkKop('Brood Opzet','Nog niet ingesteld')}<p class="merktekst">Dit toestel is gekoppeld met de winkel-login, maar de beheerder heeft de app nog niet ingesteld. Vraag de beheerder om eerst in te loggen op zijn eigen toestel.</p></div>`;
-  return`<div class="merkscherm">${merkKop('Brood Opzet','Welkom')}<p class="merktekst">Maak het beheerdersaccount aan. Daarmee kun je alles in de app en geef je medewerkers rechten.</p>
+  if(!kanBeheren())return`<div class="merkscherm">${merkKop('Coop Winkelapp','Nog niet ingesteld')}<p class="merktekst">Dit toestel is gekoppeld met de winkel-login, maar de beheerder heeft de app nog niet ingesteld. Vraag de beheerder om eerst in te loggen op zijn eigen toestel.</p></div>`;
+  return`<div class="merkscherm">${merkKop('Coop Winkelapp','Welkom')}<p class="merktekst">Maak het beheerdersaccount aan. Daarmee kun je alles in de app en geef je medewerkers rechten.</p>
   <label>Jouw naam</label><input class="veld" id="sNaam" placeholder="Bijv. Carlo">
   <label>Kies een pincode (4 cijfers)</label><input class="veld pinveld" id="sPin" inputmode="numeric" type="password" maxlength="4">
   <label>Herhaal pincode</label><input class="veld pinveld" id="sPin2" inputmode="numeric" type="password" maxlength="4">
@@ -427,7 +427,7 @@ function loginHtml(){
   const lijst=S.gebruikers.filter(g=>g.rol==='admin'||g.actief!==false).sort((a,b)=>a.naam.localeCompare(b.naam,'nl'));
   if(!loginKeuze&&!geenVoorkeur&&L.laatsteGebruiker&&lijst.some(g=>g.id===L.laatsteGebruiker))loginKeuze=L.laatsteGebruiker;
   const g=lijst.find(x=>x.id===loginKeuze),P=g?prof(g.id):null;
-  return`<div class="merkscherm compact"><div class="merkkop klein"><img src="${logoSrc()}" alt="${esc(winkelNaam())}" class="merklogo"><div class="merkregel"><svg class="merkcroissant" viewBox="0 0 300 200" aria-hidden="true">${CROISSANT('#fff','#f17d04')}</svg><span class="merktitel">Brood Opzet</span></div></div>
+  return`<div class="merkscherm compact"><div class="merkkop klein"><img src="${logoSrc()}" alt="${esc(winkelNaam())}" class="merklogo"><div class="merkregel"><svg class="merkcroissant" viewBox="0 0 300 200" aria-hidden="true">${CROISSANT('#fff','#f17d04')}</svg><span class="merktitel">Coop Winkelapp</span></div></div>
    <label>Naam</label>
    <div class="naamkeuze">${P?.emoji?`<span class="naamemoji">${P.emoji}</span>`:''}<select id="loginNaam" aria-label="Kies je naam"><option value="" ${g?'':'selected'} disabled>Kies je naam</option>${lijst.map(x=>`<option value="${x.id}" ${x.id===loginKeuze?'selected':''}>${esc(x.naam)}</option>`).join('')}</select>${g?.rol==='admin'?'<span class="rol">Beheerder</span>':''}<span class="pijlneer">▾</span></div>
 ${g?`<label>Pincode</label><div class="pinbolletjes ${pinMelding?'fout':''}">${[0,1,2,3].map(i=>`<i class="${i<pinInvoer.length?'vol':''}"></i>`).join('')}</div>

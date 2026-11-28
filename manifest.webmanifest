@@ -1,6 +1,6 @@
 {
-  "name": "Brood Opzet",
-  "short_name": "Brood Opzet",
+  "name": "Coop Winkelapp",
+  "short_name": "Coop Winkelapp",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -35,5 +35,5 @@
     }
   ],
   "id": "./",
-  "description": "Brood Opzet – de app voor de broodafdeling"
+  "description": "Coop Winkelapp – bestellen, brood en kantoor in één app"
 }

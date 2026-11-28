@@ -3,7 +3,7 @@ function foutTekstKort(e){const m=String(e&&(e.message||e)||'onbekend');const st
 function meldFout(e,waar){const t=foutTekstKort(e);console.error(waar,e);try{L.laatsteFout={t:Date.now(),waar:waar||'',tekst:t,versie:APP_BOUW};bewaarL()}catch(x){}
   try{let el=document.getElementById('foutbalk');if(!el){el=document.createElement('div');el.id='foutbalk';document.body.appendChild(el)}
     el.innerHTML=`<b>Er ging iets mis${waar?' bij '+esc(waar):''}</b><div>${esc(t)}</div><button data-a="foutweg">Oké</button>`;el.classList.add('open')}catch(x){}}
-function veiligScherm(){try{return tab==='home'?homeHtml():tab==='uren'?urenPaginaHtml():tab==='check'?checkHtml():tab==='lijst'?lijstHtml():tab==='plan'?planHtml():tab==='derving'?dervingHtml():meerHtml()}
+function veiligScherm(){try{return tab==='home'?(deel==='kantoor'?kantoorHomeHtml():deel==='bestellen'?bestellenHomeHtml():homeHtml()):tab==='uren'?urenPaginaHtml():tab==='check'?checkHtml():tab==='lijst'?lijstHtml():tab==='plan'?planHtml():tab==='derving'?dervingHtml():meerHtml()}
   catch(e){const waar=(tab==='meer'&&sub?'Meer → '+sub:tab);meldFout(e,waar);if(tab==='meer'&&sub){sub=null;try{return meerHtml()}catch(x){}}tab='meer';sub=null;try{return meerHtml()}catch(x){return'<p class="leeg">Er ging iets mis. Sluit de app en open hem opnieuw.</p>'}}}
 window.addEventListener('error',e=>{if(e&&e.error)meldFout(e.error,'')});
 window.addEventListener('unhandledrejection',e=>{const r=e&&e.reason;if(r&&!(r.name==='AbortError'||r.conflict))meldFout(r,'')});
@@ -87,7 +87,7 @@ function koppelHtml(){
   const fout=koppelFout||L.melding||'';
   if(L.uitnodiging&&koppelTab!=='mail')return uitnodigingHtml(fout);
   const mail=koppelTab==='mail';
-  return`<div class="merkscherm">${merkKop('Brood Opzet','Toestel koppelen')}
+  return`<div class="merkscherm">${merkKop('Coop Winkelapp','Toestel koppelen')}
    ${db?'':'<p class="merkfout">Geen verbinding met de online opslag. Controleer je internet en open de app opnieuw.</p>'}
    ${!mail?`<p class="merktekst">Vul de koppelcode van de winkel in. Die krijg je van de beheerder.</p>
      <label>Koppelcode</label><input class="veld codeveld" id="kCode" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="12" placeholder="Bijv. K7MX4PQ2" value="${esc(L.koppelcode||'')}">
@@ -102,7 +102,7 @@ function koppelHtml(){
      <p style="margin-top:14px;text-align:center"><button class="merklink" data-a="koppeltab" data-v="code">${L.uitnodiging?'Terug naar de uitnodiging':'Terug naar koppelcode'}</button></p>
      <p style="margin-top:20px;text-align:center"><button class="merklink" data-a="lokaalmodus">Zonder koppeling gebruiken (alleen dit toestel)</button></p>`}</div>`}
 function uitnodigingHtml(fout){const f=L.uitForm||{};
-  return`<div class="merkscherm">${merkKop('Brood Opzet','Welkom!')}
+  return`<div class="merkscherm">${merkKop('Coop Winkelapp','Welkom!')}
    <p class="merktekst">Je bent uitgenodigd om Brood Opzet te gebruiken. Vul je gegevens in. Je e-mailadres en wachtwoord gebruik je om je eigen telefoon te koppelen; medewerkers koppelen later met een koppelcode.</p>
    <label>Naam van je onderneming</label><input class="veld" id="uOnd" value="${esc(f.ond||'')}" placeholder="Bijv. Supermarkt Jansen B.V.">
    <label>Naam van de winkel</label><input class="veld" id="uWinkel" value="${esc(f.winkel||'')}" placeholder="Bijv. Coop Heemstede">
@@ -114,7 +114,7 @@ function uitnodigingHtml(fout){const f=L.uitForm||{};
    <p class="hulp" style="text-align:center;margin-top:10px">Uitnodigingscode: <b>${esc(L.uitnodiging)}</b></p>
    <p style="margin-top:18px;text-align:center"><button class="merklink" data-a="koppeltab" data-v="mail">Ik heb al een account</button> · <button class="merklink" data-a="uitnodigingweg">Geen uitnodiging</button></p></div>`}
 function winkelKiesHtml(){const l=WK.lijst||[];
-  return`<div class="merkscherm">${merkKop('Brood Opzet','Kies de winkel')}
+  return`<div class="merkscherm">${merkKop('Coop Winkelapp','Kies de winkel')}
    <p class="merktekst">Welke winkel wil je op dit toestel openen? Wisselen kan later via Meer → Winkels.</p>
    <div class="winkelkies">${l.map(w=>`<button class="merkknop rand" data-a="winkelkies" data-v="${w.id}">${esc(w.naam)}${w.plaats&&!w.naam.toLowerCase().includes(w.plaats.toLowerCase())?` <small>${esc(w.plaats)}</small>`:''}</button>`).join('')}</div></div>`}
 function foutTekst(e){const m=String(e?.message||e||'');

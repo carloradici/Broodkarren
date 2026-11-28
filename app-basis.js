@@ -3,7 +3,7 @@ const SUPA_URL='https://dmvutkvpnoeenybznskz.supabase.co',SUPA_KEY='sb_publishab
 const DAGEN=[['ma','Ma','maandag'],['di','Di','dinsdag'],['wo','Wo','woensdag'],['do','Do','donderdag'],['vr','Vr','vrijdag'],['za','Za','zaterdag'],['zo','Zo','zondag']];
 const GROEP={mv:'ma t/m vr',za:'zaterdagen',zo:'zondagen'};
 const TABS=[['home','Home',null],['lijst','Klaarzetten',null],['plan','Invullen','invullen'],['derving','Derving','derving'],['meer','Meer',null]];
-const RECHTEN=[['uren','Uren klokken (als klokken voor medewerkers aan staat)'],['bestelboek','Bestelboeken samenstellen en printen'],['vinken','Klaarzetten: afvinken, aantallen aanpassen, oven'],['derving','Derving invullen'],['invullen','Planning, afwijkende dagen en advies'],['bestellen','Deegbestelling en voorraad tellen'],['rapport','Weekrapport bekijken'],['soorten','Broodsoorten, karren en bakmomenten beheren']];
+const RECHTEN=[['besteladvies','Deel Bestellen (Besteladvies)'],['uren','Uren klokken (als klokken voor medewerkers aan staat)'],['bestelboek','Bestelboeken samenstellen en printen'],['vinken','Klaarzetten: afvinken, aantallen aanpassen, oven'],['derving','Derving invullen'],['invullen','Planning, afwijkende dagen en advies'],['bestellen','Deegbestelling en voorraad tellen'],['rapport','Weekrapport bekijken'],['soorten','Broodsoorten, karren en bakmomenten beheren']];
 const STANDAARD_RECHTEN={uren:true,vinken:true,derving:true,invullen:false,bestellen:false,rapport:false,soorten:false};
 const WEEKDAGEN=[[1,'Ma'],[2,'Di'],[3,'Wo'],[4,'Do'],[5,'Vr'],[6,'Za'],[0,'Zo']];
 /* 10.0 meerdere winkels: welke winkel dit toestel toont; elke winkel heeft een eigen opslag op het toestel.

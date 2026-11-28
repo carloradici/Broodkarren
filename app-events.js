@@ -119,6 +119,7 @@ document.addEventListener('click',async e=>{
   if(['nieuwegebruiker','gweg','ontkoppel'].includes(a)&&!isAdmin())return;
   if(a==='gebruiker'&&!isAdmin()&&v!==L.sessie)return;
   if(!['bbeigenweg','bbweg','factweg','factklantweg','codenieuw','toestelweg','opzeggen','uitnodigingverw','afwweg','momentweg','wis','ontkoppel','afwnul','ontweg','bijweg','notweg','berichtweg','kassaweg'].includes(a)){if(afwStap==='wis'||afwStap==='ontkoppel'){afwStap=null;if(a!=='vink')render()}else afwStap=null}
+  if(deelActie(a,v))return;
   switch(a){
   case'foutweg':document.getElementById('foutbalk')?.classList.remove('open');return;
   case'koppel':{const mail=document.getElementById('kMail').value.trim(),ww=document.getElementById('kWw').value;koppelFout='';
@@ -275,7 +276,7 @@ document.addEventListener('click',async e=>{
   case'gweg':if(!kanBeheren())return;if(!verwStap){verwStap=true;b.textContent='Tik nogmaals om te verwijderen';return}
     log(`Medewerker ${bewerk.naam} verwijderd`);S.gebruikers=S.gebruikers.filter(x=>x.id!==bewerk.id);bewaar();sluit();render();return;
   case'tab':{if(v==='plan'&&tab!=='plan')planKeuze=planKeyVoor(iso());const zelfde=tab===v&&!(v==='meer'&&sub)&&!(v==='uren'&&urenView!=='klok');plekBewaar();tab=v;if(v==='meer')sub=null;if(v==='uren')urenView='klok';ovenModus=false;render();plekTerug(zelfde);return}
-  case'sub':if(v==='backup')bkLijst=null;if(v==='aanbieder')aanb=null;if(v==='winkels'||v==='winkel')wkInfo=null;plekBewaar();sub=v||null;render();plekTerug(!!sub);return;
+  case'sub':if(deel!=='brood'&&tab==='home'&&v)tab='meer';if(deel==='kantoor'&&v==='kantoor'){tab='home';sub=null;render();return}if(v==='backup')bkLijst=null;if(v==='aanbieder')aanb=null;if(v==='winkels'||v==='winkel')wkInfo=null;plekBewaar();sub=v||null;render();plekTerug(!!sub);return;
   case'sub2':plekBewaar();tab='meer';sub=v;render();plekTerug(true);return;
   case'moment':moment=v;ovenKeuze={};render();return;
   case'datum':datum=plusDagen(datum,+v);volgVandaag=datum===standaardDatum();ovenKeuze={};ovenModus=ovenModus&&datum<=iso();render();return;
