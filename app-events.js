@@ -119,6 +119,7 @@ document.addEventListener('click',async e=>{
   if(['nieuwegebruiker','gweg','ontkoppel'].includes(a)&&!isAdmin())return;
   if(a==='gebruiker'&&!isAdmin()&&v!==L.sessie)return;
   if(!['bbeigenweg','bbweg','factweg','factklantweg','codenieuw','toestelweg','opzeggen','uitnodigingverw','afwweg','momentweg','wis','ontkoppel','afwnul','ontweg','bijweg','notweg','berichtweg','kassaweg'].includes(a)){if(afwStap==='wis'||afwStap==='ontkoppel'){afwStap=null;if(a!=='vink')render()}else afwStap=null}
+  {const r=RECHT_ACTIE[a]||(/^bb/.test(a)&&!BB_KIJK.has(a)?'bbaanpas':null);if(r&&!mag(r)){toast('Daar heb je geen rechten voor');return}}
   if(deelActie(a,v))return;
   switch(a){
   case'foutweg':document.getElementById('foutbalk')?.classList.remove('open');return;
@@ -607,8 +608,8 @@ document.addEventListener('click',async e=>{
 document.addEventListener('focusin',e=>{if(e.target.dataset)e.target.dataset.oud=e.target.value});
 document.addEventListener('input',e=>{
   const t=e.target,ds=t.dataset||{};
-  if(ds.kar){if(!mag('soorten'))return;const k=S.karren.find(x=>x.nr===+ds.kar);if(k)k.naam=t.value;else S.karren.push({nr:+ds.kar,naam:t.value});bewaar()}
-  else if(ds.moment){if(!mag('soorten'))return;const mo=S.momenten.find(x=>x.id===ds.moment);if(mo){mo.naam=t.value;bewaar()}}
+  if(ds.kar){if(!mag('karren'))return;const k=S.karren.find(x=>x.nr===+ds.kar);if(k)k.naam=t.value;else S.karren.push({nr:+ds.kar,naam:t.value});bewaar()}
+  else if(ds.moment){if(!mag('karren'))return;const mo=S.momenten.find(x=>x.id===ds.moment);if(mo){mo.naam=t.value;bewaar()}}
   else if(ds.plan){if(!mag('invullen'))return;zetStuks(planKeuze,moment,ds.plan,getal(t.value));bewaar();
     const s=S.soorten.find(x=>x.id===ds.plan),el=document.getElementById('h-'+ds.plan);if(el)el.innerHTML=planRegelHint(s)}
   else if(ds.cderv){if(!mag('derving'))return;const c=conceptVan(dervDatum),n=getal(t.value);if(n==null){if(c[ds.cderv]){delete c[ds.cderv][best];if(!['weg','vb','tg'].some(k=>c[ds.cderv][k]!=null))delete c[ds.cderv]}}else{c[ds.cderv]=c[ds.cderv]||{};c[ds.cderv][best]=n}bewaarL()}
@@ -620,7 +621,7 @@ document.addEventListener('input',e=>{
   else if(t.id==='pluZoek'){pluZoek=t.value;const el=document.getElementById('pluLijst');if(el)el.innerHTML=pluLijstHtml()}
   else if(t.id==='afwNaam')afwForm.naam=t.value;
   else if(t.id==='afwDatum'&&t.value)afwForm.datum=t.value;
-  else if(t.id==='ovenMaxIn'){if(!mag('soorten'))return;const n=getal(t.value);if(n>0){S.ovenMax=n;bewaar()}}
+  else if(t.id==='ovenMaxIn'){if(!mag('karren'))return;const n=getal(t.value);if(n>0){S.ovenMax=n;bewaar()}}
 });
 document.addEventListener('change',e=>{
   const t=e.target,ds=t.dataset||{},naam=id=>S.soorten.find(x=>x.id===id)?.naam;
@@ -640,7 +641,7 @@ document.addEventListener('change',e=>{
   else if(ds.derv&&ds.oud!==t.value){log(`Derving ${datumTekst(dervDatum)}: ${naam(ds.derv)} ${BESTEMMING.find(y=>y[0]===best)[1].toLowerCase()} = ${t.value||'leeg'}`,'d:'+dervDatum+ds.derv+best);bewaar();ds.oud=t.value;
     const el=document.getElementById('ds-'+ds.derv);if(el)el.innerHTML=dervSub(dervDatum,ds.derv,S.historie[dervDatum]?.gezet?.[ds.derv]??0)}
   else if(t.id==='fFoto'&&t.files&&t.files[0])verkleinFoto(t.files[0]);
-  else if(t.id==='bbIn'&&t.files&&t.files[0]){const f=t.files[0];t.value='';bbInlezen(f)}
+  else if(t.id==='bbIn'&&t.files&&t.files[0]&&mag('bbaanpas')){const f=t.files[0];t.value='';bbInlezen(f)}
   else if(t.id==='logoIn'&&t.files&&t.files[0]){if(!isAdmin())return;verkleinNaar(t.files[0],520,src=>{S.winkelLogo=src;log('Eigen logo ingesteld');bewaar();render()},'image/png')}
   else if(t.id==='scanIn'&&t.files&&t.files[0]){if(!mag('vinken')||!heeft('scan'))return;startScan(t.files[0])}
   else if(t.dataset&&t.dataset.scan!=null&&scan){const i=+t.dataset.scan,r=scan.regels[i];if(t.value==='nieuw'){if(!mag('soorten')){toast('Geen rechten om een broodsoort aan te maken');t.value=r.doel;return}scanNieuweSoort(i)}else{r.doel=t.value;r.zeker=true;r.voorstel=false}toonScan()}
@@ -649,7 +650,7 @@ document.addEventListener('change',e=>{
   else if(t.id==='notMetFoto'){notMetFoto=t.checked;const el=document.getElementById('notLijst');if(el)el.innerHTML=notLijstHtml()}
   else if(t.id==='pluZonder'){pluZonder=t.value;const el=document.getElementById('pluLijst');if(el)el.innerHTML=pluLijstHtml()}
   else if(t.id==='ovenMaxIn'){log(`Oven max. ${S.ovenMax} platen`,'ovenmax');t.value=S.ovenMax}
-  else if(t.id==='omschakelIn'){if(!mag('soorten'))return;S.omschakel=t.value===''?null:+t.value;log(`Klaarzetten voor morgen: ${S.omschakel==null?'uit':'vanaf '+S.omschakel+':00'}`);if(volgVandaag)datum=standaardDatum();bewaar();render()}
+  else if(t.id==='omschakelIn'){if(!mag('karren'))return;S.omschakel=t.value===''?null:+t.value;log(`Klaarzetten voor morgen: ${S.omschakel==null?'uit':'vanaf '+S.omschakel+':00'}`);if(volgVandaag)datum=standaardDatum();bewaar();render()}
   else if(ds.moment){log(`Bakmoment hernoemd: ${t.value}`);bewaar()}
 });
 document.addEventListener('keydown',e=>{if(blok){if(/^[0-9]$/.test(e.key)){blokToets(e.key);return}if(e.key==='Backspace'){blokToets('wis');return}if(e.key==='Enter'){blokToets('volgende');return}}if(document.querySelector('.cijferblok')&&!/INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||'')){if(/^[0-9]$/.test(e.key)){document.querySelector(`.cijferblok [data-v="${e.key}"]`)?.click();return}if(e.key==='Backspace'){document.querySelector('.cijferblok .wis')?.click();return}}if(e.key!=='Enter')return;

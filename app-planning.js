@@ -4,7 +4,7 @@ const ik=()=>S.gebruikers.find(g=>g.id===L.sessie);
 /* 10.9: foto bij broodsoorten staat (voorlopig) uit; de foto's blijven bewaard */
 const SOORT_FOTO=false,sFoto=id=>SOORT_FOTO?S.fotos[id]:null;
 const isAdmin=()=>ik()?.rol==='admin';
-function mag(r){const g=ik();if(!g)return false;if(g.rol==='admin')return true;return g.actief!==false&&!!(g.rechten||{})[r]}
+function mag(r){const g=ik();if(!g)return false;if(g.rol==='admin')return true;return g.actief!==false&&rHeeft(g.rechten,r)}
 const kanBeheren=()=>L.modus==='lokaal'||!!L.beheerder;
 const UITLOG_MIN=60;let fouteLogins=0,geblokkeerdTot=0;
 function controleerSessie(){if(L.sessie&&L.laatsteActie&&Date.now()-L.laatsteActie>UITLOG_MIN*60000){L.sessie=null;loginKeuze=null;bewaarL()}

@@ -3,7 +3,11 @@ const SUPA_URL='https://dmvutkvpnoeenybznskz.supabase.co',SUPA_KEY='sb_publishab
 const DAGEN=[['ma','Ma','maandag'],['di','Di','dinsdag'],['wo','Wo','woensdag'],['do','Do','donderdag'],['vr','Vr','vrijdag'],['za','Za','zaterdag'],['zo','Zo','zondag']];
 const GROEP={mv:'ma t/m vr',za:'zaterdagen',zo:'zondagen'};
 const TABS=[['home','Home',null],['lijst','Klaarzetten',null],['plan','Invullen','invullen'],['derving','Derving','derving'],['meer','Meer',null]];
-const RECHTEN=[['besteladvies','Deel Bestellen (Besteladvies)'],['uren','Uren klokken (als klokken voor medewerkers aan staat)'],['bestelboek','Bestelboeken samenstellen en printen'],['vinken','Klaarzetten: afvinken, aantallen aanpassen, oven'],['derving','Derving invullen'],['invullen','Planning, afwijkende dagen en advies'],['bestellen','Deegbestelling en voorraad tellen'],['rapport','Weekrapport bekijken'],['soorten','Broodsoorten, karren en bakmomenten beheren']];
+/* 10.70: rechten per deel; een nieuw (gesplitst) recht volgt het oude recht tot het is opgeslagen (RECHT_OUDER) */
+const RECHTEN=[['uren','Uren klokken (als klokken voor medewerkers aan staat)','Algemeen'],['besteladvies','Deel Bestellen (Besteladvies)','Bestellen'],['bestelboek','Bestelboeken bekijken en printen','Bestellen'],['bbaanpas','Bestelboeken aanpassen (samenstellen, ophalen, pdf inlezen)','Bestellen'],
+ ['vinken','Klaarzetten: afvinken en levering','Brood'],['aantal','Klaarzetten: aantallen aanpassen en extra','Brood'],['oven','Oven vullen en bijbakken','Brood'],['derving','Derving invullen','Brood'],['invullen','Planning invullen en advies','Brood'],['afwijkend','Afwijkende dagen','Brood'],['bestellen','Deegbestelling en leverdagen deeg','Brood'],['voorraad','Voorraad tellen','Brood'],['rapport','Weekrapport bekijken','Brood'],['export','Exporteren en nieuwe producten','Brood'],['soorten',"Broodsoorten, bakprogramma's en leverdagen vers",'Brood'],['karren','Karren, bakmomenten en oven','Brood']];
+const RECHT_OUDER={bbaanpas:'bestelboek',aantal:'vinken',oven:'vinken',afwijkend:'invullen',voorraad:'bestellen',export:'rapport',karren:'soorten'};
+const rHeeft=(rc,k)=>{rc=rc||{};return!!(k in rc?rc[k]:rc[RECHT_OUDER[k]])};
 const STANDAARD_RECHTEN={uren:true,vinken:true,derving:true,invullen:false,bestellen:false,rapport:false,soorten:false};
 const WEEKDAGEN=[[1,'Ma'],[2,'Di'],[3,'Wo'],[4,'Do'],[5,'Vr'],[6,'Za'],[0,'Zo']];
 /* 10.0 meerdere winkels: welke winkel dit toestel toont; elke winkel heeft een eigen opslag op het toestel.

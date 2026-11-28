@@ -198,8 +198,8 @@ function meerHtml(){
   if(sub==='berichten')return terug+berichtenHtml();
   if(sub==='gedaan'&&isAdmin())return terug+gedaanHtml();
   if(sub==='afsluiten'&&mag('derving'))return terug+afsluitHtml();
-  if(sub==='nieuw'&&mag('rapport'))return terug+nieuwHtml();
-  if(sub==='export'&&mag('rapport'))return terug+exportHtml();
+  if(sub==='nieuw'&&mag('export'))return terug+nieuwHtml();
+  if(sub==='export'&&mag('export'))return terug+exportHtml();
   if(sub==='notities')return terug+notOverzichtHtml();
   if(sub==='materiaal')return terug+materiaalHtml();
   if(sub==='push'&&isAdmin()&&kanBeheren())return terug+pushHtml();
@@ -211,9 +211,9 @@ function meerHtml(){
   if(sub==='plu')return terug+pluHtml();
   if(sub==='programmas'&&mag('soorten'))return terug+programmasHtml();
   if(sub==='rapport'&&mag('rapport'))return terug+rapportHtml();
-  if(sub==='bestel'&&mag('bestellen'))return terug+bestelHtml();
-  if(sub==='afwijkend'&&mag('invullen'))return terug+afwijkendHtml();
-  if(sub==='soorten'&&mag('soorten'))return terug+soortenHtml();
+  if(sub==='bestel'&&(mag('bestellen')||mag('voorraad')))return terug+bestelHtml();
+  if(sub==='afwijkend'&&mag('afwijkend'))return terug+afwijkendHtml();
+  if(sub==='soorten'&&(mag('soorten')||mag('karren')))return terug+soortenHtml();
   if(sub==='log'&&isAdmin())return terug+logHtml();
   if(sub==='team'&&isAdmin()&&kanBeheren())return terug+teamHtml();
   if(sub==='ontdooi'&&mag('vinken'))return terug+ontdooiHtml();
@@ -228,10 +228,10 @@ function meerHtml(){
   const o=ongelezen();
   const om=ongelezenM(),items=[...(isAdmin()?[['berichten',`Chat${o?` <span class="telbol">${o}</span>`:''}`,'Gesprekken met medewerkers',()=>true]]:[['berichten',`Chat${om?` <span class="telbol">${om}</span>`:''}`,'Vraag of melding aan de beheerder, en antwoorden',()=>true]]),
     ['afsluiten','Dag afsluiten','Checklist voor het eind van de dag',()=>mag('derving')],['materiaal','Materiaal','Verpakking bijna op? Meld het hier',()=>true],['notities','Notities','Alle dagnotities terugzoeken',()=>true],['dervlijsten','Dervinglijsten','Opgeslagen derving om in de kassa te zetten',()=>mag('derving')],['ontdooi','Ontdooien zoet','Wat moet er uit de vriezer',()=>mag('vinken')],['pakbonnen','Pakbonnen','Leveringen terugzoeken: pakbon, geteld, verschil',()=>mag('vinken')],['rapport','Weekrapport','Derving per soort per week',()=>mag('rapport')],...(isAdmin()?[['dervingeuro','💶 Derving in euro’s','12 weken, per soort en advies voor de opzet',()=>true]]:[]),
-    ['bestel','Deegbestelling en voorraad','Voorraad tellen en dozen bestellen',()=>mag('bestellen')],['afwijkend','Afwijkende dagen','Feestdagen, gesloten dagen',()=>mag('invullen')],
-    ['soorten','Broodsoorten en instellingen','Soorten, karren, bakmomenten, oven',()=>mag('soorten')],['programmas',"Bakprogramma's","Programma's koppelen aan producten",()=>mag('soorten')],['team','Medewerkers en rechten','Accounts beheren',()=>isAdmin()&&kanBeheren(),isAdmin()?'Alleen op je eigen telefoon':null],
+    ['bestel','Deegbestelling en voorraad','Voorraad tellen en dozen bestellen',()=>mag('bestellen')||mag('voorraad')],['afwijkend','Afwijkende dagen','Feestdagen, gesloten dagen',()=>mag('afwijkend')],
+    ['soorten','Broodsoorten en instellingen','Soorten, karren, bakmomenten, oven',()=>mag('soorten')||mag('karren')],['programmas',"Bakprogramma's","Programma's koppelen aan producten",()=>mag('soorten')],['team','Medewerkers en rechten','Accounts beheren',()=>isAdmin()&&kanBeheren(),isAdmin()?'Alleen op je eigen telefoon':null],
     ['gedaan','Vandaag gedaan','Per persoon wat er is gedaan',()=>isAdmin()],['log','Logboek','Wie deed wat en wanneer',()=>isAdmin()],
-    ['bestelboeken','📘 Bestelboeken','Eigen bestelboeken uit het bestelboek van de leverancier',()=>bbMag()],['nieuw','Nieuwe producten','Verkoop van nieuwe producten volgen',()=>mag('rapport')],['export','Exporteren naar Excel','Planning, derving of weekrapport',()=>mag('rapport')],['plu','PLU-lijst','PLU-nummers opzoeken',()=>true],['instellingen','App-instellingen','Weergave en persoonlijke keuzes',()=>true],['uitleg','Uitleg','Hoe werkt de app?',()=>true]];
+    ['bestelboeken','📘 Bestelboeken','Eigen bestelboeken uit het bestelboek van de leverancier',()=>bbMag()],['nieuw','Nieuwe producten','Verkoop van nieuwe producten volgen',()=>mag('export')],['export','Exporteren naar Excel','Planning, derving of weekrapport',()=>mag('export')],['plu','PLU-lijst','PLU-nummers opzoeken',()=>true],['instellingen','App-instellingen','Weergave en persoonlijke keuzes',()=>true],['uitleg','Uitleg','Hoe werkt de app?',()=>true]];
   if(kt)return`${terug}<div class="kop"><div class="koprij"><h1>🗂 Kantoor</h1>${info('kantoor')}</div><p>Alleen voor jou. Medewerkers zien dit niet.</p></div>${meerLijstHtml(items,true)}`;
   return`<div class="kop"><div class="koprij"><h1>Meer</h1>${info('meer')}</div><p>Ingelogd als <b>${esc(g.naam)}</b> (${g.rol==='admin'?'beheerder':'medewerker'})</p></div>
     ${meerLijstHtml(items)}
@@ -332,28 +332,28 @@ function openOntdooi(){
    <div class="fout" id="fout"></div></div>`);
 }
 
-function soortenHtml(){
+function soortenHtml(){const K=mag('karren'),So=mag('soorten');
   let h=`<div class="kop"><div class="koprij"><h1>Broodsoorten</h1>${info('soorten')}</div><p>Tik op een soort om alles in te stellen: kar, platen, oven, deeg, instructie en foto.</p></div>
    ${isAdmin()&&kanBeheren()?`<div class="kaartje"><h3>Winkel</h3>
     <label>Bakker (leverancier vers brood)</label><div style="display:flex;gap:8px"><input class="veld" id="wBakker" value="${esc(S.bakker||'')}" placeholder="Bijv. Van Eekeren"><button class="knop rand klein" data-a="winkelinst">Opslaan</button></div>
     <div class="sub">Pakbon scannen is afgestemd op de pakbon van Van Eekeren. Bij een andere bakker leert de app de cijfers van jouw pakbon via Leesfout melden.</div>
     <label style="margin-top:12px">Plaats voor het weer</label><div style="display:flex;gap:8px"><input class="veld" id="wPlaats" value="${esc(S.locatie?.naam||WINKEL?.plaats||'Vogelenzang')}"><button class="knop rand klein" data-a="weerzoek">Zoeken</button></div>
     <label style="margin-top:12px">Logo bovenin</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><img src="${logoSrc()}" alt="" style="height:44px;background:#f17d04;border-radius:8px;padding:4px"><label class="knop rand klein">Eigen logo kiezen<input type="file" accept="image/*" id="logoIn" style="display:none"></label>${S.winkelLogo?'<button class="knop rand klein" data-a="logoweg">Standaard logo</button>':''}</div></div>`:''}
-   <div class="kaartje"><h3>Oven</h3><div style="display:flex;align-items:center;gap:10px">Maximaal <input class="veld" style="width:80px;text-align:center" inputmode="numeric" maxlength="2" id="ovenMaxIn" value="${S.ovenMax}"> platen per lading</div></div>`;
-  h+=`<div class="kaartje"><h3>Klaarzetten voor morgen</h3><div class="sub">Vanaf deze tijd opent Klaarzetten automatisch op de lijst van morgen.</div><div style="margin-top:8px"><select class="veld" id="omschakelIn" style="width:160px"><option value="" ${S.omschakel==null?'selected':''}>Uit</option>${[10,11,12,13,14,15,16,17,18,19,20].map(u=>`<option value="${u}" ${S.omschakel===u?'selected':''}>vanaf ${u}:00</option>`).join('')}</select></div></div>`;
-  {const dgn=[[1,'ma'],[2,'di'],[3,'wo'],[4,'do'],[5,'vr'],[6,'za'],[0,'zo']],uitz=Object.keys(S.versUitz).filter(d=>d>=plusDagen(iso(),-1)).sort();
+   ${K?`<div class="kaartje"><h3>Oven</h3><div style="display:flex;align-items:center;gap:10px">Maximaal <input class="veld" style="width:80px;text-align:center" inputmode="numeric" maxlength="2" id="ovenMaxIn" value="${S.ovenMax}"> platen per lading</div></div>`:''}`;
+  if(K)h+=`<div class="kaartje"><h3>Klaarzetten voor morgen</h3><div class="sub">Vanaf deze tijd opent Klaarzetten automatisch op de lijst van morgen.</div><div style="margin-top:8px"><select class="veld" id="omschakelIn" style="width:160px"><option value="" ${S.omschakel==null?'selected':''}>Uit</option>${[10,11,12,13,14,15,16,17,18,19,20].map(u=>`<option value="${u}" ${S.omschakel===u?'selected':''}>vanaf ${u}:00</option>`).join('')}</select></div></div>`;
+  if(So){const dgn=[[1,'ma'],[2,'di'],[3,'wo'],[4,'do'],[5,'vr'],[6,'za'],[0,'zo']],uitz=Object.keys(S.versUitz).filter(d=>d>=plusDagen(iso(),-1)).sort();
    h+=`<div class="kaartje"><h3>Leverdagen vers brood</h3><div class="sub">Op welke dagen levert de bakker?</div><div class="chips" style="margin-top:8px">${dgn.map(([n,l])=>`<button class="chip ${S.versDagen.includes(n)?'aan':''}" data-a="versdag" data-v="${n}">${l}</button>`).join('')}</div>
     <h3 style="margin-top:14px">Uitzonderingen</h3>${uitz.length?uitz.map(d=>`<div style="display:flex;align-items:center;gap:8px;margin-top:6px"><span style="flex:1">${esc(datumTekst(d))} ${vanIso(d).getFullYear()} – <b>${S.versUitz[d]?'extra levering':'geen levering'}</b>${S.afwijkend[d]?' ('+esc(S.afwijkend[d].naam)+')':''}</span><button class="knop rand klein rood" data-a="versuitzweg" data-v="${d}">×</button></div>`).join(''):'<div class="sub">Geen uitzonderingen.</div>'}
     <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap"><input class="veld" type="date" id="versUitzDatum" min="${iso()}" style="width:170px"><button class="knop rand klein" data-a="versuitznieuw" data-n="nee">Geen levering</button><button class="knop rand klein" data-a="versuitznieuw" data-n="ja">Extra levering</button></div></div>`}
   for(const nr of karNrs()){
     const lijst=S.soorten.filter(s=>s.kar===nr),kar=S.karren.find(k=>k.nr===nr);
-    h+=`<div class="sectie"><div class="karkop" style="background:${karKleur(nr)}"><input data-kar="${nr}" value="${esc(kar?kar.naam:'')}" placeholder="Kar ${nr}">${lijst.length?'':`<button class="link" data-a="karweg" data-v="${nr}">Verwijder</button>`}</div>`;
-    h+=`<div class="karkleuren">${KARKLEUREN.map(c=>`<button class="kleurbol ${(kar?.kleur||KARKLEUREN[0])===c?'aan':''}" style="background:${c}" data-a="karkleur" data-v="${nr}" data-k="${c}" aria-label="Kleur"></button>`).join('')}<span class="hulp" style="margin:0">kleur van de kar</span></div>`;
-    for(const s of lijst)h+=`<div class="rij"><button class="regel" data-a="open" data-v="${s.id}">${sFoto(s.id)?`<img class="duim" src="${sFoto(s.id)}" alt="">`:''}<div class="groei"><div class="naam">${esc(s.naam)}${s.groep?`<span class="groep">samen: ${esc(s.groep.toUpperCase())}</span>`:''}</div>
+    h+=`<div class="sectie"><div class="karkop" style="background:${karKleur(nr)}"><input data-kar="${nr}" value="${esc(kar?kar.naam:'')}" placeholder="Kar ${nr}" ${K?'':'readonly'}>${lijst.length||!K?'':`<button class="link" data-a="karweg" data-v="${nr}">Verwijder</button>`}</div>`;
+    if(K)h+=`<div class="karkleuren">${KARKLEUREN.map(c=>`<button class="kleurbol ${(kar?.kleur||KARKLEUREN[0])===c?'aan':''}" style="background:${c}" data-a="karkleur" data-v="${nr}" data-k="${c}" aria-label="Kleur"></button>`).join('')}<span class="hulp" style="margin:0">kleur van de kar</span></div>`;
+    for(const s of lijst)h+=`<div class="rij"><button class="regel" ${So?`data-a="open" data-v="${s.id}"`:''}>${sFoto(s.id)?`<img class="duim" src="${sFoto(s.id)}" alt="">`:''}<div class="groei"><div class="naam">${esc(s.naam)}${s.groep?`<span class="groep">samen: ${esc(s.groep.toUpperCase())}</span>`:''}</div>
       <div class="sub">${s.type==='vers'&&s.gesneden==='on'?`${s.plu?`PLU heel ${esc(s.plu)}`:'<span class="let">PLU heel: nog invullen</span>'} · ${s.pluHalf?`half ${esc(s.pluHalf)}`:'<span class="let">half: nog invullen</span>'} · `:s.plu?`PLU ${esc(s.plu)} · `:''}${s.type==='ontdooien'?'Ontdooien, in stuks':s.type==='vers'?(s.gesneden==='on'?'Vers, ongesneden':'Vers, voorgesneden'):`Plaat ${s.min||0}–${s.max||'?'}`}${s.programma?`, prog. ${esc(s.programma)}`:''}${s.temp||s.baktijd?`, ${[s.temp?s.temp+'°C':'',s.baktijd?s.baktijd+' min':''].filter(Boolean).join(' ')}`:''}${s.perDoos?`, ${s.perDoos} per doos`:''}</div></div><span class="pijl">›</span></button></div>`;
-    h+=`<button class="toevoegen" data-a="nieuw" data-v="${nr}">+ Broodsoort toevoegen</button></div>`;
+    h+=`${So?`<button class="toevoegen" data-a="nieuw" data-v="${nr}">+ Broodsoort toevoegen</button>`:''}</div>`;
   }
-  h+=`<div class="knoppen"><button class="knop rand" data-a="karerbij">Kar toevoegen</button></div>
+  if(K)h+=`<div class="knoppen"><button class="knop rand" data-a="karerbij">Kar toevoegen</button></div>
    <div class="sectie"><div class="karkop"><b>Bakmomenten</b><span>${S.momenten.length}</span></div>
    ${S.momenten.map(m=>`<div class="rij inv"><input class="veld" data-moment="${m.id}" value="${esc(m.naam)}" style="flex:1">${S.momenten.length>1?`<button class="knop rand" style="padding:8px 12px;color:var(--rood);border-color:var(--rood)" data-a="momentweg" data-v="${m.id}">${afwStap===m.id?'Zeker?':'×'}</button>`:''}</div>`).join('')}
    <button class="toevoegen" data-a="momenterbij">+ Bakmoment toevoegen</button></div>`;
@@ -368,7 +368,7 @@ function teamHtml(){
   if(!kanBeheren())return`<div class="kop"><h1>Medewerkers</h1></div><p class="leeg">Medewerkers en rechten beheren kan alleen op een toestel dat met de beheerders-login is gekoppeld.</p>`;
   return`<div class="kop"><div class="koprij"><h1>Medewerkers</h1>${info('team')}</div><p>Geef of ontneem rechten per medewerker.</p></div>
    <div class="kaartje"><h3>Automatisch uitloggen</h3><div class="sub">Is de app zo lang niet in beeld geweest (weggeveegd of afgesloten), dan moet je opnieuw inloggen. Geldt voor iedereen.</div><div class="segment" style="margin:10px 0 0">${[[0,'Direct'],[2,'2 min'],[5,'5 min'],[15,'15 min']].map(([m,l])=>`<button data-a="uitlogmin" data-v="${m}" class="${(S.uitlogMin??5)===m?'aan':''}">${l}</button>`).join('')}</div><div class="hulp" style="margin-top:6px">Direct = na 20 seconden, zodat even de camera of WhatsApp gebruiken je niet uitlogt.</div></div>
-   <div class="sectie">${ms.map(m=>{const r=RECHTEN.filter(([k])=>(m.rechten||{})[k]).length;
+   <div class="sectie">${ms.map(m=>{const r=RECHTEN.filter(([k])=>rHeeft(m.rechten,k)).length;
     return`<div class="rij"><button class="regel" data-a="gebruiker" data-v="${m.id}"><div class="groei"><div class="naam">${esc(m.naam)}${pinTijdelijk(m)?' <span class="st aangepast">tijdelijke pincode</span>':''}${prof(m.id).eenvoudig?' <span class="st ontd">eenvoudig</span>':''}</div><div class="sub">${m.actief===false?'<span class="let">Geen toegang</span>':`${r} van ${RECHTEN.length} rechten`}</div></div><span class="pijl">›</span></button></div>`}).join('')}
     <button class="toevoegen" data-a="nieuwegebruiker">+ Medewerker toevoegen</button></div>`;
 }
@@ -429,7 +429,7 @@ function loginHtml(){
   const lijst=S.gebruikers.filter(g=>g.rol==='admin'||g.actief!==false).sort((a,b)=>a.naam.localeCompare(b.naam,'nl'));
   if(!loginKeuze&&!geenVoorkeur&&L.laatsteGebruiker&&lijst.some(g=>g.id===L.laatsteGebruiker))loginKeuze=L.laatsteGebruiker;
   const g=lijst.find(x=>x.id===loginKeuze),P=g?prof(g.id):null;
-  return`<div class="merkscherm compact"><div class="merkkop klein"><img src="${logoSrc()}" alt="${esc(winkelNaam())}" class="merklogo"><div class="merkregel"><svg class="merkcroissant" viewBox="0 0 300 200" aria-hidden="true">${CROISSANT('#fff','#f17d04')}</svg><span class="merktitel">Coop Winkelapp</span></div></div>
+  return`<div class="merkscherm compact"><div class="merkkop klein"><img src="${logoSrc()}" alt="${esc(winkelNaam())}" class="merklogo"><div class="merkregel"><svg class="merkcroissant" viewBox="0 0 300 200" aria-hidden="true">${KAR('#fff')}</svg><span class="merktitel">Coop Winkelapp</span></div></div>
    <label>Naam</label>
    <div class="naamkeuze">${P?.emoji?`<span class="naamemoji">${P.emoji}</span>`:''}<select id="loginNaam" aria-label="Kies je naam"><option value="" ${g?'':'selected'} disabled>Kies je naam</option>${lijst.map(x=>`<option value="${x.id}" ${x.id===loginKeuze?'selected':''}>${esc(x.naam)}</option>`).join('')}</select>${g?.rol==='admin'?'<span class="rol">Beheerder</span>':''}<span class="pijlneer">▾</span></div>
 ${g?`<label>Pincode</label><div class="pinbolletjes ${pinMelding?'fout':''}">${[0,1,2,3].map(i=>`<i class="${i<pinInvoer.length?'vol':''}"></i>`).join('')}</div>
@@ -468,7 +468,7 @@ function openGebruiker(u){
   <div class="pinhoud"><label>Naam</label><input class="veld" id="gNaam" value="${esc(u.naam||'')}" ${isAdmin()?'':'disabled'}>
    <label>${admin?(u.nieuw?'Pincode (4 cijfers)':'Nieuwe pincode (leeg = niet wijzigen)'):u.nieuw?'Tijdelijke pincode (4 cijfers)':'Pincode resetten: nieuwe tijdelijke pincode (leeg = niet wijzigen)'}</label><input class="veld pinveld" id="gPin" inputmode="numeric" maxlength="4" ${admin?'type="password"':''}><div class="fout" id="fout"></div>
    ${!admin?`<p class="hulp">${u.nieuw?'De medewerker kiest bij de eerste keer inloggen zelf een eigen pincode.':pinTijdelijk(u)?'<b>Heeft nog een tijdelijke pincode.</b> ':'Vergeten? Vul hierboven een nieuwe tijdelijke pincode in.'}</p>`:''}
-   ${rechtenTonen?`<label>Rechten</label>${RECHTEN.map(([k,l])=>`<label class="schakel" style="margin:0;color:var(--tekst);font-weight:400">${l}<input type="checkbox" id="r-${k}" ${(u.rechten||{})[k]?'checked':''}></label>`).join('')}
+   ${rechtenTonen?`<label>Rechten</label>${RECHTEN.map(([k,l,gr],i)=>`${gr!==RECHTEN[i-1]?.[2]?`<div class="hulp" style="margin:14px 0 2px"><b>${gr}</b></div>`:''}<label class="schakel" style="margin:0;color:var(--tekst);font-weight:400">${l}<input type="checkbox" id="r-${k}" ${rHeeft(u.rechten,k)?'checked':''}></label>`).join('')}
    <label class="schakel" style="margin:0;color:var(--tekst);font-weight:400">Toegang tot de app<input type="checkbox" id="gActief" ${u.actief!==false?'checked':''}></label>
    <label class="schakel" style="margin:0;color:var(--tekst);font-weight:400">Eenvoudige modus<input type="checkbox" id="gEenvoudig" ${prof(u.id).eenvoudig?'checked':''}></label>
    <p class="hulp">Klaarzetten bekijken en dagnotities plaatsen kan iedereen met toegang.</p>${u.nieuw?'':`<button class="verwijder" data-a="gweg">Medewerker verwijderen</button>`}`:''}</div>`);

@@ -10,6 +10,9 @@ function deelKies(){const g=ik();if(!g)return null;if(deelVan!==g.id){deelVan=g.
   const o=(L.deel||{})[g.id];return o&&d.includes(o)?deel=o:null}
 function deelTabs(){const t={brood:[['home','Home'],['lijst','Klaarzetten'],...(mag('derving')?[['derving','Derving']]:[]),['check','Checklists'],['meer','Meer']],
   bestellen:[['home','Home'],['check','Checklists'],['meer','Meer']],kantoor:[['home','Kantoor'],...(urenMag()?[['uren','Uren']]:[]),['meer','Meer']]};return t[deel]||t.brood}
+/* 10.70: acties die een (gesplitst) recht nodig hebben; bestelboek-acties behalve kijken/printen = bbaanpas */
+const RECHT_ACTIE={aanpas:'aantal',snij:'aantal',extra:'aantal',ovenmodus:'oven',afbak:'oven',bijnieuw:'oven',bijklaar:'oven',bijweg:'oven',karweg:'karren',karkleur:'karren',karerbij:'karren',momentweg:'karren',momenterbij:'karren',versdag:'soorten',versuitzweg:'soorten',versuitznieuw:'soorten',leverdag:'bestellen',tel:'voorraad'};
+const BB_KIJK=new Set(['bbpdf','bbdeel','bbfilter','bbgroep','bbsanopen','bbvb']);
 /* 10.69: terugknop = vorige pagina (terugL), leeg na tikken in de balk */
 let terugL=[];
 function terugDoel(){const p=terugL[terugL.length-1];if(p&&!(p.tab===tab&&p.sub===sub))return p;return['dragers','vtretour'].includes(sub)?{tab:'home',sub:null}:KANTOOR.has(sub)&&isAdmin()?(deel==='kantoor'?{tab:'home',sub:null}:{tab:'meer',sub:'kantoor'}):{tab:'meer',sub:null}}
